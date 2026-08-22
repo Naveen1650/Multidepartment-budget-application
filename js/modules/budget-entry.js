@@ -1889,7 +1889,7 @@ const BudgetEntryModule = {
         </div>
 
         <div class="flex items-center gap-sm">
-          <button class="btn btn-primary" id="btnQuickNewExpense" style="background: linear-gradient(135deg, #0891b2, #4f46e5);">➕ + Add Expense Item</button>
+          <button class="btn btn-primary" id="btnQuickNewExpense" style="background: linear-gradient(135deg, #0891b2, #4f46e5);">+ Add Expense Item</button>
           <button class="btn btn-secondary" id="btnNewTravelPkg">✈️ + Travel Package</button>
         </div>
       </div>
@@ -2042,9 +2042,6 @@ const BudgetEntryModule = {
               <div class="card-title">Master Accounts Overview (${coaRows.length} Lines)</div>
               <div class="card-subtitle">All Chart of Accounts operating lines are displayed with frozen Parent Account & GL Line. Amounts are auto-aggregated from data input formats.</div>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="BudgetEntryModule.showExpenseLauncherModal('${yearId}', BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._locations, BudgetEntryModule._donors, BudgetEntryModule._activities, BudgetEntryModule._conditionAreas)">
-              ➕ + Add Expense Item
-            </button>
           </div>
 
           <div class="table-container">
@@ -2302,7 +2299,7 @@ const BudgetEntryModule = {
           <div class="flex items-center gap-sm">
             <button type="button" class="btn btn-secondary btn-sm" id="btnToggleAllMonths" title="Expand / Collapse all monthly schedules">▶ Expand All</button>
             <button class="btn btn-primary btn-sm" onclick="BudgetEntryModule.showExpenseInputWizard('${subTab}')">
-              ➕ + Add ${catMeta.title.replace('Expenses', '').replace('Costs', '').trim()} Item
+              + Add ${catMeta.title.replace('Expenses', '').replace('Costs', '').trim()} Item
             </button>
           </div>
         </div>
@@ -2799,7 +2796,7 @@ const BudgetEntryModule = {
             </div>
             ${!isEdit ? `
               <button type="button" class="btn btn-secondary btn-sm font-bold" id="btnAddAnotherLineBtn" style="border-color: var(--accent-primary); color: var(--accent-primary);">
-                ➕ + Add Another Line Item
+                + Add Another Line Item
               </button>
             ` : ''}
           </div>
@@ -2811,7 +2808,7 @@ const BudgetEntryModule = {
           ${!isEdit ? `
             <div class="text-center mt-xs mb-sm">
               <button type="button" class="btn btn-ghost btn-sm font-bold" id="btnAddAnotherLineBtnFooter" style="color: var(--accent-primary);">
-                ➕ + Add Another Line Item (Same 5D Tagging)
+                + Add Another Line Item (Same 5D Tagging)
               </button>
             </div>
           ` : ''}
