@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Noora Health — Budget Planning & 5D Analytics Platform (Team Demo Deck)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-hover: #334155;
+      --accent-primary: #0284c7;
+      --accent-emerald: #10b981;
+      --accent-cyan: #06b6d4;
+      --accent-warning: #f59e0b;
+      --accent-purple: #8b5cf6;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-subtle: rgba(255, 255, 255, 0.1);
+      --shadow-glow: 0 10px 30px -10px rgba(2, 132, 199, 0.3);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* Top Presentation Header */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 28px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-cyan));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .brand-subtitle {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    .deck-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-subtle);
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-primary {
+      background: var(--accent-primary);
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #0369a1;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+    }
+
+    .slide-counter {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      background: rgba(6, 182, 212, 0.1);
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(6, 182, 212, 0.25);
+    }
+
+    /* Main Slide Stage */
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      position: relative;
+    }
+
+    .slide-stage {
+      width: 100%;
+      max-width: 1150px;
+      height: 640px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), var(--shadow-glow);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .slide {
+      flex: 1;
+      padding: 44px 52px;
+      display: none;
+      flex-direction: column;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      overflow-y: auto;
+    }
+
+    .slide.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Slide Typography */
+    .slide-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--accent-cyan);
+      background: rgba(6, 182, 212, 0.12);
+      border: 1px solid rgba(6, 182, 212, 0.25);
+      padding: 4px 10px;
+      border-radius: 6px;
+      width: fit-content;
+      margin-bottom: 12px;
+    }
+
+    .slide-title {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      line-height: 1.25;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    .slide-subtitle {
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    /* Content Cards Grid */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 18px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .feature-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 20px;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(2, 132, 199, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .card-icon {
+      font-size: 24px;
+      margin-bottom: 12px;
+      display: inline-block;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-primary { background: rgba(2, 132, 199, 0.2); color: #38bdf8; border: 1px solid rgba(2, 132, 199, 0.4); }
+    .badge-emerald { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .badge-purple { background: rgba(139, 92, 246, 0.2); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.4); }
+    .badge-warning { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+
+    /* Key Metrics Callouts */
+    .metric-box {
+      background: linear-gradient(135deg, rgba(2, 132, 199, 0.15), rgba(6, 182, 212, 0.05));
+      border: 1px solid rgba(2, 132, 199, 0.3);
+      border-radius: 12px;
+      padding: 16px 20px;
+      text-align: center;
+    }
+
+    .metric-value {
+      font-size: 26px;
+      font-weight: 900;
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 4px;
+    }
+
+    .metric-label {
+      font-size: 11.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+
+    /* List items styling */
+    .check-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .check-list li {
+      font-size: 13.5px;
+      color: #e2e8f0;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      line-height: 1.5;
+    }
+
+    .check-list li span.icon {
+      color: var(--accent-emerald);
+      font-weight: 800;
+    }
+
+    /* Bottom Navigation Bar */
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 28px;
+      background: rgba(15, 23, 42, 0.85);
+      border-top: 1px solid var(--border-subtle);
+      z-index: 100;
+    }
+
+    .footer-hints {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      gap: 16px;
+    }
+
+    .kbd {
+      background: #334155;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      color: #cbd5e1;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Progress Line */
+    .progress-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent-primary), var(--accent-cyan));
+      transition: width 0.3s ease;
+      z-index: 50;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">N</div>
+      <div>
+        <div class="brand-title">Noora Health Budget Platform</div>
+        <div class="brand-subtitle">CY2026-27 Multi-Entity Budget & 5D Analytics Presentation</div>
+      </div>
+    </div>
+    <div class="deck-controls">
+      <span class="slide-counter" id="slideIndicator">SLIDE 01 / 12</span>
+      <button class="btn" id="prevBtn">◀ Previous</button>
+      <button class="btn btn-primary" id="nextBtn">Next ▶</button>
+      <button class="btn" id="fullscreenBtn">⛶ Fullscreen</button>
+      <a href="Noora_Health_Budget_Platform_Demo_Deck.pptx" download="Noora_Health_Budget_Platform_Demo_Deck.pptx" class="btn" style="background: rgba(2, 132, 199, 0.25); border-color: rgba(2, 132, 199, 0.5); color: #38bdf8; font-weight: 700;">
+        📥 Download PPT (.pptx)
+      </a>
+      <a href="index.html" class="btn" style="background: rgba(16, 185, 129, 0.2); border-color: rgba(16, 185, 129, 0.4); color: #34d399;">🚀 Open Live App</a>
+    </div>
+  </header>
+
+  <!-- Slide Stage -->
+  <main>
+    <div class="slide-stage">
+
+      <!-- SLIDE 1: Title Slide -->
+      <div class="slide active" id="slide-1">
+        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px;">
+          <div class="slide-tag">✨ PLATFORM DEMO & WALKTHROUGH</div>
+          <h1 style="font-size: 40px; font-weight: 900; letter-spacing: -1px; margin-bottom: 14px; background: linear-gradient(135deg, #fff 40%, #38bdf8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+            Noora Health Budget Planning & 5D Analytics Platform
+          </h1>
+          <p style="font-size: 17px; color: var(--text-muted); max-width: 720px; line-height: 1.6; margin-bottom: 34px;">
+            A centralized, bottom-up financial planning system across 6 legal entities, 24 departments, multi-currency conversion, and 5-dimensional program budgeting for CY2026-27.
+          </p>
+
+          <div class="grid-4" style="width: 100%; max-width: 960px; margin-top: 10px;">
+            <div class="metric-box">
+              <div class="metric-value">6</div>
+              <div class="metric-label">Legal Entities</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-value">24</div>
+              <div class="metric-label">Functional Depts</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-value">5D</div>
+              <div class="metric-label">Tagging Matrix</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-value">100%</div>
+              <div class="metric-label">Bottom-Up Audit</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 2: Problem & Solution -->
+      <div class="slide" id="slide-2">
+        <div class="slide-tag">🎯 PROBLEM & SOLUTION</div>
+        <h2 class="slide-title">Why We Built This Platform</h2>
+        <p class="slide-subtitle">Replacing fragmented multi-tab spreadsheets with a single governed financial database.</p>
+
+        <div class="grid-2">
+          <div class="feature-card" style="border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05);">
+            <div class="card-title" style="color: #f87171; display: flex; align-items: center; gap: 8px;">
+              <span>❌</span> The Challenge with Legacy Spreadsheets
+            </div>
+            <ul class="check-list" style="margin-top: 14px;">
+              <li><span class="icon" style="color: #f87171;">•</span> Broken formulas, mismatched currency conversions (INR, BDT, IDR, NPR to USD).</li>
+              <li><span class="icon" style="color: #f87171;">•</span> No role security: Department heads could accidentally overwrite global overheads or other entities.</li>
+              <li><span class="icon" style="color: #f87171;">•</span> Painful donor & geographic reporting: Inability to pivot by CIFF, Mulago, Location, or Program stream.</li>
+              <li><span class="icon" style="color: #f87171;">•</span> Disconnected personnel master data vs. payroll budget line items.</li>
+            </ul>
+          </div>
+
+          <div class="feature-card" style="border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.05);">
+            <div class="card-title" style="color: #34d399; display: flex; align-items: center; gap: 8px;">
+              <span>✅</span> The Centralized Solution
+            </div>
+            <ul class="check-list" style="margin-top: 14px;">
+              <li><span class="icon">✓</span> Standardized Chart of Accounts (COA) mapped to unified GL codes.</li>
+              <li><span class="icon">✓</span> Role-Based Access Control (RBAC): Entity and department-level data isolation.</li>
+              <li><span class="icon">✓</span> Automated Employee Master integration with CTC, banding, and increments.</li>
+              <li><span class="icon">✓</span> Built-in 5D tagging (Location, Donor, Activity, Condition Area, Department).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 3: Architecture & Multi-Entity Setup -->
+      <div class="slide" id="slide-3">
+        <div class="slide-tag">🏛️ GLOBAL ARCHITECTURE</div>
+        <h2 class="slide-title">Multi-Entity & Multi-Currency Structure</h2>
+        <p class="slide-subtitle">Consolidated global reporting with full respect for local entity compliance and tax currencies.</p>
+
+        <div class="grid-3" style="margin-bottom: 20px;">
+          <div class="feature-card">
+            <div class="card-icon">🇺🇸</div>
+            <div class="card-title">Noora Health (US)</div>
+            <div class="card-desc">Global Headquarters & US 501(c)(3) Entity.<br><span class="badge badge-primary">USD ($)</span></div>
+          </div>
+          <div class="feature-card">
+            <div class="card-icon">🇮🇳</div>
+            <div class="card-title">India Consolidated</div>
+            <div class="card-desc">NHIPL (Private Ltd) & YAIF (Section 8 Non-profit).<br><span class="badge badge-emerald">INR (₹) • Rate: 83.5</span></div>
+          </div>
+          <div class="feature-card">
+            <div class="card-icon">🇧🇩</div>
+            <div class="card-title">Noora Bangladesh (NHBD)</div>
+            <div class="card-desc">Bangladesh Country Office Operations.<br><span class="badge badge-purple">BDT (৳) • Rate: 117.0</span></div>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="feature-card">
+            <div class="card-icon">🇮🇩</div>
+            <div class="card-title">Noora Indonesia</div>
+            <div class="card-desc">Southeast Asia Health Systems Entity.<br><span class="badge badge-warning">IDR (Rp) • Rate: 16,200</span></div>
+          </div>
+          <div class="feature-card">
+            <div class="card-icon">🇳🇵</div>
+            <div class="card-title">Noora Nepal</div>
+            <div class="card-desc">Nepal Programs & Partner Deployments.<br><span class="badge badge-primary">NPR (रू) • Rate: 133.5</span></div>
+          </div>
+          <div class="feature-card">
+            <div class="card-icon">⚙️</div>
+            <div class="card-title">24 Active Departments</div>
+            <div class="card-desc">Entity-specific department mapping & activation rules per budget year.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 4: Personnel & Payroll Budgeting -->
+      <div class="slide" id="slide-4">
+        <div class="slide-tag">👥 PERSONNEL BUDGETING</div>
+        <h2 class="slide-title">Salaries, Increments & Staff Provisions</h2>
+        <p class="slide-subtitle">Granular headcount-level estimation with automated banding and statutory allowances.</p>
+
+        <div class="grid-2">
+          <div class="feature-card">
+            <div class="card-title">📋 Salaries & Wages Module</div>
+            <ul class="check-list">
+              <li><span class="icon">✓</span> <strong>Auto-Populate:</strong> Pulls active staff from Employee Master into the department budget with 1 click.</li>
+              <li><span class="icon">✓</span> <strong>Increment Modeling:</strong> Configure increment % and effective month (e.g. 10% from April).</li>
+              <li><span class="icon">✓</span> <strong>Automatic Phasing:</strong> Generates accurate Jan–Dec monthly payroll distributions.</li>
+              <li><span class="icon">✓</span> <strong>New Hires & Banding:</strong> Specify NH1–NH6 bands and planned start dates.</li>
+            </ul>
+          </div>
+
+          <div class="feature-card">
+            <div class="card-title">🛡️ Other Personnel Costs</div>
+            <ul class="check-list">
+              <li><span class="icon">✓</span> <strong>Staff Insurance & Welfare:</strong> Medical health coverage, life insurance, and wellness.</li>
+              <li><span class="icon">✓</span> <strong>Gratuity & Statutory Bonus:</strong> Accruals computed per statutory labor regulations.</li>
+              <li><span class="icon">✓</span> <strong>EHA Resource Consultants:</strong> Retainer contracts and specialized medical advisors.</li>
+              <li><span class="icon">✓</span> <strong>Fixed Assets CapEx:</strong> Laptop, IT hardware, and field equipment scheduling.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 5: Operating, Travel & Programs -->
+      <div class="slide" id="slide-5">
+        <div class="slide-tag">✈️ NON-PAYROLL & OPERATIONS</div>
+        <h2 class="slide-title">Travel, Workshops & Field Operations</h2>
+        <p class="slide-subtitle">Transparent unit cost formulas and activity-based cost drivers.</p>
+
+        <div class="grid-3">
+          <div class="feature-card">
+            <div class="card-icon">🛫</div>
+            <div class="card-title">Travel & Living</div>
+            <div class="card-desc">Airfare, train, lodging, and daily per diems with quantity × rate formula calculation.</div>
+          </div>
+          <div class="feature-card">
+            <div class="card-icon">🏥</div>
+            <div class="card-title">IMP Training Workshops</div>
+            <div class="card-desc">Training of Trainers (ToT), participant batches, target cadres (Nurses, Doctors, ASHAs).</div>
+          </div>
+          <div class="feature-card">
+            <div class="card-icon">🏢</div>
+            <div class="card-title">Office & Admin</div>
+            <div class="card-desc">Office rent, utilities, legal retainers, audit fees, translation, and communication tools.</div>
+          </div>
+        </div>
+
+        <div class="metric-box" style="margin-top: 22px; text-align: left; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <div style="font-weight: 700; font-size: 14px; color: #fff;">💡 Built-in Formula Assistant</div>
+            <div style="font-size: 12.5px; color: var(--text-muted);">Enter Quantity (e.g. 5 trips) and Unit Cost (₹25,000) to auto-calculate total cost and spread across travel months.</div>
+          </div>
+          <span class="badge badge-emerald">Auto-Calculating</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 6: 5-Dimensional (5D) Tagging Framework -->
+      <div class="slide" id="slide-6">
+        <div class="slide-tag">🧭 5D TAGGING FRAMEWORK</div>
+        <h2 class="slide-title">The 5-Dimensional Budget Tagging Matrix</h2>
+        <p class="slide-subtitle">Every rupee and dollar is tagged across 5 strategic dimensions for multi-angle reporting.</p>
+
+        <div class="grid-4" style="margin-bottom: 18px;">
+          <div class="feature-card">
+            <div class="card-icon">📍</div>
+            <div class="card-title">1. Location</div>
+            <div class="card-desc">Karnataka, MP, Punjab, Maharashtra, Central, All Locations.</div>
+          </div>
+          <div class="feature-card">
+            <div class="card-icon">👤</div>
+            <div class="card-title">2. Donor / Fund</div>
+            <div class="card-desc">CIFF, Mulago, CRI, Draper, General Fund, Unrestricted.</div>
+          </div>
+          <div class="feature-card">
+            <div class="card-icon">🎯</div>
+            <div class="card-title">3. Activity Stream</div>
+            <div class="card-desc">Direct Service, Training, M&E, Tech & Product, Management.</div>
+          </div>
+          <div class="feature-card">
+            <div class="card-icon">🩺</div>
+            <div class="card-title">4. Condition Area</div>
+            <div class="card-desc">Maternal & Newborn, Tuberculosis, Oncology, Cardiac, All.</div>
+          </div>
+        </div>
+
+        <div class="feature-card" style="background: rgba(2, 132, 199, 0.08); border-color: rgba(2, 132, 199, 0.3);">
+          <div class="card-title" style="color: #38bdf8; display: flex; align-items: center; gap: 8px;">
+            <span>🏢</span> 5th Dimension: Department & Legal Entity
+          </div>
+          <div class="card-desc">Combined with the 4 strategic tags, every line item is linked back to its originating Entity (e.g. NHIPL) and Department (e.g. Implementation, Medical, Product).</div>
+        </div>
+      </div>
+
+      <!-- SLIDE 7: Total Cost Sheet & Variance Tracking -->
+      <div class="slide" id="slide-7">
+        <div class="slide-tag">📊 REAL-TIME CONSOLIDATION</div>
+        <h2 class="slide-title">Total Cost Sheet & Prior Year Variance</h2>
+        <p class="slide-subtitle">Instant department rollups with CY-2026 vs Prior Period (CY-2025) comparison.</p>
+
+        <div class="grid-2">
+          <div class="feature-card">
+            <div class="card-title">📈 Real-Time Rollup Summary</div>
+            <ul class="check-list">
+              <li><span class="icon">✓</span> <strong>Zero Manual Compilation:</strong> As soon as lines are entered, the Total Cost Sheet aggregates all GL lines automatically.</li>
+              <li><span class="icon">✓</span> <strong>Parent Account Grouping:</strong> Clear breakdown by Payroll, Professional Fees, Travel, and Operating Costs.</li>
+              <li><span class="icon">✓</span> <strong>Local & USD Currency:</strong> Shows figures in both native entity currency and USD.</li>
+            </ul>
+          </div>
+
+          <div class="feature-card">
+            <div class="card-title">🔍 Variance & Budget Governance</div>
+            <ul class="check-list">
+              <li><span class="icon">✓</span> <strong>Prior Period Benchmark:</strong> Compare planned CY-2026 budgets directly with CY-2025 actual/approved costs.</li>
+              <li><span class="icon">✓</span> <strong>Growth % & Absolute Delta:</strong> Identifies areas with high cost escalation for finance review.</li>
+              <li><span class="icon">✓</span> <strong>Phasing Check:</strong> Ensures monthly cash outflows align with project implementation milestones.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 8: Security & Role-Based Access Control -->
+      <div class="slide" id="slide-8">
+        <div class="slide-tag">🔒 SECURITY & GOVERNANCE</div>
+        <h2 class="slide-title">Role-Based Access Control (RBAC)</h2>
+        <p class="slide-subtitle">Strict entity-level and department-level isolation to prevent unauthorized access.</p>
+
+        <div class="grid-2">
+          <div class="feature-card">
+            <div class="card-icon">🛡️</div>
+            <div class="card-title">4 Configurable User Roles</div>
+            <ul class="check-list" style="margin-top: 10px;">
+              <li><span class="badge badge-primary">Super Admin</span> Full global system access, currency rates, user management.</li>
+              <li><span class="badge badge-emerald">Finance Admin</span> Entity-wide budget approval, financial controls, master setup.</li>
+              <li><span class="badge badge-warning">Dept Head</span> Edit budgets strictly for assigned entity and department.</li>
+              <li><span class="badge badge-purple">Reviewer</span> Read-only access to view and analyze submitted budgets.</li>
+            </ul>
+          </div>
+
+          <div class="feature-card">
+            <div class="card-icon">🔐</div>
+            <div class="card-title">Entity-Level Security Enforcement</div>
+            <div class="card-desc" style="margin-bottom: 12px;">When a Department Head from India (NHIPL) logs in, the platform automatically locks dropdowns and hides other entities (e.g. Bangladesh, Indonesia, US) preventing data leakage or accidental modifications.</div>
+            <div class="metric-box" style="text-align: left; padding: 12px 16px;">
+              <span class="badge badge-emerald">Validated Isolation</span>
+              <span style="font-size: 12px; color: #fff; margin-left: 8px;">Active session enforces entity scope across UI and storage layers.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 9: Reporting & Multi-Dimensional Analytics -->
+      <div class="slide" id="slide-9">
+        <div class="slide-tag">📑 REPORTING & ANALYTICS</div>
+        <h2 class="slide-title">Executive Summaries & 5D Analytics</h2>
+        <p class="slide-subtitle">From high-level Board summaries to granular GL line-item drill-downs.</p>
+
+        <div class="grid-3">
+          <div class="feature-card">
+            <div class="card-icon">🌐</div>
+            <div class="card-title">Global USD Consolidated</div>
+            <div class="card-desc">All 6 entities consolidated into USD with monthly phasing and category distribution.</div>
+          </div>
+          <div class="feature-card">
+            <div class="card-icon">🇮🇳</div>
+            <div class="card-title">India Consolidated</div>
+            <div class="card-desc">Combined view of NHIPL and YAIF in INR (₹) with USD rollup and inter-entity tagging.</div>
+          </div>
+          <div class="feature-card">
+            <div class="card-icon">📊</div>
+            <div class="card-title">5D Dimension Reports</div>
+            <div class="card-desc">One-click pivot views: By Dept, By Donor, By Location, By Activity, By Condition Area.</div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 18px;">
+          <div class="metric-box" style="text-align: left;">
+            <div style="font-size: 13px; font-weight: 700; color: #fff;">📁 Parent Account Filters</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Quickly isolate specific ledgers (e.g. Travel, Payroll, Consultants) in reports.</div>
+          </div>
+          <div class="metric-box" style="text-align: left;">
+            <div style="font-size: 13px; font-weight: 700; color: #fff;">🔎 Instant Line-Item Search</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Search by staff name, designation, flight route, vendor, or GL code across all entities.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 10: Excel Engine & Clean Exports -->
+      <div class="slide" id="slide-10">
+        <div class="slide-tag">📥 EXCEL IMPORT & EXPORT</div>
+        <h2 class="slide-title">Clean Excel Workbooks & 5D Master Matrix</h2>
+        <p class="slide-subtitle">High-fidelity Excel reports formatted for board presentations and audit requirements.</p>
+
+        <div class="grid-2">
+          <div class="feature-card">
+            <div class="card-title">📄 Dimension-Specific Clean Sheets</div>
+            <ul class="check-list">
+              <li><span class="icon">✓</span> <strong>By Department:</strong> Pure entity and department breakdown without extraneous tags.</li>
+              <li><span class="icon">✓</span> <strong>By Donor / Location / Activity:</strong> Dedicated single-dimension sheets tailored for donor reporting.</li>
+              <li><span class="icon">✓</span> <strong>5D Consolidated Matrix:</strong> Single master sheet with all 5 dimensions combined.</li>
+            </ul>
+          </div>
+
+          <div class="feature-card">
+            <div class="card-title">📚 Detailed Input Sheets in Full Budget Book</div>
+            <ul class="check-list">
+              <li><span class="icon">✓</span> <strong>Salaries (Inputs):</strong> Staff names, banding, monthly CTC, increment %, and phasing.</li>
+              <li><span class="icon">✓</span> <strong>Operating & Travel:</strong> Itemized flight tickets, hotels, and per diems.</li>
+              <li><span class="icon">✓</span> <strong>EHA & Fixed Assets:</strong> Retainers, IT equipment specifications, and quantities.</li>
+              <li><span class="icon">✓</span> <strong>IMP Programs:</strong> Event cadres, batch sizes, and venue rates.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 11: Development Journey — Steps & Challenges Overcome -->
+      <div class="slide" id="slide-11">
+        <div class="slide-tag">🛠️ DEVELOPMENT JOURNEY</div>
+        <h2 class="slide-title">Steps & Key Challenges Faced During Creation</h2>
+        <p class="slide-subtitle">How we architected the platform and solved complex multi-entity financial engineering challenges.</p>
+
+        <div class="grid-2">
+          <div class="feature-card" style="border-color: rgba(2, 132, 199, 0.4); background: rgba(15, 23, 42, 0.7);">
+            <div class="card-title" style="color: #38bdf8; display: flex; align-items: center; gap: 8px;">
+              <span>🔨</span> Key Implementation Steps
+            </div>
+            <ul class="check-list" style="margin-top: 12px;">
+              <li><span class="icon">1.</span> <strong>Global Architecture & Multi-Currency Setup:</strong> Modeled 6 legal entities, 24 departments, and standard conversion matrices (USD, INR, BDT, IDR, NPR).</li>
+              <li><span class="icon">2.</span> <strong>Standardized Chart of Accounts (COA):</strong> Established uniform GL codes and parent account groupings across all entities.</li>
+              <li><span class="icon">3.</span> <strong>Bottom-Up Estimation Engines:</strong> Built automated employee sync with increment modeling, travel unit cost calculators, and IMP workshop logs.</li>
+              <li><span class="icon">4.</span> <strong>5D Tagging Framework:</strong> Embedded Location, Donor, Activity, Condition Area, and Department dimensions on every line item.</li>
+              <li><span class="icon">5.</span> <strong>Security & Role-Based Access Control:</strong> Enforced strict entity-level data isolation to protect confidential personnel data.</li>
+              <li><span class="icon">6.</span> <strong>Excel Export Engine:</strong> Created dimension-specific clean sheets, granular input sheets, and the consolidated 5D Master Matrix.</li>
+            </ul>
+          </div>
+
+          <div class="feature-card" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(15, 23, 42, 0.7);">
+            <div class="card-title" style="color: #fbbf24; display: flex; align-items: center; gap: 8px;">
+              <span>🧗</span> Key Challenges Faced & Overcome
+            </div>
+            <ul class="check-list" style="margin-top: 12px;">
+              <li><span class="icon" style="color: #fbbf24;">•</span> <strong>Multi-Currency Phasing Precision:</strong> Converting 5 native currencies to USD across 12 monthly columns without rounding errors. <em>(Solved via unified financial normalization utilities)</em>.</li>
+              <li><span class="icon" style="color: #fbbf24;">•</span> <strong>Entity Isolation vs Global Rollup:</strong> Preventing local users from viewing confidential payroll of other country offices while giving leadership instant global consolidation. <em>(Solved via role-aware middleware)</em>.</li>
+              <li><span class="icon" style="color: #fbbf24;">•</span> <strong>5D Matrix Tagging vs Accounting GL:</strong> Enabling grant/donor slicing without breaking standard statutory accounting structures. <em>(Solved via unified 5D schema)</em>.</li>
+              <li><span class="icon" style="color: #fbbf24;">•</span> <strong>Clean Dimension-Specific Excel Workbooks:</strong> Formatting reports so single-dimension sheets remain uncluttered while retaining the 5D master matrix and input details in one click.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 12: Live Demo Walkthrough Steps -->
+      <div class="slide" id="slide-12">
+        <div class="slide-tag">🎬 LIVE DEMO AGENDA</div>
+        <h2 class="slide-title">Live Demo Walkthrough for the Team</h2>
+        <p class="slide-subtitle">Step-by-step demonstration flow to showcase to leadership and department heads.</p>
+
+        <div class="grid-3">
+          <div class="feature-card">
+            <div class="card-title">1. Scope Selection</div>
+            <div class="card-desc">Select Budget Year (2026-27), Legal Entity (e.g. NHIPL), and Department (e.g. Implementation).</div>
+          </div>
+          <div class="feature-card">
+            <div class="card-title">2. Personnel Budgeting</div>
+            <div class="card-desc">Click Auto-Populate from Employee Master, adjust increment % to 10%, and add new planned hire.</div>
+          </div>
+          <div class="feature-card">
+            <div class="card-title">3. Operating Costs & 5D</div>
+            <div class="card-desc">Add field supervision airfare with Quantity × Rate formula, and tag Donor (CIFF) & Location (Karnataka).</div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 18px;">
+          <div class="feature-card">
+            <div class="card-title">4. Real-Time Total Cost Sheet</div>
+            <div class="card-desc">Review automatic rollups, monthly distribution curve, and compare against CY-2025 prior period costs.</div>
+          </div>
+          <div class="feature-card">
+            <div class="card-title">5. Export Full Budget Book (.xlsx)</div>
+            <div class="card-desc">Download complete multi-tab workbook with By Dept, By Donor, 5D Matrix, and granular input sheets.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLIDE 13: Q&A & Rollout Plan -->
+      <div class="slide" id="slide-13">
+        <div class="slide-tag">🚀 NEXT STEPS & ROLLOUT</div>
+        <h2 class="slide-title">Rollout Timeline & Next Steps</h2>
+        <p class="slide-subtitle">Structured roadmap to onboard department heads and finalize the CY2026-27 budget.</p>
+
+        <div class="grid-3" style="margin-bottom: 24px;">
+          <div class="feature-card" style="border-color: rgba(2, 132, 199, 0.4);">
+            <div class="card-title">Phase 1: Setup & Master Data</div>
+            <div class="card-desc">Finalize Chart of Accounts, Employee Master list, and exchange rate assumptions for CY2026-27.</div>
+          </div>
+          <div class="feature-card" style="border-color: rgba(16, 185, 129, 0.4);">
+            <div class="card-title">Phase 2: Dept Head Training</div>
+            <div class="card-desc">Hands-on walkthrough with department heads to enter bottom-up personnel and operating budgets.</div>
+          </div>
+          <div class="feature-card" style="border-color: rgba(139, 92, 246, 0.4);">
+            <div class="card-title">Phase 3: Finance Consolidation</div>
+            <div class="card-desc">Finance review, inter-entity adjustments, donor reconciliation, and Board presentation export.</div>
+          </div>
+        </div>
+
+        <div style="text-align: center;">
+          <h3 style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 8px;">Questions & Discussion</h3>
+          <p style="font-size: 14px; color: var(--text-muted);">Thank you! Let's dive into the live application walkthrough.</p>
+        </div>
+      </div>
+
+      <!-- Progress Line -->
+      <div class="progress-bar" id="progressBar" style="width: 7.7%;"></div>
+    </div>
+  </main>
+
+  <!-- Bottom Navigation & Shortcuts -->
+  <footer>
+    <div class="footer-hints">
+      <span><span class="kbd">←</span> <span class="kbd">→</span> or <span class="kbd">Space</span> Navigate</span>
+      <span><span class="kbd">F</span> Fullscreen</span>
+      <span><span class="kbd">Esc</span> Exit Fullscreen</span>
+    </div>
+    <div>
+      <span style="font-size: 12px; color: var(--text-muted);">Noora Health Finance Platform • Confidential</span>
+    </div>
+  </footer>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 13;
+
+    const slides = document.querySelectorAll('.slide');
+    const slideIndicator = document.getElementById('slideIndicator');
+    const progressBar = document.getElementById('progressBar');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+    function updateSlide(index) {
+      if (index < 1) index = 1;
+      if (index > totalSlides) index = totalSlides;
+      currentSlide = index;
+
+      slides.forEach((slide, idx) => {
+        if (idx === currentSlide - 1) {
+          slide.classList.add('active');
+        } else {
+          slide.classList.remove('active');
+        }
+      });
+
+      slideIndicator.textContent = `SLIDE ${String(currentSlide).padStart(2, '0')} / ${String(totalSlides).padStart(2, '0')}`;
+      progressBar.style.width = `${(currentSlide / totalSlides) * 100}%`;
+
+      prevBtn.disabled = (currentSlide === 1);
+      nextBtn.disabled = (currentSlide === totalSlides);
+    }
+
+    prevBtn.addEventListener('click', () => updateSlide(currentSlide - 1));
+    nextBtn.addEventListener('click', () => updateSlide(currentSlide + 1));
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault();
+        updateSlide(currentSlide + 1);
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        updateSlide(currentSlide - 1);
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
+      } else if (e.key === 'Home') {
+        updateSlide(1);
+      } else if (e.key === 'End') {
+        updateSlide(totalSlides);
+      }
+    });
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => console.log(err));
+        fullscreenBtn.textContent = '✖ Exit Fullscreen';
+      } else {
+        document.exitFullscreen().catch(err => console.log(err));
+        fullscreenBtn.textContent = '⛶ Fullscreen';
+      }
+    }
+
+    fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+    updateSlide(1);
+  </script>
+</body>
+</html>

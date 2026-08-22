@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IMP — ToT Budgeting Template (Updated Preview) | Noora Health</title>
+  <style>
+    :root {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-tertiary: #334155;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent-primary: #6366f1;
+      --accent-secondary: #06b6d4;
+      --accent-emerald: #10b981;
+      --border-color: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      padding: 24px;
+      line-height: 1.5;
+    }
+    .container { max-width: 1350px; margin: 0 auto; }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-cyan { background: rgba(6, 182, 212, 0.2); color: #38bdf8; border: 1px solid rgba(6, 182, 212, 0.4); }
+    .badge-emerald { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .badge-indigo { background: rgba(99, 102, 241, 0.2); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.4); }
+    
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .header-box {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      background: var(--bg-primary);
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+    .scale-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      display: block;
+    }
+    .form-control {
+      background: #0f172a;
+      border: 1px solid #475569;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      width: 100%;
+      font-size: 13px;
+    }
+    .form-control:focus {
+      outline: none;
+      border-color: var(--accent-secondary);
+    }
+
+    .month-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      margin-bottom: 16px;
+      padding-bottom: 4px;
+    }
+    .month-tab {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .month-tab.active {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: #fff;
+    }
+    .month-tab:hover:not(.active) {
+      background: #334155;
+      color: #fff;
+    }
+    
+    .comp-header {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(99, 102, 241, 0.15));
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .comp-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      margin-left: 8px;
+    }
+    
+    .scale-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 10px;
+      margin: 12px 0;
+    }
+    .scale-input-box {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px 10px;
+      text-align: center;
+    }
+    .scale-val {
+      font-size: 14px;
+      font-weight: 700;
+      color: #38bdf8;
+      margin-top: 2px;
+    }
+    
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    .data-table th, .data-table td {
+      border: 1px solid #334155;
+      padding: 8px 10px;
+      text-align: right;
+    }
+    .data-table th:first-child, .data-table td:first-child {
+      text-align: left;
+    }
+    .data-table th:nth-child(2), .data-table td:nth-child(2),
+    .data-table th:nth-child(3), .data-table td:nth-child(3) {
+      text-align: left;
+    }
+    .data-table th {
+      background: #0f172a;
+      color: var(--text-secondary);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+    .data-table tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .total-row {
+      background: #0f172a;
+      font-weight: 700;
+      border-top: 2px solid var(--accent-secondary);
+    }
+    .btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-primary { background: var(--accent-primary); color: #fff; }
+    .btn-secondary { background: #334155; color: #f8fafc; border: 1px solid #475569; }
+    .btn-emerald { background: #059669; color: #fff; }
+    .btn-danger { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+    code {
+      background: #0f172a;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-family: monospace;
+      color: #38bdf8;
+      border: 1px solid #334155;
+    }
+    .custom-row {
+      background: rgba(99, 102, 241, 0.08);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <!-- Top Header Banner -->
+    <div class="card" style="border-color: #38bdf8;">
+      <div class="header-box">
+        <div>
+          <span class="badge badge-cyan">DEPARTMENT SPECIFIC TEMPLATE</span>
+          <h2 style="margin: 6px 0; color: #fff; font-size: 1.4rem;">🎯 Implementation (IMP) — ToT & Field Program Budget Engine</h2>
+          <p style="color: var(--text-secondary); font-size: 13px;">
+            Specific Month Allocation &bull; 5D Dimensions &bull; Configurable Unit Rates &bull; Custom Cost Line Addition
+          </p>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Department Scoping:</div>
+          <span class="badge badge-emerald">🔒 Visible ONLY to Implementation (IMP)</span>
+        </div>
+      </div>
+
+      <!-- Month Selector Tabs -->
+      <div style="margin-bottom: 12px;">
+        <label class="scale-label" style="margin-bottom: 6px;">Select Budget Month for Scheduled Training Events:</label>
+        <div class="month-tabs">
+          <div class="month-tab">All 12 Months</div>
+          <div class="month-tab">Jan-2026</div>
+          <div class="month-tab">Feb-2026</div>
+          <div class="month-tab active">Mar-2026 (Active)</div>
+          <div class="month-tab">Apr-2026</div>
+          <div class="month-tab">May-2026</div>
+          <div class="month-tab">Jun-2026</div>
+          <div class="month-tab">Jul-2026</div>
+          <div class="month-tab">Aug-2026</div>
+          <div class="month-tab">Sep-2026</div>
+          <div class="month-tab">Oct-2026</div>
+          <div class="month-tab">Nov-2026</div>
+          <div class="month-tab">Dec-2026</div>
+        </div>
+      </div>
+
+      <!-- 5D Dimensions & Settings Row -->
+      <div class="controls-grid">
+        <div>
+          <label class="scale-label">5D Program Location / Geography</label>
+          <select class="form-control" style="font-weight: 600;">
+            <option selected>India KA (Karnataka)</option>
+            <option>India AP (Andhra Pradesh)</option>
+            <option>India TS (Telangana)</option>
+            <option>India MH (Maharashtra)</option>
+            <option>India OD (Odisha)</option>
+            <option>India MP (Madhya Pradesh)</option>
+          </select>
+        </div>
+        <div>
+          <label class="scale-label">5D Condition Area</label>
+          <select class="form-control">
+            <option selected>MNH (Maternal & Newborn)</option>
+            <option>Cardiology (General)</option>
+            <option>Oncology Care</option>
+            <option>Tuberculosis</option>
+          </select>
+        </div>
+        <div>
+          <label class="scale-label">5D Donor</label>
+          <select class="form-control">
+            <option selected>Gates Foundation</option>
+            <option>CIFF</option>
+            <option>General Unrestricted</option>
+          </select>
+        </div>
+        <div>
+          <label class="scale-label">Responsible Staff Member</label>
+          <select class="form-control">
+            <option selected>Simerneet Bajwa</option>
+            <option>Ananth V</option>
+            <option>Huma</option>
+            <option>Tanmay</option>
+          </select>
+        </div>
+        <div>
+          <label class="scale-label">Month Total Budget (Mar-2026)</label>
+          <div style="font-size: 18px; font-weight: 700; color: #4ade80;">₹ 4,35,226 <span style="font-size: 11px; color: #94a3b8; font-weight: normal;">(≈ $5,212)</span></div>
+        </div>
+      </div>
+
+      <!-- Configurable Rates Notice -->
+      <div style="margin-top: 10px; font-size: 11px; color: #38bdf8; display: flex; justify-content: space-between; align-items: center;">
+        <span>⚙️ Benchmark unit rates are dynamically loaded from <strong>Configuration &gt; IMP Unit Rates Master</strong> (India KA rates active).</span>
+        <button class="btn btn-secondary" style="font-size: 11px; padding: 3px 8px;">⚙️ Edit Benchmark Rates in Config</button>
+      </div>
+    </div>
+
+    <!-- Component 1: State Level Bundled ToT in March 2026 -->
+    <div class="card">
+      <div class="comp-header">
+        <div>
+          <span class="badge badge-indigo">COMPONENT 1</span>
+          <span class="comp-title">10.1 State Level Bundled ToT (Master Trainers) — Scheduled: Mar-2026</span>
+        </div>
+        <div>
+          <span style="font-size: 12px; color: var(--text-secondary);">5D Activity: </span>
+          <code>10.1-Bundled ToT- Master trainers</code>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+        <div>
+          <label class="scale-label">Additional Details / Specific Purpose Notes</label>
+          <input type="text" class="form-control" value="SIHFW State Institute Batch 1 & 2 - District Master Trainers (Mandya & Hassan)">
+        </div>
+        <div>
+          <label class="scale-label">Target Facility Type</label>
+          <select class="form-control">
+            <option selected>District Hospitals & CHCs</option>
+            <option>Primary Health Centres (PHC)</option>
+          </select>
+        </div>
+        <div>
+          <label class="scale-label">Tool Package</label>
+          <select class="form-control">
+            <option selected>Tool Package - 1 (Standard)</option>
+            <option>Tool Package - 2 (Required)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Scale Parameters -->
+      <div class="scale-grid">
+        <div class="scale-input-box">
+          <div class="scale-label">Planned ToTs</div>
+          <div class="scale-val">2 Events</div>
+        </div>
+        <div class="scale-input-box">
+          <div class="scale-label">Days per ToT</div>
+          <div class="scale-val">3 Days</div>
+        </div>
+        <div class="scale-input-box">
+          <div class="scale-label">Facilities Covered</div>
+          <div class="scale-val">30 Facilities</div>
+        </div>
+        <div class="scale-input-box">
+          <div class="scale-label">Master Trainers</div>
+          <div class="scale-val">60 Participants</div>
+        </div>
+        <div class="scale-input-box">
+          <div class="scale-label">Team Size (Trainers)</div>
+          <div class="scale-val">4 Staff</div>
+        </div>
+      </div>
+
+      <!-- Cost Table with Custom Line Items -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin: 12px 0 6px 0;">
+        <span style="font-size: 12px; font-weight: 700; color: #fff;">Cost Line Items Breakdown for Mar-2026:</span>
+        <button type="button" class="btn btn-emerald" onclick="addSampleCustomLine()">
+          ➕ + Add Custom Cost Line Item
+        </button>
+      </div>
+
+      <table class="data-table" id="costItemsTable">
+        <thead>
+          <tr>
+            <th style="width: 260px;">Cost Line Item Description</th>
+            <th style="width: 140px;">GL Account Code</th>
+            <th>Calculation Basis / Formula</th>
+            <th>Rate / Unit (₹)</th>
+            <th>March 2026 Cost (₹)</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="costTableBody">
+          <tr>
+            <td>🏨 Hotel Accommodation (Double Occupancy)</td>
+            <td><code>93101 Travel & Lodging</code></td>
+            <td style="color: #94a3b8;">2 ToTs &times; 3 Days &times; 4 Trainers</td>
+            <td>₹ 1,890 / day</td>
+            <td style="font-weight: 700; color: #38bdf8;">₹ 45,360</td>
+            <td><span class="badge badge-cyan">Auto</span></td>
+          </tr>
+          <tr>
+            <td>🚕 Local Cab Travel</td>
+            <td><code>93104 Travel & Lodging</code></td>
+            <td style="color: #94a3b8;">2 ToTs &times; 3 Days &times; 4 Trainers</td>
+            <td>₹ 5,000 / day</td>
+            <td style="font-weight: 700; color: #38bdf8;">₹ 1,20,000</td>
+            <td><span class="badge badge-cyan">Auto</span></td>
+          </tr>
+          <tr>
+            <td>🍱 Trainer Food Allowance (Per Diem)</td>
+            <td><code>93102 Travel & Lodging</code></td>
+            <td style="color: #94a3b8;">2 ToTs &times; 3 Days &times; 4 Trainers</td>
+            <td>₹ 1,000 / day</td>
+            <td style="font-weight: 700; color: #38bdf8;">₹ 24,000</td>
+            <td><span class="badge badge-cyan">Auto</span></td>
+          </tr>
+          <tr>
+            <td>📦 Training Collateral Kits</td>
+            <td><code>93204 Supplies & Printing</code></td>
+            <td style="color: #94a3b8;">30 Facilities &times; Rate</td>
+            <td>₹ 4,799 / kit</td>
+            <td style="font-weight: 700; color: #38bdf8;">₹ 1,43,970</td>
+            <td><span class="badge badge-cyan">Auto</span></td>
+          </tr>
+          <tr>
+            <td>🎎 Doll Model Sets (2 per facility)</td>
+            <td><code>93204 Supplies & Printing</code></td>
+            <td style="color: #94a3b8;">30 Facilities &times; 2 Dolls</td>
+            <td>₹ 266 / doll</td>
+            <td style="font-weight: 700; color: #38bdf8;">₹ 15,960</td>
+            <td><span class="badge badge-cyan">Auto</span></td>
+          </tr>
+          <tr>
+            <td>🍽️ Thali Model Sets (3 per facility)</td>
+            <td><code>93204 Supplies & Printing</code></td>
+            <td style="color: #94a3b8;">30 Facilities &times; 3 Thalis</td>
+            <td>₹ 180 / thali</td>
+            <td style="font-weight: 700; color: #38bdf8;">₹ 16,200</td>
+            <td><span class="badge badge-cyan">Auto</span></td>
+          </tr>
+          <tr>
+            <td>🏷️ Banners & Stage Backdrops</td>
+            <td><code>93204 Supplies & Printing</code></td>
+            <td style="color: #94a3b8;">2 ToTs &times; (2 Banners + 2 Backdrops)</td>
+            <td>₹ 4,368 / ToT</td>
+            <td style="font-weight: 700; color: #38bdf8;">₹ 8,736</td>
+            <td><span class="badge badge-cyan">Auto</span></td>
+          </tr>
+          <tr>
+            <td>🏢 Venue Hall Rental & Catering</td>
+            <td><code>93201 Other Direct Expenses</code></td>
+            <td style="color: #94a3b8;">2 ToTs &times; 3 Days &times; (Hall + Lunch)</td>
+            <td>₹ 6,000 / day</td>
+            <td style="font-weight: 700; color: #38bdf8;">₹ 36,000</td>
+            <td><span class="badge badge-cyan">Auto</span></td>
+          </tr>
+          <!-- Custom User-Added Cost Line Demo -->
+          <tr class="custom-row" id="customRow1">
+            <td>
+              <input type="text" class="form-control" value="🩺 Doctor & Specialist Guest Honorarium" style="font-size: 12px;">
+            </td>
+            <td>
+              <select class="form-control" style="font-size: 11px;">
+                <option selected>93701 Professional Charges</option>
+                <option>93201 Other Direct Expenses</option>
+                <option>93401 Office Expenses</option>
+              </select>
+            </td>
+            <td>
+              <input type="text" class="form-control" value="2 Doctors &times; ₹12,500 Honorarium" style="font-size: 12px; color: #94a3b8;">
+            </td>
+            <td>
+              <input type="number" class="form-control" value="12500" style="text-align: right; width: 100px;">
+            </td>
+            <td style="font-weight: 700; color: #a78bfa;">
+              ₹ 25,000
+            </td>
+            <td>
+              <button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove();" title="Remove custom line">🗑️ Delete</button>
+            </td>
+          </tr>
+          <tr class="total-row">
+            <td colspan="4">TOTAL MAR-2026 ALLOCATION (COMPONENT 1):</td>
+            <td style="color: #4ade80; font-size: 14px;">₹ 4,35,226</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    function addSampleCustomLine() {
+      const tbody = document.getElementById('costTableBody');
+      const totalRow = tbody.querySelector('.total-row');
+      const tr = document.createElement('tr');
+      tr.className = 'custom-row';
+      tr.innerHTML = `
+        <td><input type="text" class="form-control" placeholder="Enter custom cost item..." style="font-size: 12px;"></td>
+        <td>
+          <select class="form-control" style="font-size: 11px;">
+            <option>93201 Other Direct Expenses</option>
+            <option>93701 Professional Charges</option>
+            <option>93401 Office Expenses</option>
+            <option>93105 Travel & Lodging (Misc)</option>
+          </select>
+        </td>
+        <td><input type="text" class="form-control" placeholder="Quantity / Calculation remarks" style="font-size: 12px; color: #94a3b8;"></td>
+        <td><input type="number" class="form-control" placeholder="Rate" style="text-align: right; width: 100px;"></td>
+        <td style="font-weight: 700; color: #a78bfa;">₹ 0</td>
+        <td><button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove();">🗑️ Delete</button></td>
+      `;
+      tbody.insertBefore(tr, totalRow);
+    }
+  </script>
+</body>
+</html>

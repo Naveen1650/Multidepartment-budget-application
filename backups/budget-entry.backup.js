@@ -1,0 +1,3717 @@
+// ============================================================
+// NOORA HEALTH BUDGET APP ÃƒÂ¢Ã‚â‚¬Ã‚â€ Budget Entry Module
+// Multi-tab grid entry for Payroll (Personnel, EHA, Fixed Assets)
+// and Non-Payroll costs with 5-dimensional tagging
+// ============================================================
+
+const BudgetEntryModule = {
+  currentEntityId: null,
+  currentDeptId: null,
+  activeTab: 'total-costs', // total-costs | personnel | eha | fixed-assets | other-costs
+  activePersonnelSubTab: 'salaries-wages', // 'salaries-wages' | 'other-staff-expenses' | 'gratuity-bonus'
+  activeOtherCostSubTab: 'grid', // 'grid' | 'travel' | 'supplies' | 'communication' | 'office' | 'professional' | 'other'
+
+  // Cached context so addRow/deleteRow can re-render the grid without a full page reload
+  _entity: null,
+  _dept: null,
+  _budgetYear: null,
+  _yearId: '2026',        // The actual DB key used to query/save records
+  _actualsMonth: 'Oct',
+
+  async render(container) {
+    const years = await db.getAll(STORES.budgetYears);
+    const entities = await db.getAll(STORES.entities);
+    const departments = await db.getAll(STORES.departments);
+
+    if (entities.length === 0) {
+      container.innerHTML = `<div class="empty-state"><h3>No Entities Available</h3></div>`;
+      return;
+    }
+
+    this.currentEntityId = App.selectedEntity || entities[0].id;
+    const selectedEntity = entities.find(e => e.id === this.currentEntityId) || entities[0];
+
+    // Filter active departments for entity
+    const yearId = App.selectedYear || years[0]?.id || '2026';
+    const configs = await db.getEntityDeptConfigForYear(yearId, this.currentEntityId);
+    const activeDeptIds = new Set(configs.filter(c => c.isActive).map(c => c.deptId));
+
+    const sortedDepartments = Utils.sortDepartments(departments);
+    const activeDepts = sortedDepartments.filter(d => activeDeptIds.size === 0 || activeDeptIds.has(d.id));
+    this.currentDeptId = this.currentDeptId || activeDepts[0]?.id || sortedDepartments[0]?.id;
+    const selectedDept = sortedDepartments.find(d => d.id === this.currentDeptId) || sortedDepartments[0];
+
+    const yearObj = years.find(y => y.id === yearId) || { year: 2026, actualsThroughMonth: 'Oct', conversionRates: { USD: 1, INR: 83.5, BDT: 117, IDR: 16200, NPR: 133.5 } };
+    const budgetYear = yearObj.year;
+    this._conversionRates = yearObj.conversionRates || { USD: 1, INR: 83.5, BDT: 117, IDR: 16200, NPR: 133.5 };
+
+    container.innerHTML = `
+      <div class="page-header flex justify-between items-center">
+        <div>
+          <h2>Budget Entry (${budgetYear})</h2>
+          <p>Prepare monthly budgets with 5-dimensional tagging and prior year reference data</p>
+        </div>
+      </div>
+
+      <!-- Toolbar Selection -->
+      <div class="budget-toolbar">
+        <div class="toolbar-selectors">
+          <div>
+            <label class="form-label">Entity</label>
+            <select class="form-select" id="entryEntitySelect">
+              ${entities.map(e => `<option value="${e.id}" ${e.id === this.currentEntityId ? 'selected' : ''}>${e.flag} ${e.shortName} (${e.currency})</option>`).join('')}
+            </select>
+          </div>
+
+          <div>
+            <label class="form-label">Department</label>
+            <select class="form-select" id="entryDeptSelect" style="min-width: 280px;">
+              ${activeDepts.map(d => {
+                const name = Utils.getDeptName(d, selectedEntity.deptPrefix);
+                return `<option value="${d.id}" ${d.id === this.currentDeptId ? 'selected' : ''}>${name}</option>`;
+              }).join('')}
+            </select>
+          </div>
+        </div>
+
+        <div class="toolbar-actions" id="toolbarActionsContainer" style="display: flex; gap: var(--space-sm); flex-wrap: wrap;">
+          <!-- Dynamically populated based on activeTab -->
+        </div>
+      </div>
+
+      <!-- Module Tabs -->
+      <div class="tabs" id="entryTabs">
+        <button class="tab ${this.activeTab === 'total-costs' ? 'active' : ''}" data-tab="total-costs">📊 Total Dept Cost</button>
+        <button class="tab ${this.activeTab === 'personnel' ? 'active' : ''}" data-tab="personnel">👥 Payroll — Personnel Cost</button>
+        <button class="tab ${this.activeTab === 'eha' ? 'active' : ''}" data-tab="eha">🤝 Payroll — EHA Consultants</button>
+        <button class="tab ${this.activeTab === 'fixed-assets' ? 'active' : ''}" data-tab="fixed-assets">💻 Fixed Assets (Laptops/Printers)</button>
+        <button class="tab ${this.activeTab === 'other-costs' ? 'active' : ''}" data-tab="other-costs">📑 Other Costs (Travel, Supplies & others)</button>
+      </div>
+
+      <!-- Personnel Sub-Tabs (Visible when activeTab === 'personnel') -->
+      <div class="sub-tabs" id="personnelSubTabs" style="${this.activeTab === 'personnel' ? '' : 'display: none;'}">
+        <button class="sub-tab ${this.activePersonnelSubTab === 'salaries-wages' ? 'active' : ''}" data-subtab="salaries-wages">💼 Salaries and Wages</button>
+        <button class="sub-tab ${this.activePersonnelSubTab === 'other-staff-expenses' ? 'active' : ''}" data-subtab="other-staff-expenses">📚 Other Staff Expenses</button>
+        <button class="sub-tab ${this.activePersonnelSubTab === 'gratuity-bonus' ? 'active' : ''}" data-subtab="gratuity-bonus">🎁 Gratuity and Bonus</button>
+      </div>
+
+      <!-- Other Costs Sub-Tabs (Visible when activeTab === 'other-costs') -->
+      <div class="sub-tabs" id="otherCostSubTabs" style="${this.activeTab === 'other-costs' ? '' : 'display: none;'}">
+        <button class="sub-tab ${this.activeOtherCostSubTab === 'grid' || this.activeOtherCostSubTab === 'all' ? 'active' : ''}" data-subtab="grid">📊 All Accounts Overview</button>
+        ${(typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(selectedDept)) ? `
+          <button class="sub-tab ${this.activeOtherCostSubTab === 'tot' || this.activeOtherCostSubTab === 'imp-tot' ? 'active' : ''}" data-subtab="tot" style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(99, 102, 241, 0.15)); border: 1px solid rgba(6, 182, 212, 0.3); color: #0284c7; font-weight: 700;">🎯 ToT Program Budget (IMP)</button>
+        ` : ''}
+        <button class="sub-tab ${this.activeOtherCostSubTab === 'travel' || this.activeOtherCostSubTab === 'travel-packages' ? 'active' : ''}" data-subtab="travel">✈️ Travel & Lodging</button>
+        <button class="sub-tab ${this.activeOtherCostSubTab === 'supplies' ? 'active' : ''}" data-subtab="supplies">🖨️ Supplies & Printing</button>
+        <button class="sub-tab ${this.activeOtherCostSubTab === 'communication' ? 'active' : ''}" data-subtab="communication">📡 Communication</button>
+        <button class="sub-tab ${this.activeOtherCostSubTab === 'office' ? 'active' : ''}" data-subtab="office">🏢 Office Expenses</button>
+        <button class="sub-tab ${this.activeOtherCostSubTab === 'professional' ? 'active' : ''}" data-subtab="professional">💼 Professional Charges</button>
+        <button class="sub-tab ${this.activeOtherCostSubTab === 'other' ? 'active' : ''}" data-subtab="other">📑 Other Expense Lines</button>
+      </div>
+
+      <!-- Tab Content Area -->
+      <div id="gridContainer"></div>
+    `;
+
+    // Event listeners for toolbar
+    container.querySelector('#entryEntitySelect').addEventListener('change', (e) => {
+      this.currentEntityId = e.target.value;
+      App.selectedEntity = e.target.value;
+      this.render(container);
+    });
+
+    container.querySelector('#entryDeptSelect').addEventListener('change', (e) => {
+      this.currentDeptId = e.target.value;
+      this._dept = departments.find(d => d.id === e.target.value) || selectedDept;
+      this.render(container);
+    });
+
+    // Main module tabs
+    container.querySelectorAll('#entryTabs .tab').forEach(t => {
+      t.addEventListener('click', () => {
+        container.querySelectorAll('#entryTabs .tab').forEach(tab => tab.classList.remove('active'));
+        t.classList.add('active');
+        this.activeTab = t.dataset.tab;
+
+        const subTabsEl = container.querySelector('#personnelSubTabs');
+        if (subTabsEl) {
+          subTabsEl.style.display = this.activeTab === 'personnel' ? '' : 'none';
+        }
+
+        const otherSubTabsEl = container.querySelector('#otherCostSubTabs');
+        if (otherSubTabsEl) {
+          otherSubTabsEl.style.display = this.activeTab === 'other-costs' ? '' : 'none';
+        }
+
+        this.updateToolbarActions();
+        this.renderGrid(selectedEntity, selectedDept, budgetYear, yearObj.actualsThroughMonth || 'Oct');
+      });
+    });
+
+    // Personnel Sub-Tabs
+    container.querySelectorAll('#personnelSubTabs .sub-tab').forEach(st => {
+      st.addEventListener('click', () => {
+        container.querySelectorAll('#personnelSubTabs .sub-tab').forEach(t => t.classList.remove('active'));
+        st.classList.add('active');
+        this.activePersonnelSubTab = st.dataset.subtab;
+        this.updateToolbarActions();
+        this.renderGrid(this._entity || selectedEntity, this._dept || selectedDept, budgetYear, yearObj.actualsThroughMonth || 'Oct');
+      });
+    });
+
+    // Other Costs Sub-Tabs
+    container.querySelectorAll('#otherCostSubTabs .sub-tab').forEach(st => {
+      st.addEventListener('click', () => {
+        container.querySelectorAll('#otherCostSubTabs .sub-tab').forEach(t => t.classList.remove('active'));
+        st.classList.add('active');
+        this.activeOtherCostSubTab = st.dataset.subtab;
+        this.updateToolbarActions();
+        this.renderGrid(this._entity || selectedEntity, this._dept || selectedDept, budgetYear, yearObj.actualsThroughMonth || 'Oct');
+      });
+    });
+
+    // Cache context for addRow / deleteRow
+    this._entity = selectedEntity;
+    this._dept = selectedDept;
+    this._budgetYear = budgetYear;
+    this._yearId = yearId;              // Cache the exact DB key so addRow uses same ID
+    this._actualsMonth = yearObj.actualsThroughMonth || 'Oct';
+
+    this.updateToolbarActions();
+    this.renderGrid(selectedEntity, selectedDept, budgetYear, yearObj.actualsThroughMonth || 'Oct');
+  },
+
+  updateToolbarActions() {
+    const actionsContainer = Utils.$('#toolbarActionsContainer');
+    if (!actionsContainer) return;
+
+    if (this.activeTab === 'personnel') {
+      if (this.activePersonnelSubTab === 'other-staff-expenses') {
+        actionsContainer.innerHTML = `
+          <button class="btn btn-primary btn-sm" onclick="ExcelIOModule.showSalaryUploadModal(BudgetEntryModule.currentEntityId, BudgetEntryModule.currentDeptId, 'other-staff-expenses')">📤 Bulk Upload Staff Expenses</button>
+          <button class="btn btn-secondary btn-sm" onclick="ExcelIOModule.downloadSalaryTemplate('other-staff-expenses')">📥 Expenses Template</button>
+          <button class="btn btn-secondary btn-sm" onclick="BudgetEntryModule.addRow()">+ Add Staff Expense Row</button>
+        `;
+      } else if (this.activePersonnelSubTab === 'gratuity-bonus') {
+        actionsContainer.innerHTML = `
+          <button class="btn btn-primary btn-sm" onclick="ExcelIOModule.showSalaryUploadModal(BudgetEntryModule.currentEntityId, BudgetEntryModule.currentDeptId, 'gratuity-bonus')">📤 Bulk Upload Gratuity & Bonus</button>
+          <button class="btn btn-secondary btn-sm" onclick="ExcelIOModule.downloadSalaryTemplate('gratuity-bonus')">📥 Gratuity/Bonus Template</button>
+          <button class="btn btn-secondary btn-sm" onclick="BudgetEntryModule.addRow()">+ Add Gratuity/Bonus Row</button>
+        `;
+      } else {
+        actionsContainer.innerHTML = `
+          <button class="btn btn-primary btn-sm" onclick="ExcelIOModule.showSalaryUploadModal(BudgetEntryModule.currentEntityId, BudgetEntryModule.currentDeptId, 'salaries-wages')">📤 Bulk Upload Salary Details</button>
+          <button class="btn btn-secondary btn-sm" onclick="ExcelIOModule.downloadSalaryTemplate('salaries-wages')">📥 Salary Template</button>
+          <button class="btn btn-secondary btn-sm" onclick="BudgetEntryModule.addRow()">+ Add Staff Row</button>
+        `;
+      }
+    } else if (this.activeTab === 'eha') {
+      actionsContainer.innerHTML = `
+        <button class="btn btn-primary btn-sm" onclick="ExcelIOModule.showEhaUploadModal(BudgetEntryModule.currentEntityId, BudgetEntryModule.currentDeptId)">📤 Bulk Upload EHA Consultants</button>
+        <button class="btn btn-secondary btn-sm" onclick="ExcelIOModule.downloadEhaTemplate()">📥 EHA Template</button>
+        <button class="btn btn-secondary btn-sm" onclick="BudgetEntryModule.addRow()">+ Add Consultant Row</button>
+      `;
+    } else if (this.activeTab === 'fixed-assets') {
+      actionsContainer.innerHTML = `
+        <button class="btn btn-primary btn-sm" onclick="ExcelIOModule.showFixedAssetUploadModal(BudgetEntryModule.currentEntityId, BudgetEntryModule.currentDeptId)">📤 Bulk Upload Fixed Assets</button>
+        <button class="btn btn-secondary btn-sm" onclick="ExcelIOModule.downloadFixedAssetTemplate()">📥 Asset Template</button>
+        <button class="btn btn-secondary btn-sm" onclick="BudgetEntryModule.addRow()">+ Add Asset Row</button>
+      `;
+    } else if (this.activeTab === 'other-costs') {
+      if (this.activeOtherCostSubTab === 'tot' || this.activeOtherCostSubTab === 'imp-tot') {
+        actionsContainer.innerHTML = `
+          <button class="btn btn-primary btn-sm font-bold" onclick="ImpTotModule.saveAnnualMatrix()">💾 Save Annual Matrix</button>
+          <button class="btn btn-secondary btn-sm font-bold" onclick="ImpTotModule.setViewMode(ImpTotModule.activeViewMode === 'matrix' ? 'registry' : 'matrix')">${typeof ImpTotModule !== 'undefined' && ImpTotModule.activeViewMode === 'matrix' ? '📋 Event Registry' : '📊 Annual Matrix'}</button>
+          <button class="btn btn-secondary btn-sm" onclick="App.navigateTo('config-imp-rates')">⚙️ Benchmark Rates</button>
+        `;
+      } else {
+        actionsContainer.innerHTML = `
+          <button class="btn btn-primary btn-sm" onclick="ExcelIOModule.showNonPayrollUploadModal(BudgetEntryModule.currentEntityId, BudgetEntryModule.currentDeptId)">📤 Bulk Upload Other Costs</button>
+          <button class="btn btn-secondary btn-sm" onclick="ExcelIOModule.downloadNonPayrollTemplate()">📥 Other Costs Template</button>
+          <button class="btn btn-secondary btn-sm" onclick="BudgetEntryModule.addRow()">+ Add Expense Line</button>
+        `;
+      }
+    } else if (this.activeTab === 'imp-tot') {
+      actionsContainer.innerHTML = `
+        <button class="btn btn-primary btn-sm font-bold" onclick="ImpTotModule.saveAnnualMatrix()">💾 Save Annual Matrix</button>
+        <button class="btn btn-secondary btn-sm font-bold" onclick="ImpTotModule.setViewMode(ImpTotModule.activeViewMode === 'matrix' ? 'registry' : 'matrix')">${typeof ImpTotModule !== 'undefined' && ImpTotModule.activeViewMode === 'matrix' ? '📋 Event Registry' : '📊 Annual Matrix'}</button>
+        <button class="btn btn-secondary btn-sm" onclick="App.navigateTo('config-imp-rates')">⚙️ Benchmark Rates</button>
+      `;
+    } else if (this.activeTab === 'total-costs') {
+      actionsContainer.innerHTML = `
+        <div class="flex items-center gap-sm">
+          <span class="badge badge-emerald" style="font-size: 12px; padding: 6px 12px;">📊 Master Department Summary — Auto-linked to input tabs</span>
+        </div>
+      `;
+    }
+  },
+
+  async renderGrid(entity, dept, budgetYear, actualsMonth) {
+    const grid = Utils.$('#gridContainer') || this._container;
+    if (!grid) return;
+    // Use cached _yearId so queries always match what addRow() saves
+    const yearId = this._yearId || App.selectedYear || '2026';
+
+    // If activeTab is imp-tot but current dept is not an Implementation dept, reset to total-costs
+    if (this.activeTab === 'imp-tot' && (typeof ImpTotModule === 'undefined' || !ImpTotModule.isImpDept(dept))) {
+      this.activeTab = 'total-costs';
+      document.querySelectorAll('#entryTabs .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === 'total-costs'));
+    }
+
+    const locations = await db.getLocationsForEntity(entity.id);
+    const donors = await db.getDonorsForEntity(entity.id);
+    const activities = await db.getAll(STORES.activities);
+    const conditionAreas = await db.getAll(STORES.conditionAreas);
+
+    // Cache context for wizards, modals & re-rendering
+    this._container = grid;
+    this._locations = locations;
+    this._donors = donors;
+    this._activities = activities;
+    this._conditionAreas = conditionAreas;
+
+    if (this.activeTab === 'personnel') {
+      await this.renderPersonnelGrid(grid, yearId, entity, dept, budgetYear, locations, donors, activities, conditionAreas);
+    } else if (this.activeTab === 'eha') {
+      await this.renderEhaGrid(grid, yearId, entity, dept, budgetYear, locations, donors, activities, conditionAreas);
+    } else if (this.activeTab === 'fixed-assets') {
+      await this.renderFixedAssetsGrid(grid, yearId, entity, dept, budgetYear, locations, donors, activities, conditionAreas);
+    } else if (this.activeTab === 'other-costs') {
+      await this.renderNonPayrollGrid(grid, yearId, entity, dept, budgetYear, locations, donors, activities, conditionAreas);
+    } else if (this.activeTab === 'total-costs') {
+      await this.renderTotalCostGrid(grid, yearId, entity, dept, budgetYear, locations, donors, activities, conditionAreas);
+    } else if (this.activeTab === 'imp-tot') {
+      if (typeof ImpTotModule !== 'undefined') {
+        await ImpTotModule.render(grid, yearId, entity, dept, budgetYear, locations, donors, activities, conditionAreas);
+      }
+    }
+
+    // Single delegated click listener on #gridContainer for Total column header toggle
+    if (!grid._monthsToggleBound) {
+      grid._monthsToggleBound = true;
+      grid.addEventListener('click', (e) => {
+        const th = e.target.closest('[data-toggle-months]');
+        if (th) {
+          this._toggleMonthsFromTh(th, e);
+        }
+      });
+    }
+  },
+
+  // ─── Personnel Grid (Subtabs: Salaries & Wages, Other Staff Expenses, Gratuity & Bonus) ───
+  async renderPersonnelGrid(container, yearId, entity, dept, budgetYear, locations, donors, activities, conditionAreas) {
+    const allRecords = await db.getBudgetData(STORES.payrollPersonnel, yearId, entity.id, dept.id);
+    const subTab = this.activePersonnelSubTab || 'salaries-wages';
+
+    // Load entity-scoped employees from master for name dropdown
+    const allMasterEmployees = await db.getEmployeesMaster();
+    const masterEmployees = allMasterEmployees
+      .filter(e => e.entityId === entity.id && e.status !== 'Inactive')
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    // Filter records for the active subtab
+    const records = allRecords.filter(r => {
+      if (subTab === 'salaries-wages') {
+        return !r.subCategory || r.subCategory === 'salaries-wages';
+      }
+      return r.subCategory === subTab;
+    });
+
+    const totalSalaryCost = records.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
+    const totalStaffCount = records.length;
+    const deptDisplayName = Utils.getDeptName(dept, entity.deptPrefix);
+
+    const subTabConfig = {
+      'salaries-wages': {
+        title: 'Salaries and Wages',
+        countLabel: 'Employees',
+        costLabel: 'Total Annual Salary Cost',
+        emptyMsg: 'No salaries & wages rows added yet. Click <strong>"📤 Bulk Upload Salary Details"</strong> above to upload staff salaries, or click <strong>"+ Add Staff Row"</strong> to enter manually.'
+      },
+      'other-staff-expenses': {
+        title: 'Other Staff Expenses',
+        countLabel: 'Line Items',
+        costLabel: 'Total Other Staff Expenses',
+        emptyMsg: 'No other staff expenses added yet. Click <strong>"📤 Bulk Upload Staff Expenses"</strong> above or <strong>"+ Add Staff Expense Row"</strong> to enter manually.'
+      },
+      'gratuity-bonus': {
+        title: 'Gratuity and Bonus',
+        countLabel: 'Line Items',
+        costLabel: 'Total Gratuity & Bonus Budget',
+        emptyMsg: 'No gratuity & bonus entries added yet. Click <strong>"📤 Bulk Upload Gratuity & Bonus"</strong> above or <strong>"+ Add Gratuity/Bonus Row"</strong> to enter manually.'
+      }
+    }[subTab] || {
+      title: 'Personnel Cost',
+      countLabel: 'Employees',
+      costLabel: 'Total Annual Salary Cost',
+      emptyMsg: 'No personnel rows added yet.'
+    };
+
+    // Define headers & empty state colspan for each subtab
+    let tableHeadersHtml = '';
+    let emptyColspan = 28;
+
+    if (subTab === 'salaries-wages') {
+      emptyColspan = 29;
+      tableHeadersHtml = `
+        <tr>
+          <th class="sticky-col-status">Employee Status</th>
+          <th class="sticky-col-emp">Employee Name <span class="required-star" title="Mandatory for Existing">*</span></th>
+          <th>Designation <span class="required-star" title="Mandatory for Existing">*</span></th>
+          <th>Date of Joining <span class="required-star" title="Mandatory for Existing">*</span></th>
+          <th>Banding <span class="required-star" title="Mandatory for Existing">*</span></th>
+          <th>Level <span class="required-star" title="Mandatory for Existing">*</span></th>
+          <th>Current Monthly CTC (${entity.currency}) <span class="required-star" title="Mandatory for Existing">*</span></th>
+          <th>New Monthly CTC <span class="required-star" title="Mandatory for Existing">*</span></th>
+          <th>Inc % <span class="required-star" title="Mandatory for Existing">*</span></th>
+          <th>Inc Val</th>
+          <th class="num month-group budget-year total-toggle-th" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${budgetYear} <span class="months-toggle-arrow">&#9664;</span></th>
+          ${SEED_DATA.months.map(m => `<th class="num month-group budget-year">${m}-${budgetYear}</th>`).join('')}
+          <th>Location <span class="required-star" title="Mandatory for Existing">*</span></th>
+          <th>Donor</th>
+          <th>Activity</th>
+          <th>Condition Area</th>
+          <th>Remarks</th>
+          <th>Actions</th>
+        </tr>
+      `;
+    } else if (subTab === 'gratuity-bonus') {
+      emptyColspan = 22;
+      tableHeadersHtml = `
+        <tr>
+          <th class="sticky-col-1">Employee Name</th>
+          <th class="sticky-col-2">Designation</th>
+          <th>Date of Joining</th>
+          <th class="num month-group budget-year total-toggle-th" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${budgetYear} <span class="months-toggle-arrow">&#9664;</span></th>
+          ${SEED_DATA.months.map(m => `<th class="num month-group budget-year">${m}-${budgetYear}</th>`).join('')}
+          <th>Location</th>
+          <th>Donor</th>
+          <th>Activity</th>
+          <th>Condition Area</th>
+          <th>Remarks</th>
+          <th>Actions</th>
+        </tr>
+      `;
+    } else { // other-staff-expenses
+      emptyColspan = 21;
+      tableHeadersHtml = `
+        <tr>
+          <th class="sticky-col-1">Employee Name</th>
+          <th class="sticky-col-2">Designation</th>
+          <th class="num month-group budget-year total-toggle-th" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${budgetYear} <span class="months-toggle-arrow">&#9664;</span></th>
+          ${SEED_DATA.months.map(m => `<th class="num month-group budget-year">${m}-${budgetYear}</th>`).join('')}
+          <th>Location</th>
+          <th>Donor</th>
+          <th>Activity</th>
+          <th>Condition Area</th>
+          <th>Remarks</th>
+          <th>Actions</th>
+        </tr>
+      `;
+    }
+
+    const colMonthlySums = Array(12).fill(0);
+    records.forEach(r => {
+      if (r.monthlyValues) {
+        Object.entries(r.monthlyValues).forEach(([mIdx, val]) => {
+          colMonthlySums[parseInt(mIdx)] += (Utils.parseNumber(val) || 0);
+        });
+      }
+    });
+
+    const topTotalRowHtml = subTab === 'salaries-wages' ? `
+      <tr class="total-row top-total-row">
+        <td class="sticky-col-status font-bold">TOTAL:</td>
+        <td class="sticky-col-emp font-bold">${records.length} Employees</td>
+        <td colspan="8" class="text-secondary font-bold" style="font-size: 11px;">Monthly Salary Rollup</td>
+        <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalSalaryCost)}</td>
+        ${SEED_DATA.months.map((m, idx) => `
+          <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
+        `).join('')}
+        <td colspan="6"></td>
+      </tr>
+    ` : subTab === 'gratuity-bonus' ? `
+      <tr class="total-row top-total-row">
+        <td class="sticky-col-1 font-bold">TOTAL:</td>
+        <td class="sticky-col-2 font-bold">${records.length} Items</td>
+        <td></td>
+        <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalSalaryCost)}</td>
+        ${SEED_DATA.months.map((m, idx) => `
+          <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
+        `).join('')}
+        <td colspan="6"></td>
+      </tr>
+    ` : `
+      <tr class="total-row top-total-row">
+        <td class="sticky-col-1 font-bold">TOTAL:</td>
+        <td class="sticky-col-2 font-bold">${records.length} Items</td>
+        <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalSalaryCost)}</td>
+        ${SEED_DATA.months.map((m, idx) => `
+          <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
+        `).join('')}
+        <td colspan="6"></td>
+      </tr>
+    `;
+
+    const bottomTotalRowHtml = subTab === 'salaries-wages' ? `
+      <tr class="total-row">
+        <td class="sticky-col-status font-bold">TOTAL:</td>
+        <td class="sticky-col-emp font-bold">${records.length} Employees</td>
+        <td colspan="8" class="text-secondary font-bold text-right" style="padding-right: 12px; font-size: 11px;">(${entity.currency})</td>
+        <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalSalaryCost)}</td>
+        ${SEED_DATA.months.map((m, idx) => `
+          <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
+        `).join('')}
+        <td colspan="6"></td>
+      </tr>
+    ` : subTab === 'gratuity-bonus' ? `
+      <tr class="total-row">
+        <td class="sticky-col-1 font-bold">TOTAL:</td>
+        <td class="sticky-col-2 font-bold">${records.length} Items</td>
+        <td></td>
+        <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalSalaryCost)}</td>
+        ${SEED_DATA.months.map((m, idx) => `
+          <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
+        `).join('')}
+        <td colspan="6"></td>
+      </tr>
+    ` : `
+      <tr class="total-row">
+        <td class="sticky-col-1 font-bold">TOTAL:</td>
+        <td class="sticky-col-2 font-bold">${records.length} Items</td>
+        <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalSalaryCost)}</td>
+        ${SEED_DATA.months.map((m, idx) => `
+          <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
+        `).join('')}
+        <td colspan="6"></td>
+      </tr>
+    `;
+
+    container.innerHTML = `
+      <div class="card p-md mb-md flex items-center gap-lg" style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.06), rgba(139, 92, 246, 0.06)); border-color: rgba(6, 182, 212, 0.2);">
+          <div>
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">${subTabConfig.title} Entries</div>
+            <div id="bannerCount" style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary);">${totalStaffCount} ${subTabConfig.countLabel}</div>
+          </div>
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">${subTabConfig.costLabel} (${entity.currency})</div>
+            <div id="bannerTotal" style="font-size: 1.4rem; font-weight: 700; color: var(--accent-primary);">${Utils.formatCurrency(totalSalaryCost, entity.currency)}</div>
+            <div id="bannerTotalUSD" style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); margin-top: 2px;">
+              ${entity.currency !== 'USD' ? `≈ ${Utils.formatCurrency(Utils.convertToUSD(totalSalaryCost, this._conversionRates?.[entity.currency] || 1.0), 'USD')} <span class="text-tertiary" style="font-size: 11px;">(@ ${this._conversionRates?.[entity.currency] || 1.0} ${entity.currency}/USD)</span>` : ''}
+            </div>
+          </div>
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Department</div>
+            <div style="font-size: 1rem; font-weight: 600; color: var(--text-secondary);">${deptDisplayName}</div>
+          </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table" id="personnelTable">
+          <thead>
+            ${tableHeadersHtml}
+          </thead>
+          <tbody>
+            ${records.length === 0 ? `
+              <tr><td colspan="${emptyColspan}" class="text-center p-lg text-muted">${subTabConfig.emptyMsg}</td></tr>
+            ` : `
+              ${topTotalRowHtml}
+              ${records.map(r => this.renderPersonnelRow(r, entity, locations, donors, activities, conditionAreas, subTab, masterEmployees)).join('')}
+              ${bottomTotalRowHtml}
+            `}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    this.attachPersonnelEvents(container, yearId, entity, dept);
+  },
+
+  // ─── Helper: Build Employee Name Cell (smart dropdown linked to Employee Master) ───
+  buildEmpNameCell(r, masterEmployees, cssClass = '', extraAttrs = '') {
+    const savedName = r.name || r.employeeName || '';
+    // Try to match saved name to master
+    const matchedEmp = masterEmployees.find(e => e.name === savedName);
+    const selectedVal = matchedEmp ? matchedEmp.id : (savedName ? '__manual__' : '');
+    const showManual = selectedVal === '__manual__';
+
+    const opts = masterEmployees.map(e =>
+      `<option value="${e.id}" data-name="${e.name}" data-designation="${e.designation || ''}" data-doj="${e.doj || ''}" data-band="${e.band || ''}" data-ctc="${e.monthlyCTC || 0}"${e.id === (matchedEmp?.id) ? ' selected' : ''}>${e.name}${e.designation ? ' — ' + e.designation : ''}</option>`
+    ).join('');
+
+    return `
+      <div class="emp-name-cell" style="min-width: 180px; display: flex; flex-direction: column; gap: 3px;">
+        <select class="form-select field-name ${cssClass}" style="padding: 2px 4px; font-size: 11px; font-weight: 600;" ${extraAttrs}>
+          <option value="">— Select Employee —</option>
+          ${opts}
+          <option value="__manual__"${showManual ? ' selected' : ''}>✏️ Manual Entry…</option>
+        </select>
+        <input type="text" class="field-name-manual" value="${showManual ? savedName : ''}" placeholder="Type name…"
+          style="padding: 2px 4px; font-size: 11px; ${showManual ? '' : 'display: none;'}">
+      </div>
+    `;
+  },
+
+  renderPersonnelRow(r, entity, locations, donors, activities, conditionAreas, subTab = 'salaries-wages', masterEmployees = []) {
+    const monthlyInputs = SEED_DATA.months.map((m, idx) => `
+      <td class="editable num month-col">
+        <input type="number" class="month-input" data-month="${idx}" value="${r.monthlyValues?.[idx] || 0}">
+      </td>
+    `).join('');
+
+    const sharedEndCols = (isMandatoryLocation = false) => `
+      <td>
+        <select class="form-select field-location ${isMandatoryLocation ? 'mandatory-field' : ''}" style="padding: 2px 4px; font-size: 11px;" ${isMandatoryLocation ? 'required' : ''}>
+          <option value="">Select Location</option>
+          ${locations.map(l => `<option value="${l.name}" ${r.location === l.name ? 'selected' : ''}>${l.name}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <select class="form-select field-donor" style="padding: 2px 4px; font-size: 11px;">
+          <option value="">Select Donor</option>
+          ${donors.map(d => `<option value="${d.name}" ${r.donor === d.name ? 'selected' : ''}>${d.name}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <select class="form-select field-activity" style="padding: 2px 4px; font-size: 11px;">
+          <option value="">Select Activity</option>
+          ${activities.map(a => `<option value="${a.name}" ${r.activity === a.name ? 'selected' : ''}>${a.name}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <select class="form-select field-condition" style="padding: 2px 4px; font-size: 11px;">
+          <option value="">Select Area</option>
+          ${conditionAreas.map(c => `<option value="${c.name}" ${r.conditionArea === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}
+        </select>
+      </td>
+      <td class="editable"><input type="text" class="field-remarks" value="${r.remarks || ''}" placeholder="Remarks"></td>
+      <td>
+        <button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteRow('${STORES.payrollPersonnel}', ${r.id})">🗑️</button>
+      </td>
+    `;
+
+    if (subTab === 'salaries-wages') {
+      const isNew = r.employeeStatus === 'New';
+      const req = !isNew ? 'required' : '';
+      const mandClass = !isNew ? 'mandatory-field' : '';
+
+      // New hires: free text. Existing: smart dropdown from master
+      const nameCell = isNew
+        ? `<td class="sticky-col-emp editable"><input type="text" class="field-name" value="${r.name || ''}" placeholder="New Employee Name"></td>`
+        : `<td class="sticky-col-emp editable">${this.buildEmpNameCell(r, masterEmployees, mandClass, req)}</td>`;
+
+      return `
+        <tr data-id="${r.id}" data-sub-category="${r.subCategory || 'salaries-wages'}" class="${isNew ? 'row-status-new' : 'row-status-existing'}">
+          <td class="sticky-col-status">
+            <select class="form-select field-status" style="padding: 2px 4px; font-size: 11px; min-width: 85px; font-weight: 600;">
+              <option value="Existing" ${!isNew ? 'selected' : ''}>Existing</option>
+              <option value="New" ${isNew ? 'selected' : ''}>New</option>
+            </select>
+          </td>
+          ${nameCell}
+          <td class="editable"><input type="text" class="field-designation ${mandClass}" value="${r.designation || ''}" placeholder="Designation" ${req}></td>
+          <td class="editable"><input type="date" class="field-doj ${mandClass}" value="${r.dateOfJoining || ''}" style="padding: 2px 4px; font-size: 11px;" ${req}></td>
+          <td>
+            <select class="form-select field-banding ${mandClass}" style="padding: 2px 4px; font-size: 11px;" ${req}>
+              ${SEED_DATA.bandings.map(b => `<option value="${b}" ${r.banding === b ? 'selected' : ''}>${b}</option>`).join('')}
+            </select>
+          </td>
+          <td>
+            <select class="form-select field-level ${mandClass}" style="padding: 2px 4px; font-size: 11px;" ${req}>
+              ${SEED_DATA.levels.map(l => `<option value="${l}" ${r.level === l ? 'selected' : ''}>${l}</option>`).join('')}
+            </select>
+          </td>
+          <td class="editable num"><input type="number" class="field-current-ctc ${mandClass}" value="${r.currentMonthlyCTC || 0}" ${isNew ? 'disabled style="background: var(--bg-tertiary); color: var(--text-tertiary);"' : req}></td>
+          <td class="editable num"><input type="number" class="field-new-ctc ${mandClass}" value="${r.newMonthlyCTC || 0}" ${req}></td>
+          <td class="editable num"><input type="number" class="field-inc-pct ${mandClass}" value="${r.incrementPct || 0}" ${isNew ? 'disabled style="background: var(--bg-tertiary); color: var(--text-tertiary);"' : req}></td>
+          <td class="num field-inc-val">${isNew ? '-' : Utils.formatNumber(r.incrementValue || 0)}</td>
+          <td class="num font-bold field-total-cy">${Utils.formatNumber(r.totalCY || 0)}</td>
+          ${monthlyInputs}
+          ${sharedEndCols(!isNew)}
+        </tr>
+      `;
+    } else if (subTab === 'gratuity-bonus') {
+      return `
+        <tr data-id="${r.id}" data-sub-category="${r.subCategory || 'gratuity-bonus'}">
+          <td class="sticky-col-1">${this.buildEmpNameCell(r, masterEmployees)}</td>
+          <td class="sticky-col-2 editable"><input type="text" class="field-designation" value="${r.designation || ''}" placeholder="Designation"></td>
+          <td class="editable"><input type="date" class="field-doj" value="${r.dateOfJoining || ''}" style="padding: 2px 4px; font-size: 11px;"></td>
+          <td class="num font-bold field-total-cy">${Utils.formatNumber(r.totalCY || 0)}</td>
+          ${monthlyInputs}
+          ${sharedEndCols(false)}
+        </tr>
+      `;
+    } else { // other-staff-expenses
+      return `
+        <tr data-id="${r.id}" data-sub-category="${r.subCategory || 'other-staff-expenses'}">
+          <td class="sticky-col-1">${this.buildEmpNameCell(r, masterEmployees)}</td>
+          <td class="sticky-col-2 editable"><input type="text" class="field-designation" value="${r.designation || ''}" placeholder="Designation"></td>
+          <td class="num font-bold field-total-cy">${Utils.formatNumber(r.totalCY || 0)}</td>
+          ${monthlyInputs}
+          ${sharedEndCols(false)}
+        </tr>
+      `;
+    }
+  },
+
+  getEmpNameFromRow(row) {
+    const nameSelect = row.querySelector('select.field-name');
+    if (nameSelect) {
+      if (nameSelect.value === '__manual__') {
+        return row.querySelector('.field-name-manual')?.value.trim() || '';
+      }
+      const selOpt = nameSelect.options[nameSelect.selectedIndex];
+      return selOpt?.dataset?.name || (selOpt?.value ? selOpt.textContent.split(' — ')[0].trim() : '');
+    }
+    const nameInput = row.querySelector('input.field-name');
+    if (nameInput) {
+      return nameInput.value.trim();
+    }
+    return '';
+  },
+
+  attachPersonnelEvents(container, yearId, entity, dept) {
+    const table = container.querySelector('#personnelTable');
+    if (!table) return;
+
+    const subTab = this.activePersonnelSubTab || 'salaries-wages';
+    const countLabel = subTab === 'salaries-wages' ? 'Employees' : 'Line Items';
+
+    // Handler for change events (e.g. Employee dropdown, Status dropdown)
+    const handleFieldChange = (e) => {
+      const row = e.target.closest('tr');
+      if (!row) return;
+
+      // Handle Employee Master Dropdown selection & auto-fill
+      if (e.target.classList.contains('field-name') && e.target.tagName === 'SELECT') {
+        const selectedVal = e.target.value;
+        const manualInput = row.querySelector('.field-name-manual');
+
+        if (selectedVal === '__manual__') {
+          if (manualInput) {
+            manualInput.style.display = 'block';
+            manualInput.focus();
+          }
+        } else {
+          if (manualInput) {
+            manualInput.style.display = 'none';
+            manualInput.value = '';
+          }
+
+          if (selectedVal) {
+            const selOpt = e.target.options[e.target.selectedIndex];
+            const desig = selOpt?.dataset?.designation || '';
+            const doj = selOpt?.dataset?.doj || '';
+            const band = selOpt?.dataset?.band || '';
+            const ctc = Utils.parseNumber(selOpt?.dataset?.ctc) || 0;
+
+            // Auto-fill Designation
+            const desigInput = row.querySelector('.field-designation');
+            if (desigInput && desig) desigInput.value = desig;
+
+            // Auto-fill DOJ
+            const dojInput = row.querySelector('.field-doj');
+            if (dojInput && doj) dojInput.value = doj;
+
+            // Auto-fill Banding
+            const bandSelect = row.querySelector('.field-banding');
+            if (bandSelect && band) bandSelect.value = band;
+
+            // Auto-fill Current Monthly CTC and auto-calculate New CTC & Monthly Budget
+            const currentCtcInput = row.querySelector('.field-current-ctc');
+            if (currentCtcInput) {
+              currentCtcInput.value = ctc;
+
+              const incPct = Utils.parseNumber(row.querySelector('.field-inc-pct')?.value) || 0;
+              const incVal = Math.round(ctc * (incPct / 100));
+              const newCTC = ctc + incVal;
+
+              const incValCell = row.querySelector('.field-inc-val');
+              if (incValCell) incValCell.textContent = Utils.formatNumber(incVal);
+
+              const newCtcCell = row.querySelector('.field-new-ctc');
+              if (newCtcCell) newCtcCell.value = newCTC;
+
+              // Populate monthly budget cells
+              row.querySelectorAll('.month-input').forEach(m => {
+                m.value = newCTC;
+              });
+
+              let rowTotal = 0;
+              row.querySelectorAll('.month-input').forEach(m => { rowTotal += Utils.parseNumber(m.value); });
+              const totalCell = row.querySelector('.field-total-cy');
+              if (totalCell) totalCell.textContent = Utils.formatNumber(rowTotal);
+            }
+
+            this.refreshBannerSummary(container, entity, countLabel);
+          }
+        }
+        this.savePersonnelRow(row, yearId, entity.id, dept.id);
+      }
+
+      // Handle Employee Status changes (Existing vs New)
+      if (e.target.classList.contains('field-status')) {
+        const isNew = e.target.value === 'New';
+        const currentCtcInput = row.querySelector('.field-current-ctc');
+        const incPctInput = row.querySelector('.field-inc-pct');
+        const incValCell = row.querySelector('.field-inc-val');
+        const mandatorySelectors = [
+          '.field-name', '.field-designation', '.field-doj',
+          '.field-banding', '.field-level', '.field-current-ctc',
+          '.field-new-ctc', '.field-inc-pct', '.field-location'
+        ];
+
+        if (isNew) {
+          row.classList.add('row-status-new');
+          row.classList.remove('row-status-existing');
+          if (currentCtcInput) {
+            currentCtcInput.disabled = true;
+            currentCtcInput.style.background = 'var(--bg-tertiary)';
+            currentCtcInput.style.color = 'var(--text-tertiary)';
+            currentCtcInput.value = 0;
+          }
+          if (incPctInput) {
+            incPctInput.disabled = true;
+            incPctInput.style.background = 'var(--bg-tertiary)';
+            incPctInput.style.color = 'var(--text-tertiary)';
+            incPctInput.value = 0;
+          }
+          if (incValCell) incValCell.textContent = '-';
+
+          // Remove required & mandatory class for New status
+          mandatorySelectors.forEach(sel => {
+            const el = row.querySelector(sel);
+            if (el) {
+              el.required = false;
+              el.classList.remove('mandatory-field');
+            }
+          });
+        } else {
+          row.classList.remove('row-status-new');
+          row.classList.add('row-status-existing');
+          if (currentCtcInput) {
+            currentCtcInput.disabled = false;
+            currentCtcInput.style.background = '';
+            currentCtcInput.style.color = '';
+          }
+          if (incPctInput) {
+            incPctInput.disabled = false;
+            incPctInput.style.background = '';
+            incPctInput.style.color = '';
+          }
+
+          // Apply required & mandatory class for Existing status
+          mandatorySelectors.forEach(sel => {
+            const el = row.querySelector(sel);
+            if (el) {
+              el.required = true;
+              el.classList.add('mandatory-field');
+            }
+          });
+        }
+        this.savePersonnelRow(row, yearId, entity.id, dept.id);
+      }
+    };
+
+    table.addEventListener('change', handleFieldChange);
+
+    table.addEventListener('input', (e) => {
+      const row = e.target.closest('tr');
+      if (!row) return;
+
+      // Auto-fill forward: if a month cell was changed, fill all later months with same value
+      if (e.target.classList.contains('month-input')) {
+        const changedIdx = parseInt(e.target.dataset.month);
+        const val = e.target.value;
+        row.querySelectorAll('.month-input').forEach(m => {
+          if (parseInt(m.dataset.month) > changedIdx) {
+            m.value = val;
+          }
+        });
+      }
+
+      // If New Monthly CTC changed, auto-update all monthly budget columns
+      if (e.target.classList.contains('field-new-ctc')) {
+        const newCTCVal = Utils.parseNumber(e.target.value);
+        if (newCTCVal >= 0) {
+          row.querySelectorAll('.month-input').forEach(m => {
+            m.value = newCTCVal;
+          });
+        }
+      }
+
+      // For Existing employees, calculate Increment Value & New CTC from Current CTC & Inc %
+      const statusVal = row.querySelector('.field-status')?.value || 'Existing';
+      if (statusVal === 'Existing') {
+        const currentCtcField = row.querySelector('.field-current-ctc');
+        if (currentCtcField && (e.target.classList.contains('field-current-ctc') || e.target.classList.contains('field-inc-pct'))) {
+          const currentCTC = Utils.parseNumber(currentCtcField.value);
+          const incPct = Utils.parseNumber(row.querySelector('.field-inc-pct')?.value);
+          const incVal = Math.round(currentCTC * (incPct / 100));
+          const newCTC = currentCTC + incVal;
+
+          const incValCell = row.querySelector('.field-inc-val');
+          if (incValCell) incValCell.textContent = Utils.formatNumber(incVal);
+
+          const newCtcCell = row.querySelector('.field-new-ctc');
+          if (newCtcCell) newCtcCell.value = newCTC;
+
+          if (newCTC > 0) {
+            row.querySelectorAll('.month-input').forEach(m => {
+              m.value = newCTC;
+            });
+          }
+        }
+      }
+
+      let rowTotal = 0;
+      row.querySelectorAll('.month-input').forEach(m => { rowTotal += Utils.parseNumber(m.value); });
+      const totalCell = row.querySelector('.field-total-cy');
+      if (totalCell) totalCell.textContent = Utils.formatNumber(rowTotal);
+
+      this.refreshBannerSummary(container, entity, countLabel);
+      this.savePersonnelRow(row, yearId, entity.id, dept.id);
+    });
+  },
+
+  // ─── Live Banner Refresh ───
+  // Sums raw .month-input values directly (no formatting/parse round-trip).
+  // Called after every cell edit so the banner always reflects live entries.
+  refreshBannerSummary(container, entity, countLabel) {
+    const table = container.querySelector('table');
+    if (!table) return;
+
+    // Data rows only ── skip colspan empty-state placeholders and total-row summaries
+    const dataRows = [...table.querySelectorAll('tbody tr')].filter(r => !r.classList.contains('total-row') && !r.querySelector('[colspan]'));
+    const count = dataRows.length;
+
+    // Sum directly from raw numeric inputs to avoid formatting parse issues
+    let grandTotal = 0;
+    const colSums = Array(12).fill(0);
+    dataRows.forEach(r => {
+      r.querySelectorAll('.month-input').forEach(m => {
+        const val = parseFloat(m.value) || 0;
+        grandTotal += val;
+        const mIdx = parseInt(m.dataset.month);
+        if (!isNaN(mIdx)) {
+          colSums[mIdx] += val;
+        }
+      });
+    });
+
+    const countEl = container.querySelector('#bannerCount') || document.getElementById('bannerCount');
+    const totalEl = container.querySelector('#bannerTotal') || document.getElementById('bannerTotal');
+    const totalUsdEl = container.querySelector('#bannerTotalUSD') || document.getElementById('bannerTotalUSD');
+    const rate = this._conversionRates?.[entity.currency] || 1.0;
+
+    if (countEl) countEl.textContent = `${count} ${countLabel}`;
+    if (totalEl) totalEl.textContent = Utils.formatCurrency(grandTotal, entity.currency);
+    if (totalUsdEl) {
+      if (entity.currency !== 'USD') {
+        const usdVal = Utils.convertToUSD(grandTotal, rate);
+        totalUsdEl.innerHTML = `≈ ${Utils.formatCurrency(usdVal, 'USD')} <span class="text-tertiary" style="font-size: 11px;">(@ ${rate} ${entity.currency}/USD)</span>`;
+      } else {
+        totalUsdEl.innerHTML = '';
+      }
+    }
+
+    // Real-time update of top and bottom total rows inside table
+    table.querySelectorAll('tr.total-row').forEach(tRow => {
+      const totCell = tRow.querySelector('.field-total-cy');
+      if (totCell) totCell.textContent = Utils.formatNumber(grandTotal);
+      tRow.querySelectorAll('.month-col').forEach((mc, idx) => {
+        mc.textContent = Utils.formatNumber(colSums[idx] || 0);
+      });
+    });
+  },
+
+  async savePersonnelRow(row, yearId, entityId, deptId) {
+    const id = row.dataset.id ? parseInt(row.dataset.id) : null;
+    const monthlyValues = {};
+    row.querySelectorAll('.month-input').forEach((m, idx) => {
+      monthlyValues[idx] = Utils.parseNumber(m.value);
+    });
+
+    const totalCY = Utils.sumMonthlyValues(monthlyValues);
+    const empName = this.getEmpNameFromRow(row);
+
+    const record = {
+      id: id || undefined,
+      yearId,
+      entityId,
+      deptId,
+      subCategory: row.dataset.subCategory || this.activePersonnelSubTab || 'salaries-wages',
+      employeeStatus: row.querySelector('.field-status')?.value || 'Existing',
+      name: empName,
+      designation: row.querySelector('.field-designation')?.value || '',
+      dateOfJoining: row.querySelector('.field-doj')?.value || '',
+      banding: row.querySelector('.field-banding')?.value || '',
+      level: row.querySelector('.field-level')?.value || '',
+      currentMonthlyCTC: Utils.parseNumber(row.querySelector('.field-current-ctc')?.value),
+      newMonthlyCTC: Utils.parseNumber(row.querySelector('.field-new-ctc')?.value),
+      incrementPct: Utils.parseNumber(row.querySelector('.field-inc-pct')?.value),
+      incrementValue: Utils.calculateIncrement(row.querySelector('.field-current-ctc')?.value, row.querySelector('.field-inc-pct')?.value),
+      monthlyValues,
+      totalCY,
+      location: row.querySelector('.field-location')?.value || '',
+      donor: row.querySelector('.field-donor')?.value || '',
+      activity: row.querySelector('.field-activity')?.value || '',
+      conditionArea: row.querySelector('.field-condition')?.value || '',
+      remarks: row.querySelector('.field-remarks')?.value || ''
+    };
+
+    const newId = await db.put(STORES.payrollPersonnel, record);
+    if (!id) row.dataset.id = newId;
+    this.maybeRefreshTotalCosts();
+  },
+
+  async saveEhaRow(row, yearId, entityId, deptId) {
+    const id = row.dataset.id ? parseInt(row.dataset.id) : null;
+    const monthlyValues = {};
+    row.querySelectorAll('.month-input').forEach((m, idx) => { monthlyValues[idx] = Utils.parseNumber(m.value); });
+
+    const record = {
+      id: id || undefined,
+      yearId, entityId, deptId,
+      name: row.querySelector('.field-name')?.value || '',
+      role: row.querySelector('.field-role')?.value || '',
+      monthlyValues,
+      totalCY: Utils.sumMonthlyValues(monthlyValues),
+      location: row.querySelector('.field-location')?.value || '',
+      donor: row.querySelector('.field-donor')?.value || '',
+      activity: row.querySelector('.field-activity')?.value || '',
+      conditionArea: row.querySelector('.field-condition')?.value || '',
+      remarks: row.querySelector('.field-remarks')?.value || ''
+    };
+
+    const newId = await db.put(STORES.payrollEHA, record);
+    if (!id) row.dataset.id = newId;
+    this.maybeRefreshTotalCosts();
+  },
+
+  async saveFaRow(row, yearId, entityId, deptId) {
+    const id = row.dataset.id ? parseInt(row.dataset.id) : null;
+    const monthlyValues = {};
+    row.querySelectorAll('.month-input').forEach((m, idx) => { monthlyValues[idx] = Utils.parseNumber(m.value); });
+    const empName = this.getEmpNameFromRow(row);
+
+    const record = {
+      id: id || undefined,
+      yearId, entityId, deptId,
+      employeeName: empName,
+      assetType: row.querySelector('.field-asset')?.value || '',
+      model: row.querySelector('.field-model')?.value || '',
+      monthlyValues,
+      totalCY: Utils.sumMonthlyValues(monthlyValues),
+      location: row.querySelector('.field-location')?.value || '',
+      donor: row.querySelector('.field-donor')?.value || '',
+      activity: row.querySelector('.field-activity')?.value || '',
+      conditionArea: row.querySelector('.field-condition')?.value || '',
+      remarks: row.querySelector('.field-remarks')?.value || ''
+    };
+
+    const newId = await db.put(STORES.payrollFixedAsset, record);
+    if (!id) row.dataset.id = newId;
+    this.maybeRefreshTotalCosts();
+  },
+
+  async saveNonPayrollRow(row, yearId, entityId, deptId) {
+    const id = row.dataset.id ? parseInt(row.dataset.id) : null;
+    const monthlyValues = {};
+    row.querySelectorAll('.month-input').forEach((m, idx) => { monthlyValues[idx] = Utils.parseNumber(m.value); });
+
+    const parentAccount = row.dataset.parent || row.children[0]?.querySelector('strong')?.textContent?.trim() || row.children[0]?.textContent?.trim() || 'Other Expenses';
+    const glDescription = row.dataset.gl || row.children[1]?.textContent?.trim() || 'General Expense';
+    const ledgerCode = row.dataset.ledger || row.children[2]?.querySelector('code')?.textContent?.trim() || row.children[2]?.textContent?.trim() || '93999';
+    const isTravelPackage = row.dataset.isPackage === 'true';
+    const travelPackageId = row.dataset.packageId ? parseInt(row.dataset.packageId) : (row.dataset.packageId || undefined);
+
+    const record = {
+      id: id || undefined,
+      yearId,
+      entityId,
+      deptId,
+      subGroup: row.dataset.subgroup || 'Operational Costs',
+      parentAccount,
+      glDescription,
+      ledgerCode,
+      isTravelPackage,
+      travelPackageId,
+      basisOfExpense: row.querySelector('.field-basis')?.value || '',
+      monthlyValues,
+      totalCY: Utils.sumMonthlyValues(monthlyValues),
+      activity: row.querySelector('.field-activity')?.value || '',
+      location: row.querySelector('.field-location')?.value || '',
+      donor: row.querySelector('.field-donor')?.value || '',
+      conditionArea: row.querySelector('.field-condition')?.value || '',
+      remarks: row.querySelector('.field-remarks')?.value || ''
+    };
+
+    const newId = await db.put(STORES.nonPayrollCost, record);
+    if (!id && newId) row.dataset.id = newId;
+    this.maybeRefreshTotalCosts();
+  },
+
+  async saveTotalCostRow(row, yearId, entityId, deptId) {
+    const ledgerCode = row.dataset.ledger || '';
+    const glDescription = row.dataset.gldesc || '';
+    const basisOfExpense = row.querySelector('.field-basis')?.value || '';
+    const remarks = row.querySelector('.field-remarks')?.value || '';
+
+    const existing = await db.getBudgetData(STORES.totalCostSheet, yearId, entityId, deptId);
+    let record = existing.find(r => (r.ledgerCode && r.ledgerCode === ledgerCode) || (r.glDescription && r.glDescription === glDescription));
+
+    if (record) {
+      record.basisOfExpense = basisOfExpense;
+      record.remarks = remarks;
+      await db.update(STORES.totalCostSheet, record);
+    } else {
+      await db.add(STORES.totalCostSheet, {
+        yearId,
+        entityId,
+        deptId,
+        ledgerCode,
+        glDescription,
+        basisOfExpense,
+        remarks,
+        monthlyValues: {},
+        totalCY: 0
+      });
+    }
+  },
+
+  async saveTotalCostBasis(row, yearId, entityId, deptId) {
+    return this.saveTotalCostRow(row, yearId, entityId, deptId);
+  },
+
+  maybeRefreshTotalCosts() {
+    // Total Costs tab removed — no-op
+  },
+
+  toggleMonthlyColumns(btn) {
+    const table = btn?.closest('.table-container')?.querySelector('.data-table') || document.querySelector('.data-table');
+    if (!table) return;
+    table.classList.toggle('months-collapsed');
+    const isCollapsed = table.classList.contains('months-collapsed');
+    const toggleTh = table.querySelector('[data-toggle-months]');
+    if (toggleTh) {
+      const arrow = toggleTh.querySelector('.months-toggle-arrow');
+      if (arrow) arrow.innerHTML = isCollapsed ? '&#9654;' : '&#9664;';
+      toggleTh.title = isCollapsed ? 'Click to expand monthly columns (Jan–Dec)' : 'Click to collapse monthly columns (Jan–Dec)';
+    }
+  },
+
+  _toggleMonthsFromTh(th, e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const table = th.closest('.data-table');
+    if (!table) return;
+    table.classList.toggle('months-collapsed');
+    const isCollapsed = table.classList.contains('months-collapsed');
+    const arrow = th.querySelector('.months-toggle-arrow');
+    if (arrow) {
+      arrow.innerHTML = isCollapsed ? '&#9654;' : '&#9664;';
+    }
+    th.title = isCollapsed ? 'Click to expand monthly columns (Jan–Dec)' : 'Click to collapse monthly columns (Jan–Dec)';
+  },
+
+  // ─── EHA Grid ───
+  async renderEhaGrid(container, yearId, entity, dept, budgetYear, locations, donors, activities, conditionAreas) {
+    const records = await db.getBudgetData(STORES.payrollEHA, yearId, entity.id, dept.id);
+    const totalCost = records.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
+    const deptDisplayName = Utils.getDeptName(dept, entity.deptPrefix);
+
+    // Load active employees for EHA name autocomplete suggestions
+    const allEhaMasterEmps = await db.getEmployeesMaster();
+    const ehaNameList = allEhaMasterEmps
+      .filter(e => e.entityId === entity.id && e.status !== 'Inactive')
+      .map(e => e.name).filter(Boolean);
+
+    const colMonthlySums = Array(12).fill(0);
+    records.forEach(r => {
+      if (r.monthlyValues) {
+        Object.entries(r.monthlyValues).forEach(([mIdx, val]) => {
+          colMonthlySums[parseInt(mIdx)] += (Utils.parseNumber(val) || 0);
+        });
+      }
+    });
+
+    const topTotalRowHtml = `
+      <tr class="total-row top-total-row">
+        <td class="sticky-col-1 font-bold">TOTAL EHA BUDGET:</td>
+        <td class="sticky-col-2 font-bold">${records.length} Consultants</td>
+        <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalCost)}</td>
+        ${SEED_DATA.months.map((m, idx) => `
+          <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
+        `).join('')}
+        <td colspan="6"></td>
+      </tr>
+    `;
+
+    const bottomTotalRowHtml = `
+      <tr class="total-row">
+        <td class="sticky-col-1 font-bold">TOTAL EHA BUDGET:</td>
+        <td class="sticky-col-2 font-bold text-right" style="padding-right: 12px;">(${entity.currency})</td>
+        <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalCost)}</td>
+        ${SEED_DATA.months.map((m, idx) => `
+          <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
+        `).join('')}
+        <td colspan="6"></td>
+      </tr>
+    `;
+
+    container.innerHTML = `
+      <div class="card p-md mb-md flex items-center gap-lg" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(6, 182, 212, 0.06)); border-color: rgba(16, 185, 129, 0.2);">
+          <div>
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Consultants Count</div>
+            <div id="bannerCount" style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary);">${records.length} Consultants</div>
+          </div>
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Total EHA Budget (${entity.currency})</div>
+            <div id="bannerTotal" style="font-size: 1.4rem; font-weight: 700; color: var(--accent-success);">${Utils.formatCurrency(totalCost, entity.currency)}</div>
+            <div id="bannerTotalUSD" style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); margin-top: 2px;">
+              ${entity.currency !== 'USD' ? `≈ ${Utils.formatCurrency(Utils.convertToUSD(totalCost, this._conversionRates?.[entity.currency] || 1.0), 'USD')} <span class="text-tertiary" style="font-size: 11px;">(@ ${this._conversionRates?.[entity.currency] || 1.0} ${entity.currency}/USD)</span>` : ''}
+            </div>
+          </div>
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Department</div>
+            <div style="font-size: 1rem; font-weight: 600; color: var(--text-secondary);">${deptDisplayName}</div>
+          </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table" id="ehaTable">
+          <thead>
+            <tr>
+              <th class="sticky-col-1">Consultant Name</th>
+              <th class="sticky-col-2">Role / Scope</th>
+              <th class="num month-group budget-year total-toggle-th" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${budgetYear} <span class="months-toggle-arrow">&#9664;</span></th>
+              ${SEED_DATA.months.map(m => `<th class="num month-group budget-year">${m}-${budgetYear}</th>`).join('')}
+              <th>Location</th>
+              <th>Donor</th>
+              <th>Activity</th>
+              <th>Condition Area</th>
+              <th>Remarks</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${records.length === 0 ? `
+              <tr><td colspan="21" class="text-center p-lg text-muted">No external consultants (EHA) added yet. Click <strong>"📤 Bulk Upload EHA File"</strong> above to upload, or click <strong>"+ Add Consultant Row"</strong>.</td></tr>
+            ` : `
+              ${topTotalRowHtml}
+              ${records.map(r => `
+                <tr data-id="${r.id}">
+                  <td class="sticky-col-1 editable">
+                    <input type="text" class="field-name" value="${r.name || ''}" placeholder="Consultant Name" list="ehaNameList" autocomplete="off">
+                  </td>
+                  <td class="sticky-col-2 editable"><input type="text" class="field-role" value="${r.role || ''}" placeholder="Role"></td>
+                  <td class="num font-bold field-total-cy">${Utils.formatNumber(r.totalCY || 0)}</td>
+                  ${SEED_DATA.months.map((m, idx) => `
+                    <td class="editable num month-col"><input type="number" class="month-input" data-month="${idx}" value="${r.monthlyValues?.[idx] || 0}"></td>
+                  `).join('')}
+                  <td>
+                    <select class="form-select field-location" style="padding: 2px 4px; font-size: 11px;">
+                      <option value="">Select Location</option>
+                      ${locations.map(l => `<option value="${l.name}" ${r.location === l.name ? 'selected' : ''}>${l.name}</option>`).join('')}
+                    </select>
+                  </td>
+                  <td>
+                    <select class="form-select field-donor" style="padding: 2px 4px; font-size: 11px;">
+                      <option value="">Select Donor</option>
+                      ${donors.map(d => `<option value="${d.name}" ${r.donor === d.name ? 'selected' : ''}>${d.name}</option>`).join('')}
+                    </select>
+                  </td>
+                  <td>
+                    <select class="form-select field-activity" style="padding: 2px 4px; font-size: 11px;">
+                      <option value="">Select Activity</option>
+                      ${activities.map(a => `<option value="${a.name}" ${r.activity === a.name ? 'selected' : ''}>${a.name}</option>`).join('')}
+                    </select>
+                  </td>
+                  <td>
+                    <select class="form-select field-condition" style="padding: 2px 4px; font-size: 11px;">
+                      <option value="">Select Area</option>
+                      ${conditionAreas.map(c => `<option value="${c.name}" ${r.conditionArea === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}
+                    </select>
+                  </td>
+                  <td class="editable"><input type="text" class="field-remarks" value="${r.remarks || ''}" placeholder="Remarks"></td>
+                  <td><button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteRow('${STORES.payrollEHA}', ${r.id})">🗑️</button></td>
+                </tr>
+              `).join('')}
+              ${bottomTotalRowHtml}
+            `}
+          </tbody>
+        </table>
+        <datalist id="ehaNameList">
+          ${ehaNameList.map(name => `<option value="${name}">`).join('')}
+        </datalist>
+      </div>
+    `;
+
+    const table = container.querySelector('#ehaTable');
+    if (table) {
+      table.addEventListener('input', (e) => {
+        const row = e.target.closest('tr');
+        if (!row) return;
+
+        // Auto-fill forward for month cells
+        if (e.target.classList.contains('month-input')) {
+          const changedIdx = parseInt(e.target.dataset.month);
+          const val = e.target.value;
+          row.querySelectorAll('.month-input').forEach(m => {
+            if (parseInt(m.dataset.month) > changedIdx) m.value = val;
+          });
+        }
+
+        let total = 0;
+        row.querySelectorAll('.month-input').forEach(m => { total += Utils.parseNumber(m.value); });
+        const totalCellEHA = row.querySelector('.field-total-cy');
+        if (totalCellEHA) totalCellEHA.textContent = Utils.formatNumber(total);
+
+        this.refreshBannerSummary(container, entity, 'Consultants');
+        this.saveEhaRow(row, yearId, entity.id, dept.id);
+      });
+    }
+  },
+
+  // ─── Fixed Assets Grid ───
+  async renderFixedAssetsGrid(container, yearId, entity, dept, budgetYear, locations, donors, activities, conditionAreas) {
+    const records = await db.getBudgetData(STORES.payrollFixedAsset, yearId, entity.id, dept.id);
+    const totalCost = records.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
+    const deptDisplayName = Utils.getDeptName(dept, entity.deptPrefix);
+
+    // Load entity-scoped employees for name dropdown
+    const allMasterEmps = await db.getEmployeesMaster();
+    const masterEmps = allMasterEmps
+      .filter(e => e.entityId === entity.id && e.status !== 'Inactive')
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    const colMonthlySums = Array(12).fill(0);
+    records.forEach(r => {
+      if (r.monthlyValues) {
+        Object.entries(r.monthlyValues).forEach(([mIdx, val]) => {
+          colMonthlySums[parseInt(mIdx)] += (Utils.parseNumber(val) || 0);
+        });
+      }
+    });
+
+    const topTotalRowHtml = `
+      <tr class="total-row top-total-row">
+        <td class="sticky-col-1 font-bold">TOTAL ASSET BUDGET:</td>
+        <td class="sticky-col-2 font-bold">${records.length} Requests</td>
+        <td></td>
+        <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalCost)}</td>
+        ${SEED_DATA.months.map((m, idx) => `
+          <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
+        `).join('')}
+        <td colspan="6"></td>
+      </tr>
+    `;
+
+    const bottomTotalRowHtml = `
+      <tr class="total-row">
+        <td class="sticky-col-1 font-bold">TOTAL ASSET BUDGET:</td>
+        <td class="sticky-col-2 font-bold text-right" style="padding-right: 12px;">(${entity.currency})</td>
+        <td></td>
+        <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalCost)}</td>
+        ${SEED_DATA.months.map((m, idx) => `
+          <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
+        `).join('')}
+        <td colspan="6"></td>
+      </tr>
+    `;
+
+    container.innerHTML = `
+      <div class="card p-md mb-md flex items-center gap-lg" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.06), rgba(239, 68, 68, 0.06)); border-color: rgba(245, 158, 11, 0.2);">
+          <div>
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Asset Requests</div>
+            <div id="bannerCount" style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary);">${records.length} Requests</div>
+          </div>
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Total Asset Budget (${entity.currency})</div>
+            <div id="bannerTotal" style="font-size: 1.4rem; font-weight: 700; color: var(--accent-warm);">${Utils.formatCurrency(totalCost, entity.currency)}</div>
+            <div id="bannerTotalUSD" style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); margin-top: 2px;">
+              ${entity.currency !== 'USD' ? `≈ ${Utils.formatCurrency(Utils.convertToUSD(totalCost, this._conversionRates?.[entity.currency] || 1.0), 'USD')} <span class="text-tertiary" style="font-size: 11px;">(@ ${this._conversionRates?.[entity.currency] || 1.0} ${entity.currency}/USD)</span>` : ''}
+            </div>
+          </div>
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Department</div>
+            <div style="font-size: 1rem; font-weight: 600; color: var(--text-secondary);">${deptDisplayName}</div>
+          </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table" id="faTable">
+          <thead>
+            <tr>
+              <th class="sticky-col-1">Employee Name</th>
+              <th class="sticky-col-2">Asset Type</th>
+              <th>Specification / Model</th>
+              <th class="num month-group budget-year total-toggle-th" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${budgetYear} <span class="months-toggle-arrow">&#9664;</span></th>
+              ${SEED_DATA.months.map(m => `<th class="num month-group budget-year">${m}-${budgetYear}</th>`).join('')}
+              <th>Location</th>
+              <th>Donor</th>
+              <th>Activity</th>
+              <th>Condition Area</th>
+              <th>Remarks</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${records.length === 0 ? `
+              <tr><td colspan="22" class="text-center p-lg text-muted">No fixed asset requests added. Click <strong>"📤 Bulk Upload Assets File"</strong> above to upload, or click <strong>"+ Add Asset Row"</strong>.</td></tr>
+            ` : `
+              ${topTotalRowHtml}
+              ${records.map(r => `
+                <tr data-id="${r.id}">
+                  <td class="sticky-col-1">${this.buildEmpNameCell({ name: r.employeeName || r.name || '' }, masterEmps)}</td>
+                  <td class="sticky-col-2 editable"><input type="text" class="field-asset" value="${r.assetType || ''}" placeholder="Laptop/Printer"></td>
+                  <td class="editable"><input type="text" class="field-model" value="${r.model || ''}" placeholder="Macbook Air/Pro/Lenovo"></td>
+                  <td class="num font-bold field-total-cy">${Utils.formatNumber(r.totalCY || 0)}</td>
+                  ${SEED_DATA.months.map((m, idx) => `
+                    <td class="editable num month-col"><input type="number" class="month-input" data-month="${idx}" value="${r.monthlyValues?.[idx] || 0}"></td>
+                  `).join('')}
+                  <td>
+                    <select class="form-select field-location" style="padding: 2px 4px; font-size: 11px;">
+                      <option value="">Select Location</option>
+                      ${locations.map(l => `<option value="${l.name}" ${r.location === l.name ? 'selected' : ''}>${l.name}</option>`).join('')}
+                    </select>
+                  </td>
+                  <td>
+                    <select class="form-select field-donor" style="padding: 2px 4px; font-size: 11px;">
+                      <option value="">Select Donor</option>
+                      ${donors.map(d => `<option value="${d.name}" ${r.donor === d.name ? 'selected' : ''}>${d.name}</option>`).join('')}
+                    </select>
+                  </td>
+                  <td>
+                    <select class="form-select field-activity" style="padding: 2px 4px; font-size: 11px;">
+                      <option value="">Select Activity</option>
+                      ${activities.map(a => `<option value="${a.name}" ${r.activity === a.name ? 'selected' : ''}>${a.name}</option>`).join('')}
+                    </select>
+                  </td>
+                  <td>
+                    <select class="form-select field-condition" style="padding: 2px 4px; font-size: 11px;">
+                      <option value="">Select Area</option>
+                      ${conditionAreas.map(c => `<option value="${c.name}" ${r.conditionArea === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}
+                    </select>
+                  </td>
+                  <td class="editable"><input type="text" class="field-remarks" value="${r.remarks || ''}" placeholder="Remarks"></td>
+                  <td><button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteRow('${STORES.payrollFixedAsset}', ${r.id})">🗑️</button></td>
+                </tr>
+              `).join('')}
+              ${bottomTotalRowHtml}
+            `}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    const table = container.querySelector('#faTable');
+    if (table) {
+      table.addEventListener('change', (e) => {
+        const row = e.target.closest('tr');
+        if (!row) return;
+
+        if (e.target.classList.contains('field-name') && e.target.tagName === 'SELECT') {
+          const selectedVal = e.target.value;
+          const manualInput = row.querySelector('.field-name-manual');
+          if (selectedVal === '__manual__') {
+            if (manualInput) {
+              manualInput.style.display = 'block';
+              manualInput.focus();
+            }
+          } else {
+            if (manualInput) {
+              manualInput.style.display = 'none';
+              manualInput.value = '';
+            }
+          }
+          this.saveFaRow(row, yearId, entity.id, dept.id);
+        }
+      });
+
+      table.addEventListener('input', (e) => {
+        const row = e.target.closest('tr');
+        if (!row) return;
+
+        // Auto-fill forward for month cells
+        if (e.target.classList.contains('month-input')) {
+          const changedIdx = parseInt(e.target.dataset.month);
+          const val = e.target.value;
+          row.querySelectorAll('.month-input').forEach(m => {
+            if (parseInt(m.dataset.month) > changedIdx) m.value = val;
+          });
+        }
+
+        let total = 0;
+        row.querySelectorAll('.month-input').forEach(m => { total += Utils.parseNumber(m.value); });
+        const totalCellFA = row.querySelector('.field-total-cy');
+        if (totalCellFA) totalCellFA.textContent = Utils.formatNumber(total);
+
+        this.refreshBannerSummary(container, entity, 'Requests');
+        this.saveFaRow(row, yearId, entity.id, dept.id);
+      });
+    }
+  },
+
+  // ─── Other Costs Category Resolver ───
+  getOtherCostCategory(item) {
+    if (!item) return 'other';
+    if (item.isTravelPackage || item.categoryKey === 'travel') return 'travel';
+    if (item.categoryKey && item.categoryKey !== 'all') return item.categoryKey;
+
+    const parent = (item.parentAccount || '').toLowerCase().trim();
+    const gl = (item.glDescription || '').toLowerCase().trim();
+    const ledger = String(item.ledgerCode || '').trim();
+
+    if (parent.includes('travel') || gl.includes('travel') || gl.includes('lodging') || gl.includes('hotel') || gl.includes('air fare') || ledger.startsWith('931')) return 'travel';
+    if (parent.includes('supplies') || parent.includes('printing') || gl.includes('printing') || ledger.startsWith('932')) return 'supplies';
+    if (parent.includes('communication') || gl.includes('internet') || gl.includes('telecommunication') || gl.includes('postage') || ledger.startsWith('933')) return 'communication';
+    if (parent.includes('office') || gl.includes('software') || gl.includes('stationery') || gl.includes('office equipment') || ledger.startsWith('934')) return 'office';
+    if (parent.includes('professional') || parent.includes('consultan') || gl.includes('consultant') || ledger.startsWith('937')) return 'professional';
+    return 'other';
+  },
+
+  isExcludedFromOtherCosts(item) {
+    if (!item) return false;
+    const parent = (item.parentAccount || '').toLowerCase().trim();
+    const gl = (item.glDescription || '').toLowerCase().trim();
+    const sub = (item.subGroup || '').toLowerCase().trim();
+    const ledger = String(item.ledgerCode || '').trim();
+
+    // Exclude payroll, retirement benefits, other staff expenses
+    if (sub.includes('payroll') || parent.includes('salaries and wages') || gl.includes('salaries and wages') || ledger.startsWith('911')) return true;
+    if (parent.includes('health') || parent.includes('retirement') || gl.includes('gratuity') || gl.includes('bonus') || ledger.startsWith('912')) return true;
+    if (parent.includes('other staff') || gl.includes('staff training') || gl.includes('learning & development') || ledger.startsWith('913')) return true;
+
+    // Exclude EHA / Resource Persons / Direct Consultants
+    if (sub.includes('direct consultants') || parent.includes('resource persons') || gl.includes('eha') || gl.includes('program resource') || ledger.startsWith('921')) return true;
+
+    // Exclude Fixed Assets (CapEx)
+    if (sub.includes('fixed assets') || parent.includes('fixed assets') || gl.includes('laptop') || gl.includes('printer') || ledger.startsWith('113')) return true;
+
+    return false;
+  },
+
+  // ─── Non-Payroll Grid (Other Costs) ───
+  async renderNonPayrollGrid(container, yearId, entity, dept, budgetYear, locations, donors, activities, conditionAreas) {
+    let records = await db.getBudgetData(STORES.nonPayrollCost, yearId, entity.id, dept.id);
+    const coa = await db.getAll(STORES.chartOfAccounts);
+    const travelPackages = await db.getBudgetData(STORES.travelPackages, yearId, entity.id, dept.id);
+
+    // Filter COA and records to actual other costs operating lines only
+    const nonPayrollCoa = coa.filter(c => !this.isExcludedFromOtherCosts(c));
+    records = records.filter(r => !this.isExcludedFromOtherCosts(r));
+
+    const cleanStr = (s) => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // Category Counts
+    const travelRecords = travelPackages;
+    const suppliesRecords = records.filter(r => this.getOtherCostCategory(r) === 'supplies');
+    const commRecords = records.filter(r => this.getOtherCostCategory(r) === 'communication');
+    const officeRecords = records.filter(r => this.getOtherCostCategory(r) === 'office');
+    const profRecords = records.filter(r => this.getOtherCostCategory(r) === 'professional');
+    const otherRecords = records.filter(r => !r.isTravelPackage && this.getOtherCostCategory(r) === 'other');
+
+    const totalCost = records.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
+    const deptDisplayName = Utils.getDeptName(dept, entity.deptPrefix);
+    const rate = this._conversionRates?.[entity.currency] || 1.0;
+    const currentSubTab = this.activeOtherCostSubTab || 'grid';
+    const isImpDept = typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(dept);
+
+    // If ToT Program Budget sub-tab is active, delegate directly to ImpTotModule
+    if ((currentSubTab === 'tot' || currentSubTab === 'imp-tot') && isImpDept) {
+      await ImpTotModule.render(container, yearId, entity, dept, budgetYear, locations, donors, activities, conditionAreas);
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="card p-md mb-md flex items-center justify-between" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.06), rgba(6, 182, 212, 0.06)); border-color: rgba(139, 92, 246, 0.2);">
+        <div class="flex items-center gap-lg">
+          <div>
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Total Other Costs Budget (${entity.currency})</div>
+            <div id="bannerTotal" style="font-size: 1.5rem; font-weight: 700; color: var(--accent-secondary);">${Utils.formatCurrency(totalCost, entity.currency)}</div>
+            <div id="bannerTotalUSD" style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); margin-top: 2px;">
+              ${entity.currency !== 'USD' ? `≈ ${Utils.formatCurrency(Utils.convertToUSD(totalCost, rate), 'USD')} <span class="text-tertiary" style="font-size: 11px;">(@ ${rate} ${entity.currency}/USD)</span>` : ''}
+            </div>
+          </div>
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Total Budgeted Items</div>
+            <div id="bannerCount" style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary);">${records.length} Item Entries</div>
+          </div>
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Department</div>
+            <div style="font-size: 1rem; font-weight: 600; color: var(--text-secondary);">${deptDisplayName}</div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-sm">
+          <button class="btn btn-primary" id="btnQuickNewExpense" style="background: linear-gradient(135deg, #0891b2, #4f46e5);">➕ + Add Expense Item</button>
+          <button class="btn btn-secondary" id="btnNewTravelPkg">✈️ + Travel Package</button>
+        </div>
+      </div>
+
+      <!-- Tab Content Area -->
+      <div id="otherCostTabContent">
+        ${this.renderOtherCostSubTabContent(currentSubTab, nonPayrollCoa, records, travelRecords, suppliesRecords, commRecords, officeRecords, profRecords, otherRecords, yearId, entity, dept, budgetYear, rate)}
+      </div>
+    `;
+
+    // Attach expandable sub-row listeners for category & travel tables
+    container.querySelectorAll('.btn-expand-row').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const targetId = btn.dataset.target;
+        const row = container.querySelector('#' + targetId);
+        if (!row) return;
+        const isHidden = row.style.display === 'none' || !row.style.display;
+        row.style.display = isHidden ? 'table-row' : 'none';
+        btn.classList.toggle('expanded', isHidden);
+        btn.textContent = isHidden ? '▼' : '▶';
+      });
+    });
+
+    // Expand All / Collapse All toggle button
+    const btnToggleAll = container.querySelector('#btnToggleAllMonths');
+    if (btnToggleAll) {
+      let isAllExpanded = false;
+      btnToggleAll.addEventListener('click', () => {
+        isAllExpanded = !isAllExpanded;
+        container.querySelectorAll('.exp-breakdown-row').forEach(row => {
+          row.style.display = isAllExpanded ? 'table-row' : 'none';
+        });
+        container.querySelectorAll('.btn-expand-row').forEach(btn => {
+          btn.classList.toggle('expanded', isAllExpanded);
+          btn.textContent = isAllExpanded ? '▼' : '▶';
+        });
+        btnToggleAll.textContent = isAllExpanded ? '▼ Collapse All' : '▶ Expand All';
+      });
+    }
+
+    const openLauncher = () => {
+      this.showExpenseLauncherModal(yearId, entity, dept, locations, donors, activities, conditionAreas);
+    };
+
+    const openTravelWizard = () => {
+      this.showTravelPackageWizard(yearId, entity, dept, locations, donors, activities, conditionAreas);
+    };
+
+    const btnQuickNew = container.querySelector('#btnQuickNewExpense');
+    if (btnQuickNew) btnQuickNew.addEventListener('click', openLauncher);
+
+    const btnNewTravel = container.querySelector('#btnNewTravelPkg');
+    if (btnNewTravel) btnNewTravel.addEventListener('click', openTravelWizard);
+
+    const btnHeaderNewTrip = container.querySelector('#btnHeaderNewTrip');
+    if (btnHeaderNewTrip) btnHeaderNewTrip.addEventListener('click', openTravelWizard);
+
+    const btnEmptyNewTrip = container.querySelector('#btnEmptyNewTrip');
+    if (btnEmptyNewTrip) btnEmptyNewTrip.addEventListener('click', openTravelWizard);
+  },
+
+  renderOtherCostSubTabContent(subTab, nonPayrollCoa, allRecords, travelRecords, suppliesRecords, commRecords, officeRecords, profRecords, otherRecords, yearId, entity, dept, budgetYear, rate) {
+    const cleanStr = (s) => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // ─── 1. ALL ACCOUNTS OVERVIEW (Always Shows All COA Lines, Read-only Rollup) ───
+    if (subTab === 'grid' || subTab === 'all') {
+      const matchedRecordIds = new Set();
+
+      const coaRows = nonPayrollCoa.map(account => {
+        const accGlClean = cleanStr(account.glDescription);
+        const accLedgerClean = cleanStr(account.ledgerCode);
+        const accParentClean = cleanStr(account.parentAccount);
+
+        const matchingItems = allRecords.filter((r) => {
+          const rLedger = cleanStr(r.ledgerCode);
+          const rGl = cleanStr(r.glDescription);
+          const rParent = cleanStr(r.parentAccount);
+
+          const isMatch = (rLedger && accLedgerClean && rLedger === accLedgerClean) ||
+                          (rGl && accGlClean && (rGl === accGlClean || rGl.includes(accGlClean) || accGlClean.includes(rGl))) ||
+                          (rParent && accParentClean && rParent === accParentClean && rGl === accGlClean);
+
+          if (isMatch && r.id) matchedRecordIds.add(r.id);
+          return isMatch;
+        });
+
+        const months = Array(12).fill(0);
+        let totalCY = 0;
+        matchingItems.forEach(item => {
+          if (item.monthlyValues) {
+            Object.entries(item.monthlyValues).forEach(([mIdx, val]) => {
+              const num = Utils.parseNumber(val) || 0;
+              months[mIdx] += num;
+              totalCY += num;
+            });
+          }
+        });
+
+        const basisList = matchingItems.map(m => m.basisOfExpense).filter(Boolean);
+        const remarksList = matchingItems.map(m => m.remarks).filter(Boolean);
+        const categoryKey = this.getOtherCostCategory(account);
+
+        return {
+          parentAccount: account.parentAccount,
+          glDescription: account.glDescription,
+          ledgerCode: account.ledgerCode,
+          categoryKey,
+          itemCount: matchingItems.length,
+          basisOfExpense: basisList.join('; ') || 'No items budgeted',
+          remarks: remarksList.join('; ') || '—',
+          monthlyValues: months,
+          totalCY
+        };
+      });
+
+      // Also append any custom added lines
+      allRecords.forEach(r => {
+        if (r.id && !matchedRecordIds.has(r.id) && !r.isTravelPackage) {
+          const months = Array(12).fill(0);
+          let totalCY = 0;
+          if (r.monthlyValues) {
+            Object.entries(r.monthlyValues).forEach(([mIdx, val]) => {
+              const num = Utils.parseNumber(val) || 0;
+              months[mIdx] += num;
+              totalCY += num;
+            });
+          }
+
+          coaRows.push({
+            parentAccount: r.parentAccount || 'Other Expenses',
+            glDescription: r.glDescription || 'Custom Line',
+            ledgerCode: r.ledgerCode || '93999',
+            categoryKey: this.getOtherCostCategory(r),
+            itemCount: 1,
+            basisOfExpense: r.basisOfExpense || '—',
+            remarks: r.remarks || '—',
+            monthlyValues: months,
+            totalCY
+          });
+        }
+      });
+
+      const grandTotalAll = coaRows.reduce((sum, r) => sum + r.totalCY, 0);
+
+      return `
+        <div class="card mb-lg">
+          <div class="card-header flex justify-between items-center">
+            <div>
+              <div class="card-title">Master Accounts Overview (${coaRows.length} Lines)</div>
+              <div class="card-subtitle">All Chart of Accounts operating lines are displayed with frozen Parent Account & GL Line. Amounts are auto-aggregated from data input formats.</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="BudgetEntryModule.showExpenseLauncherModal('${yearId}', BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._locations, BudgetEntryModule._donors, BudgetEntryModule._activities, BudgetEntryModule._conditionAreas)">
+              ➕ + Add Expense Item
+            </button>
+          </div>
+
+          <div class="table-container">
+            <table class="data-table" id="nonPayrollOverviewTable">
+              <thead>
+                <tr>
+                  <th class="sticky-col-1">Parent Account</th>
+                  <th class="sticky-col-2">GL Line Item Description</th>
+                  <th>Ledger Code</th>
+                  <th>Budgeted Items</th>
+                  <th style="width: 160px; max-width: 160px; min-width: 120px;">Basis / Calculation Notes</th>
+                  <th style="width: 180px; max-width: 180px; min-width: 130px;">Remarks (Amount Justification)</th>
+                  <th class="num month-group budget-year total-toggle-th" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${budgetYear} <span class="months-toggle-arrow">&#9664;</span></th>
+                  ${SEED_DATA.months.map(m => `<th class="num month-group budget-year">${m}-${budgetYear}</th>`).join('')}
+                  <th>Actions</th>
+                </tr>
+              </thead>
+                <!-- Monthly Totals at the Top of the List -->
+                <tr class="total-row top-total-row">
+                  <td class="sticky-col-1 font-bold">TOTAL OTHER COSTS:</td>
+                  <td class="sticky-col-2 font-bold">All Operating Accounts</td>
+                  <td><code>—</code></td>
+                  <td colspan="3" class="font-bold text-secondary" style="font-size: 11px;">Monthly Operating Rollup</td>
+                  <td class="num font-bold field-total-cy" style="color: var(--accent-secondary); font-size: 1.05rem;">${Utils.formatCurrency(grandTotalAll, entity.currency)}</td>
+                  ${SEED_DATA.months.map((m, idx) => {
+                    const mSum = coaRows.reduce((sum, r) => sum + (r.monthlyValues[idx] || 0), 0);
+                    return `<td class="num font-bold month-col font-mono" style="color: var(--accent-secondary); font-size: 11px;">${Utils.formatNumber(mSum)}</td>`;
+                  }).join('')}
+                  <td></td>
+                </tr>
+
+                ${coaRows.map(r => {
+                  const catIcons = { travel: '✈️', supplies: '🖨️', communication: '📡', office: '🏢', professional: '💼', other: '📑' };
+                  const icon = catIcons[r.categoryKey] || '📑';
+                  return `
+                    <tr>
+                      <td class="sticky-col-1 font-bold">
+                        <span style="margin-right: 4px;">${icon}</span> ${r.parentAccount}
+                      </td>
+                      <td class="sticky-col-2 font-medium">
+                        ${r.glDescription}
+                      </td>
+                      <td><code>${r.ledgerCode}</code></td>
+                      <td>
+                        <span class="badge ${r.itemCount > 0 ? 'badge-primary' : 'badge-subtle'}" style="font-size: 11px;">
+                          ${r.itemCount} ${r.itemCount === 1 ? 'item' : 'items'}
+                        </span>
+                      </td>
+                      <td class="basis-cell" style="font-size: 11px; width: 160px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: ${r.itemCount > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)'};" title="${Utils.escapeHtml(r.basisOfExpense || '')}">
+                        ${r.basisOfExpense}
+                      </td>
+                      <td class="remarks-cell" style="font-size: 11px; width: 180px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: ${r.remarks !== '—' ? 'var(--text-secondary)' : 'var(--text-tertiary)'};" title="${Utils.escapeHtml(r.remarks !== '—' ? r.remarks : '')}">
+                        ${r.remarks}
+                      </td>
+                      <td class="num font-bold field-total-cy" style="color: ${r.totalCY > 0 ? 'var(--accent-secondary)' : 'inherit'};">
+                        ${Utils.formatNumber(r.totalCY)}
+                      </td>
+                      ${SEED_DATA.months.map((m, idx) => `
+                        <td class="num month-col font-mono" style="${r.monthlyValues[idx] > 0 ? 'font-weight: 600; color: var(--text-primary);' : 'color: var(--text-tertiary);'}">
+                          ${r.monthlyValues[idx] > 0 ? Utils.formatNumber(r.monthlyValues[idx]) : '-'}
+                        </td>
+                      `).join('')}
+                      <td style="white-space: nowrap;">
+                        <button class="btn btn-ghost btn-sm" onclick="BudgetEntryModule.showExpenseInputWizard('${r.categoryKey}', null, { parentAccount: '${r.parentAccount.replace(/'/g, "\\'")}', glDescription: '${r.glDescription.replace(/'/g, "\\'")}', ledgerCode: '${r.ledgerCode}' })">
+                          + Add
+                        </button>
+                        ${r.itemCount > 0 ? `
+                          <button class="btn btn-secondary btn-sm" onclick="BudgetEntryModule.activeOtherCostSubTab = '${r.categoryKey}'; document.querySelectorAll('#otherCostSubTabs .sub-tab').forEach(t => t.classList.toggle('active', t.dataset.subtab === '${r.categoryKey}')); BudgetEntryModule.renderNonPayrollGrid(BudgetEntryModule._container, BudgetEntryModule._yearId, BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._budgetYear, BudgetEntryModule._locations, BudgetEntryModule._donors, BudgetEntryModule._activities, BudgetEntryModule._conditionAreas);">
+                            🔍 View
+                          </button>
+                        ` : ''}
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+                <!-- Monthly Totals at the Bottom of the List -->
+                <tr class="total-row">
+                  <td class="sticky-col-1 font-bold">TOTAL OTHER COSTS:</td>
+                  <td class="sticky-col-2 font-bold text-right" style="padding-right: 16px;">(${entity.currency})</td>
+                  <td colspan="4"></td>
+                  <td class="num font-bold" style="color: var(--accent-secondary); font-size: 1.05rem;">${Utils.formatCurrency(grandTotalAll, entity.currency)}</td>
+                  ${SEED_DATA.months.map((m, idx) => {
+                    const mSum = coaRows.reduce((sum, r) => sum + (r.monthlyValues[idx] || 0), 0);
+                    return `<td class="num font-bold month-col font-mono" style="font-size: 11px;">${Utils.formatNumber(mSum)}</td>`;
+                  }).join('')}
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    // ─── 2. TRAVEL & LODGING PACKAGES SUBTAB ───
+    if (subTab === 'travel' || subTab === 'travel-packages') {
+      const totalTravelCost = travelRecords.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
+      return `
+        <div class="card mb-lg">
+          <div class="card-header flex justify-between items-center">
+            <div>
+              <div class="card-title">Employee Travel & Lodging Packages (${travelRecords.length})</div>
+              <div class="card-subtitle">Showing single-line summaries &bull; Click <strong>▶</strong> to expand 12-month budget & location benchmark breakdown</div>
+            </div>
+            <div class="flex items-center gap-sm">
+              <button type="button" class="btn btn-secondary btn-sm" id="btnToggleAllMonths" title="Expand / Collapse all monthly schedules">▶ Expand All</button>
+              <button class="btn btn-primary btn-sm" id="btnHeaderNewTrip">
+                + Add Trip Package
+              </button>
+            </div>
+          </div>
+
+          ${travelRecords.length === 0 ? `
+            <div class="p-xl text-center text-muted">
+              <div style="font-size: 2.2rem; margin-bottom: 8px;">✈️</div>
+              <h4>No Travel Packages Created Yet</h4>
+              <p class="mt-xs">Budget trips with automated benchmark rates for Hotel, Food, Cab, Airfare, and Train.</p>
+              <button class="btn btn-primary mt-md" id="btnEmptyNewTrip">
+                ✈️ Create First Travel Package
+              </button>
+            </div>
+          ` : `
+            <div class="table-container">
+              <table class="data-table" id="travelPackagesTable">
+                <thead>
+                  <tr>
+                    <th style="width: 40px; text-align: center;">Expand</th>
+                    <th class="sticky-col-1">Employee Name</th>
+                    <th class="sticky-col-2">Trip Purpose & Destination</th>
+                    <th>Category</th>
+                    <th>Activity</th>
+                    <th>Donor</th>
+                    <th>Remarks / Justification</th>
+                    <th class="num font-bold">Total Budget (${entity.currency})</th>
+                    <th class="num font-bold">Total USD</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Monthly Totals at the Top of the List -->
+                  <tr class="total-row top-total-row">
+                    <td></td>
+                    <td class="sticky-col-1 font-bold">TOTAL:</td>
+                    <td class="sticky-col-2 font-bold">${travelRecords.length} Trip Packages</td>
+                    <td colspan="4" class="text-secondary font-bold" style="font-size: 11px;">12-Month Travel Rollup</td>
+                    <td class="num font-bold" style="color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(totalTravelCost, entity.currency)}</td>
+                    <td class="num font-bold" style="color: var(--accent-secondary); font-size: 13px;">≈ ${Utils.formatCurrency(Utils.convertToUSD(totalTravelCost, rate), 'USD')}</td>
+                    <td></td>
+                  </tr>
+
+                  ${travelRecords.map(pkg => `
+                    <!-- Single-Line Main Row -->
+                    <tr class="exp-item-main-row" data-row-id="${pkg.id}">
+                      <td style="text-align: center; width: 40px;">
+                        <button type="button" class="btn-expand-row" data-target="breakdown-travel-${pkg.id}" title="Click to expand/collapse monthly budget">▶</button>
+                      </td>
+                      <td class="sticky-col-1 font-bold">
+                        👤 ${pkg.employeeName || 'Staff'}
+                      </td>
+                      <td class="sticky-col-2">
+                        <strong>${pkg.travelDetails || 'Trip'}</strong>
+                        <div class="text-tertiary" style="font-size: 11px;">📍 ${pkg.destinationLocation || ''}</div>
+                      </td>
+                      <td>
+                        <span class="badge ${pkg.travelCategory === 'City' ? 'badge-cyan' : 'badge-subtle'}" style="font-size: 11px;">
+                          ${pkg.travelCategory === 'City' ? '🏙️ City' : '🌾 Non-City'}
+                        </span>
+                      </td>
+                      <td style="font-size: 11px;">${pkg.activity || '—'}</td>
+                      <td style="font-size: 11px;">${pkg.donor || '—'}</td>
+                      <td class="remarks-cell" style="font-size: 11px; width: 180px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary);" title="${Utils.escapeHtml(pkg.remarks || pkg.travelDetails || '')}">
+                        ${pkg.remarks || pkg.travelDetails || '—'}
+                      </td>
+                      <td class="num font-bold" style="color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(pkg.totalCY || 0, entity.currency)}</td>
+                      <td class="num font-bold" style="color: var(--accent-secondary); font-size: 13px;">≈ ${Utils.formatCurrency(Utils.convertToUSD(pkg.totalCY || 0, rate), 'USD')}</td>
+                      <td style="white-space: nowrap;">
+                        <button class="btn btn-ghost btn-sm" onclick="BudgetEntryModule.editTravelPackage(${pkg.id})">✏️ Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteTravelPackage(${pkg.id})">🗑️</button>
+                      </td>
+                    </tr>
+
+                    <!-- Expandable Monthly Schedule Sub-Row -->
+                    <tr class="exp-breakdown-row" id="breakdown-travel-${pkg.id}" style="display: none;">
+                      <td colspan="10">
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                          <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-sm">
+                              <span class="badge badge-primary font-bold" style="font-size: 11px;">12-Month Travel Budget Breakdown</span>
+                              <span class="text-secondary font-bold" style="font-size: 12px;">${pkg.travelDetails || 'Trip'} (📍 ${pkg.destinationLocation || 'Destination'})</span>
+                            </div>
+                            <div class="text-tertiary font-mono" style="font-size: 11px;">
+                              ${pkg.basisOfExpense || 'Calculated with Benchmark Travel Rates'}
+                            </div>
+                          </div>
+
+                          <table class="mini-month-grid">
+                            <thead>
+                              <tr>
+                                <th style="width: 120px; text-align: left; padding-left: 10px;">Metric</th>
+                                ${SEED_DATA.months.map(m => `<th>${m}</th>`).join('')}
+                                <th style="font-weight: 700; color: var(--accent-secondary);">Total (${entity.currency})</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr>
+                                <td style="font-weight: 600; text-align: left; padding-left: 10px; color: var(--text-secondary);">Monthly Cost</td>
+                                ${SEED_DATA.months.map((m, mIdx) => `
+                                  <td style="${pkg.monthlyValues?.[mIdx] > 0 ? 'font-weight: 600; color: var(--text-primary);' : 'color: var(--text-tertiary);'}">
+                                    ${pkg.monthlyValues?.[mIdx] > 0 ? Utils.formatNumber(pkg.monthlyValues[mIdx]) : '-'}
+                                  </td>
+                                `).join('')}
+                                <td class="font-bold font-mono" style="color: var(--accent-secondary); font-size: 13px;">${Utils.formatCurrency(pkg.totalCY || 0, entity.currency)}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  `).join('')}
+                  <tr class="total-row">
+                    <td colspan="2" class="sticky-col-1 font-bold">TOTAL TRAVEL BUDGET:</td>
+                    <td class="sticky-col-2 font-bold text-right" style="padding-right: 16px;">(${entity.currency})</td>
+                    <td colspan="4"></td>
+                    <td class="num font-bold" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(totalTravelCost, entity.currency)}</td>
+                    <td class="num font-bold" style="color: var(--accent-secondary); font-size: 1.05rem;">≈ ${Utils.formatCurrency(Utils.convertToUSD(totalTravelCost, rate), 'USD')}</td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    // ─── 3. CATEGORY SUB-TABS: Supplies, Communication, Office, Professional, Other ───
+    const catMeta = {
+      supplies: { title: 'Supplies & Printing Costs', icon: '🖨️', records: suppliesRecords },
+      communication: { title: 'Communication Expenses', icon: '📡', records: commRecords },
+      office: { title: 'Office Expenses', icon: '🏢', records: officeRecords },
+      professional: { title: 'Professional & Consultancy Charges', icon: '💼', records: profRecords },
+      other: { title: 'Other Operating Expenses', icon: '📑', records: otherRecords }
+    }[subTab] || { title: 'Other Expenses', icon: '📑', records: otherRecords };
+
+    const catRecords = catMeta.records;
+    const catTotal = catRecords.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
+
+    return `
+      <div class="card mb-lg">
+        <div class="card-header flex justify-between items-center">
+          <div>
+            <div class="card-title">${catMeta.icon} ${catMeta.title} (${catRecords.length} Items)</div>
+            <div class="card-subtitle">Showing single-line summaries &bull; Click <strong>▶</strong> on any line to expand 12-month schedule & calculation basis</div>
+          </div>
+          <div class="flex items-center gap-sm">
+            <button type="button" class="btn btn-secondary btn-sm" id="btnToggleAllMonths" title="Expand / Collapse all monthly schedules">▶ Expand All</button>
+            <button class="btn btn-primary btn-sm" onclick="BudgetEntryModule.showExpenseInputWizard('${subTab}')">
+              ➕ + Add ${catMeta.title.replace('Expenses', '').replace('Costs', '').trim()} Item
+            </button>
+          </div>
+        </div>
+
+        ${catRecords.length === 0 ? `
+          <div class="p-xl text-center text-muted">
+            <div style="font-size: 2.2rem; margin-bottom: 8px;">${catMeta.icon}</div>
+            <h4>No ${catMeta.title} Budgeted Yet</h4>
+            <p class="mt-xs">Add structured line items with employee ownership, unit rates, and amount justifications.</p>
+            <button class="btn btn-primary mt-md" onclick="BudgetEntryModule.showExpenseInputWizard('${subTab}')">
+              ➕ Add First Item
+            </button>
+          </div>
+        ` : `
+          <div class="table-container">
+            <table class="data-table" id="categoryExpensesTable">
+              <thead>
+                <tr>
+                  <th style="width: 40px; text-align: center;">Expand</th>
+                  <th class="sticky-col-1">Employee Name</th>
+                  <th class="sticky-col-2">Item / Specific Purpose</th>
+                  <th>GL Line & Code</th>
+                  <th>Activity</th>
+                  <th>Location</th>
+                  <th>Donor</th>
+                  <th>Condition Area</th>
+                  <th style="width: 180px; max-width: 180px; min-width: 130px;">Remarks (Justification)</th>
+                  <th class="num font-bold">Total Budget (${entity.currency})</th>
+                  <th class="num font-bold">Total USD</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Monthly Totals at the Top of the List -->
+                <tr class="total-row top-total-row">
+                  <td></td>
+                  <td class="sticky-col-1 font-bold">TOTAL:</td>
+                  <td class="sticky-col-2 font-bold">${catRecords.length} Items</td>
+                  <td colspan="6" class="text-secondary font-bold" style="font-size: 11px;">12-Month ${catMeta.title} Rollup</td>
+                  <td class="num font-bold" style="color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(catTotal, entity.currency)}</td>
+                  <td class="num font-bold" style="color: var(--accent-secondary); font-size: 13px;">≈ ${Utils.formatCurrency(Utils.convertToUSD(catTotal, rate), 'USD')}</td>
+                  <td></td>
+                </tr>
+
+                ${catRecords.map(r => `
+                  <!-- Single-Line Main Row -->
+                  <tr class="exp-item-main-row" data-row-id="${r.id}">
+                    <td style="text-align: center; width: 40px;">
+                      <button type="button" class="btn-expand-row" data-target="breakdown-${r.id}" title="Click to view 12-month budget schedule">▶</button>
+                    </td>
+                    <td class="sticky-col-1 font-bold">
+                      👤 ${r.employeeName || 'Staff Member'}
+                    </td>
+                    <td class="sticky-col-2">
+                      <strong>${r.itemName || r.glDescription || 'Item'}</strong>
+                      ${r.subGroup ? `<div class="text-tertiary" style="font-size: 10px;">${r.subGroup}</div>` : ''}
+                    </td>
+                    <td>
+                      <div style="font-weight: 600;">${r.glDescription || ''}</div>
+                      <code style="font-size: 11px;">${r.ledgerCode || ''}</code>
+                    </td>
+                    <td style="font-size: 11px;">${r.activity || '—'}</td>
+                    <td style="font-size: 11px;">${r.location || '—'}</td>
+                    <td style="font-size: 11px;">${r.donor || '—'}</td>
+                    <td style="font-size: 11px;">${r.conditionArea || '—'}</td>
+                    <td class="remarks-cell" style="font-size: 11px; width: 180px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary);" title="${Utils.escapeHtml(r.remarks || '')}">
+                      ${r.remarks || '—'}
+                    </td>
+                    <td class="num font-bold" style="color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(r.totalCY || 0, entity.currency)}</td>
+                    <td class="num font-bold" style="color: var(--accent-secondary); font-size: 13px;">≈ ${Utils.formatCurrency(Utils.convertToUSD(r.totalCY || 0, rate), 'USD')}</td>
+                    <td style="white-space: nowrap;">
+                      <button class="btn btn-ghost btn-sm" onclick="BudgetEntryModule.editExpenseItem(${r.id})">✏️ Edit</button>
+                      <button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteExpenseItem(${r.id})">🗑️</button>
+                    </td>
+                  </tr>
+
+                  <!-- Expandable 12-Month Breakdown Sub-Row -->
+                  <tr class="exp-breakdown-row" id="breakdown-${r.id}" style="display: none;">
+                    <td colspan="12">
+                      <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div class="flex justify-between items-center">
+                          <div class="flex items-center gap-sm">
+                            <span class="badge badge-primary font-bold" style="font-size: 11px;">12-Month Schedule Breakdown</span>
+                            <span class="text-secondary font-bold" style="font-size: 12px;">${r.itemName || r.glDescription}</span>
+                            ${r.calcMode === 'unit' ? `<span class="badge badge-subtle" style="font-size: 11px;">🔢 ${r.unitName || 'Units'} @ ${Utils.formatCurrency(r.unitRate || 0, entity.currency)}</span>` : ''}
+                          </div>
+                          <div class="text-tertiary font-mono" style="font-size: 11px;">
+                            Basis: ${r.basisOfExpense || 'Monthly distribution'}
+                          </div>
+                        </div>
+
+                        <table class="mini-month-grid">
+                          <thead>
+                            <tr>
+                              <th style="width: 120px; text-align: left; padding-left: 10px;">Metric</th>
+                              ${SEED_DATA.months.map(m => `<th>${m}</th>`).join('')}
+                              <th style="font-weight: 700; color: var(--accent-secondary);">Total (${entity.currency})</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            ${r.calcMode === 'unit' && r.unitMatrix ? `
+                              <tr>
+                                <td style="font-weight: 600; text-align: left; padding-left: 10px; color: var(--text-secondary);">${r.unitName || 'Units'} / Month</td>
+                                ${SEED_DATA.months.map((m, mIdx) => `<td>${r.unitMatrix[mIdx] || 0}</td>`).join('')}
+                                <td class="font-bold font-mono" style="color: var(--accent-primary);">${r.unitMatrix.reduce((s, v) => s + (v || 0), 0)}</td>
+                              </tr>
+                            ` : ''}
+                            <tr>
+                              <td style="font-weight: 600; text-align: left; padding-left: 10px; color: var(--text-secondary);">Cost (${entity.currency})</td>
+                              ${SEED_DATA.months.map((m, mIdx) => `
+                                <td style="${r.monthlyValues?.[mIdx] > 0 ? 'font-weight: 600; color: var(--text-primary);' : 'color: var(--text-tertiary);'}">
+                                  ${r.monthlyValues?.[mIdx] > 0 ? Utils.formatNumber(r.monthlyValues[mIdx]) : '-'}
+                                </td>
+                              `).join('')}
+                              <td class="font-bold font-mono" style="color: var(--accent-secondary); font-size: 13px;">${Utils.formatCurrency(r.totalCY || 0, entity.currency)}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+                <tr class="total-row">
+                  <td colspan="2" class="sticky-col-1 font-bold">TOTAL ${catMeta.title.toUpperCase()}:</td>
+                  <td class="sticky-col-2 font-bold text-right" style="padding-right: 16px;">(${entity.currency})</td>
+                  <td colspan="6"></td>
+                  <td class="num font-bold" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(catTotal, entity.currency)}</td>
+                  <td class="num font-bold" style="color: var(--accent-secondary); font-size: 1.05rem;">≈ ${Utils.formatCurrency(Utils.convertToUSD(catTotal, rate), 'USD')}</td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        `}
+      </div>
+    `;
+  },
+
+  // ─── Quick Expense Launcher Modal ───
+  async showExpenseLauncherModal(yearId, entity, dept, locations, donors, activities, conditionAreas) {
+    const content = `
+      <div style="font-size: var(--font-size-sm); padding: 8px;">
+        <p class="text-secondary mb-lg" style="font-size: 13px;">Select an expense category below to open its full-screen structured input format with employee assignment, 12-month calculation schedule, and justification remarks.</p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+          ${(typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(dept)) ? `
+            <!-- 🎯 ToT Program Budget / Training Package -->
+            <div class="card p-lg cursor-pointer hover-card" style="border: 2px solid rgba(6, 182, 212, 0.4); background: linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(99, 102, 241, 0.08)); transition: all 0.2s;" onclick="Utils.closeModal(); ImpTotModule.showEventWizard('bundled-tot');">
+              <div style="font-size: 2.2rem; margin-bottom: 8px;">🎯</div>
+              <div class="flex items-center gap-xs">
+                <h3 style="font-weight: 700; color: #0284c7; margin-bottom: 6px; font-size: 1.1rem;">ToT Program Training Package</h3>
+                <span class="badge badge-cyan font-bold" style="font-size: 10px;">IMP Department</span>
+              </div>
+              <p class="text-secondary" style="font-size: 12px; line-height: 1.5;">Plan State-Level Bundled ToTs, Refresher Trainings, Collateral Kits, Dolls, Thalis, Venues, and Supervision visits with benchmark calculations.</p>
+            </div>
+          ` : ''}
+
+          <!-- 1. Travel & Lodging -->
+          <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); transition: all 0.2s;" onclick="Utils.closeModal(); BudgetEntryModule.showTravelPackageWizard('${yearId}', BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._locations, BudgetEntryModule._donors, BudgetEntryModule._activities, BudgetEntryModule._conditionAreas);">
+            <div style="font-size: 2.2rem; margin-bottom: 8px;">✈️</div>
+            <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.1rem;">Travel & Lodging Package</h3>
+            <p class="text-secondary" style="font-size: 12px; line-height: 1.5;">Hotel, Food, Cab, Airfare, and Train trips with automated location benchmark rates.</p>
+          </div>
+
+          <!-- 2. Supplies & Printing -->
+          <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); transition: all 0.2s;" onclick="Utils.closeModal(); BudgetEntryModule.showExpenseInputWizard('supplies');">
+            <div style="font-size: 2.2rem; margin-bottom: 8px;">🖨️</div>
+            <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.1rem;">Supplies & Printing Costs</h3>
+            <p class="text-secondary" style="font-size: 12px; line-height: 1.5;">Training kits, booklets, banners, leaflets, and project operating materials.</p>
+          </div>
+
+          <!-- 3. Communication Cost -->
+          <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); transition: all 0.2s;" onclick="Utils.closeModal(); BudgetEntryModule.showExpenseInputWizard('communication');">
+            <div style="font-size: 2.2rem; margin-bottom: 8px;">📡</div>
+            <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.1rem;">Communication Expenses</h3>
+            <p class="text-secondary" style="font-size: 12px; line-height: 1.5;">Broadband internet, courier/postage, mobile SIMs, and bulk messaging APIs.</p>
+          </div>
+
+          <!-- 4. Office Expenses -->
+          <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); transition: all 0.2s;" onclick="Utils.closeModal(); BudgetEntryModule.showExpenseInputWizard('office');">
+            <div style="font-size: 2.2rem; margin-bottom: 8px;">🏢</div>
+            <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.1rem;">Office Expenses</h3>
+            <p class="text-secondary" style="font-size: 12px; line-height: 1.5;">Software subscriptions, stationery, equipment maintenance, and facility expenses.</p>
+          </div>
+
+          <!-- 5. Professional & Consultancy -->
+          <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); transition: all 0.2s;" onclick="Utils.closeModal(); BudgetEntryModule.showExpenseInputWizard('professional');">
+            <div style="font-size: 2.2rem; margin-bottom: 8px;">💼</div>
+            <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.1rem;">Professional & Consulting</h3>
+            <p class="text-secondary" style="font-size: 12px; line-height: 1.5;">Admin advisors, legal/audit counsel, translation agencies, and creative design scopes.</p>
+          </div>
+
+          <!-- 6. Custom / Other -->
+          <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); transition: all 0.2s;" onclick="Utils.closeModal(); BudgetEntryModule.showExpenseInputWizard('other');">
+            <div style="font-size: 2.2rem; margin-bottom: 8px;">📑</div>
+            <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.1rem;">Other Expense Lines</h3>
+            <p class="text-secondary" style="font-size: 12px; line-height: 1.5;">Any other general or custom non-payroll operating line items.</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    Utils.showModal('➕ Add New Expense Item', content, {
+      size: 'full',
+      modalWidth: '92vw',
+      footer: (footer, close) => {
+        footer.appendChild(Utils.createElement('button', { className: 'btn btn-ghost', textContent: 'Close (Esc)', onClick: close }));
+      }
+    });
+  },
+
+  // ─── Universal Multi-Line Structured Expense Input Wizard ───
+  async showExpenseInputWizard(categoryKey = 'supplies', existingRecord = null, defaultCoa = null) {
+    const isEdit = !!existingRecord;
+    const yearId = this._yearId || App.selectedYear || '2026';
+    const entity = this._entity;
+    const dept = this._dept;
+    const locations = this._locations || await db.getLocationsForEntity(entity.id);
+    const donors = this._donors || await db.getDonorsForEntity(entity.id);
+    const activities = this._activities || await db.getAll(STORES.activities);
+    const conditionAreas = this._conditionAreas || await db.getAll(STORES.conditionAreas);
+
+    const masterEmployees = await db.getEmployeesMaster(entity.id);
+    const personnel = await db.getBudgetData(STORES.payrollPersonnel, yearId, entity.id, dept.id);
+    const employeeNames = Array.from(new Set([
+      ...masterEmployees.map(e => e.name),
+      ...personnel.map(p => p.name)
+    ].filter(Boolean))).sort();
+
+    const coaRaw = await db.getAll(STORES.chartOfAccounts);
+    // Filter strictly to Other Costs operating accounts (exclude payroll, benefits, EHA consultants, and fixed assets)
+    const coaAll = coaRaw.filter(c => !this.isExcludedFromOtherCosts(c));
+
+    const titles = {
+      supplies: { title: 'Supplies & Printing Costs', defaultParent: 'Supplies & Printing Costs', defaultGl: 'Printing expenses', defaultCode: '93204' },
+      communication: { title: 'Communication Cost', defaultParent: 'Communication Cost', defaultGl: 'Telecommunication expenses', defaultCode: '93303' },
+      office: { title: 'Office Expenses', defaultParent: 'Office Expenses', defaultGl: 'Software and Subscriptions', defaultCode: '93401' },
+      professional: { title: 'Professional & Consultancy Charges', defaultParent: 'Professional & Consultancy Charges', defaultGl: 'Admin Consultants', defaultCode: '93703' },
+      other: { title: 'Other Operating Expenses', defaultParent: 'Other Operating Expenses', defaultGl: 'Miscellaneous Expense', defaultCode: '93999' }
+    };
+
+    const meta = titles[categoryKey] || titles.other;
+    const initialEmp = existingRecord?.employeeName || employeeNames[0] || '';
+
+    // Group Chart of Accounts by Parent Account for organized dropdown selection
+    const coaGroups = {};
+    coaAll.forEach(c => {
+      const parent = c.parentAccount || 'Other Operating Expenses';
+      if (!coaGroups[parent]) coaGroups[parent] = [];
+      coaGroups[parent].push(c);
+    });
+
+    // Helper to generate grouped COA dropdown options
+    const renderCoaOptionsHtml = (selectedCode, selectedGl) => {
+      let html = '<option value="">-- Select Chart of Accounts Line --</option>';
+      Object.entries(coaGroups).forEach(([parentName, items]) => {
+        html += `<optgroup label="${parentName}">`;
+        items.forEach(c => {
+          const isSel = (selectedCode && c.ledgerCode === selectedCode) || (selectedGl && c.glDescription === selectedGl);
+          html += `<option value="${c.ledgerCode}" data-parent="${c.parentAccount}" data-gl="${c.glDescription}" ${isSel ? 'selected' : ''}>${c.glDescription} (${c.ledgerCode})</option>`;
+        });
+        html += `</optgroup>`;
+      });
+      html += `<option value="__CUSTOM_COA__" ${selectedCode === '93999' || (!coaAll.some(c => c.ledgerCode === selectedCode) && selectedCode) ? 'selected' : ''}>+ Custom Account Line...</option>`;
+      return html;
+    };
+
+    // Initialize line items state
+    let lineItems = [];
+    if (isEdit && existingRecord) {
+      lineItems.push({
+        id: existingRecord.id,
+        parentAccount: existingRecord.parentAccount || meta.defaultParent,
+        glDescription: existingRecord.glDescription || meta.defaultGl,
+        ledgerCode: existingRecord.ledgerCode || meta.defaultCode,
+        itemName: existingRecord.itemName || existingRecord.glDescription || '',
+        remarks: existingRecord.remarks || '',
+        calcMode: existingRecord.calcMode || 'schedule',
+        unitName: existingRecord.unitName || 'Units',
+        unitRate: existingRecord.unitRate || 0,
+        unitMatrix: existingRecord.unitMatrix || Array(12).fill(0),
+        monthlyValues: existingRecord.monthlyValues || {},
+        totalCY: Utils.parseNumber(existingRecord.totalCY) || 0,
+        isCollapsed: false
+      });
+    } else {
+      const initParent = defaultCoa?.parentAccount || meta.defaultParent;
+      const initGl = defaultCoa?.glDescription || meta.defaultGl;
+      const initCode = defaultCoa?.ledgerCode || meta.defaultCode;
+      lineItems.push({
+        parentAccount: initParent,
+        glDescription: initGl,
+        ledgerCode: initCode,
+        itemName: '',
+        remarks: '',
+        calcMode: 'schedule',
+        unitName: 'Units',
+        unitRate: 0,
+        unitMatrix: Array(12).fill(0),
+        monthlyValues: {},
+        totalCY: 0,
+        isCollapsed: false
+      });
+    }
+
+    const renderLineItemCardHtml = (item, index) => {
+      if (item.isCollapsed) {
+        // ─── Single-Line Compact Summary Card (Collapsed Mode) ───
+        return `
+          <div class="card p-sm exp-line-item-card collapsed-card" data-line-index="${index}" style="background: #f8fafc; border: 1px solid var(--border-default); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s;">
+            <div class="flex justify-between items-center">
+              <div class="flex items-center gap-sm" style="overflow: hidden;">
+                <span class="badge badge-primary font-bold" style="font-size: 11px; flex-shrink: 0;">Line #${index + 1}</span>
+                <strong style="color: var(--text-primary); font-size: 13px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${item.itemName || item.glDescription || 'Line Item'}</strong>
+                <span class="text-tertiary font-mono" style="font-size: 11px; flex-shrink: 0;">(${item.glDescription || 'COA'} - ${item.ledgerCode || ''})</span>
+                ${item.remarks ? `<span class="text-secondary" style="font-size: 11px; font-style: italic; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">— ${item.remarks}</span>` : ''}
+              </div>
+              <div class="flex items-center gap-sm" style="flex-shrink: 0;">
+                <span class="badge badge-subtle exp-line-total-badge font-bold font-mono" style="font-size: 12px; color: var(--accent-secondary);">Total: ${Utils.formatCurrency(item.totalCY || 0, entity.currency)}</span>
+                <button type="button" class="btn btn-secondary btn-sm btn-toggle-expand font-bold" data-index="${index}" style="padding: 4px 10px; font-size: 11px;">✏️ Expand</button>
+                ${!isEdit && lineItems.length > 1 ? `
+                  <button type="button" class="btn btn-ghost btn-sm text-danger btn-delete-line" data-index="${index}" title="Remove this line item">🗑️</button>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // ─── Full Interactive Input Editor (Expanded Mode) ───
+      return `
+        <div class="card p-md exp-line-item-card" data-line-index="${index}" style="background: var(--bg-card); border: 1px solid var(--border-default); border-radius: 8px; margin-bottom: 14px; position: relative;">
+          <!-- Line Item Header Bar -->
+          <div class="flex justify-between items-center mb-sm" style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+            <div class="flex items-center gap-sm">
+              <span class="badge badge-primary font-bold" style="font-size: 11px;">Line Item #${index + 1} (Editing)</span>
+              <span class="font-bold exp-line-header-title" style="color: var(--text-primary); font-size: 13px;">${item.glDescription || 'New Line Item'}</span>
+              <span class="text-tertiary font-mono" style="font-size: 11px;">(${item.ledgerCode || 'COA'})</span>
+            </div>
+            <div class="flex items-center gap-sm">
+              <span class="badge badge-subtle exp-line-total-badge" style="font-size: 12px; font-weight: 700; color: var(--accent-secondary);">Total: ${Utils.formatCurrency(item.totalCY || 0, entity.currency)}</span>
+              ${!isEdit && lineItems.length > 1 ? `
+                <button type="button" class="btn btn-ghost btn-sm btn-collapse-line" data-index="${index}" title="Reduce to single line summary">▲ Collapse</button>
+                <button type="button" class="btn btn-ghost btn-sm text-danger btn-delete-line" data-index="${index}" title="Remove this line item">🗑️ Remove</button>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- 2-Column: COA Selection & Specific Purpose -->
+          <div style="display: grid; grid-template-columns: 1.2fr 1.2fr; gap: 14px;" class="mb-sm">
+            <div class="form-group mb-none">
+              <label class="form-label font-bold" style="font-size: 12px;">Chart of Accounts Line <span style="color: var(--danger);">*</span></label>
+              <select class="form-select exp-coa-select" data-index="${index}" style="font-size: 12px;">
+                ${renderCoaOptionsHtml(item.ledgerCode, item.glDescription)}
+              </select>
+              <div class="custom-coa-inputs mt-xs" data-index="${index}" style="display: ${item.ledgerCode === '__CUSTOM_COA__' || (!coaAll.some(c => c.ledgerCode === item.ledgerCode) && item.ledgerCode) ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <input type="text" class="form-input exp-custom-parent" placeholder="Parent Account (e.g. Supplies)" value="${item.parentAccount || ''}">
+                <input type="text" class="form-input exp-custom-gl" placeholder="GL Description" value="${item.glDescription || ''}">
+              </div>
+            </div>
+
+            <div class="form-group mb-none">
+              <label class="form-label font-bold" style="font-size: 12px;">Item Name / Specific Purpose <span style="color: var(--danger);">*</span></label>
+              <input type="text" class="form-input exp-item-name" data-index="${index}" placeholder="e.g. Patient Counseling Leaflets (10,000 Copies), Figma License" value="${item.itemName || ''}" required>
+            </div>
+          </div>
+
+          <!-- Line Remarks & Calculation Mode Selector -->
+          <div style="display: grid; grid-template-columns: 1.3fr 1.1fr; gap: 14px;" class="mb-sm">
+            <div class="form-group mb-none">
+              <label class="form-label" style="font-size: 11px;">Remarks for Amount Addition / Justification</label>
+              <input type="text" class="form-input exp-line-remarks" data-index="${index}" placeholder="Explain project requirement, headcount basis, or vendor quotation..." value="${item.remarks || ''}">
+            </div>
+
+            <div class="form-group mb-none flex items-center justify-end gap-sm" style="margin-top: 18px;">
+              <label class="form-radio" style="font-size: 11px; cursor: pointer;">
+                <input type="radio" name="calcMode_${index}" value="schedule" class="exp-calc-mode" data-index="${index}" ${item.calcMode !== 'unit' ? 'checked' : ''}>
+                <span>📅 Direct Monthly Amounts</span>
+              </label>
+              <label class="form-radio" style="font-size: 11px; cursor: pointer;">
+                <input type="radio" name="calcMode_${index}" value="unit" class="exp-calc-mode" data-index="${index}" ${item.calcMode === 'unit' ? 'checked' : ''}>
+                <span>🔢 Unit Rate × Monthly Qty</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Unit Rate Row (Visible in Unit Mode) -->
+          <div class="unit-rate-config-row mb-sm" data-index="${index}" style="display: ${item.calcMode === 'unit' ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr; gap: 14px; background: var(--bg-tertiary); padding: 8px 12px; border-radius: 6px;">
+            <div class="form-group mb-none">
+              <label class="form-label" style="font-size: 11px;">Unit Name / Measure</label>
+              <input type="text" class="form-input exp-unit-name" data-index="${index}" placeholder="e.g. Copies, Packs, Licenses, Months, Hours" value="${item.unitName || 'Units'}">
+            </div>
+            <div class="form-group mb-none">
+              <label class="form-label" style="font-size: 11px;">Rate Per Unit (${entity.currency})</label>
+              <input type="number" class="form-input font-mono font-bold exp-unit-rate" data-index="${index}" min="0" step="any" placeholder="0" value="${item.unitRate || 0}">
+            </div>
+          </div>
+
+          <!-- 12-Month Input Matrix -->
+          <div class="table-container mb-none">
+            <table class="data-table" style="font-size: 11px; width: 100%;">
+              <thead>
+                <tr>
+                  <th style="min-width: 120px;" class="exp-header-mode-label" data-index="${index}">${item.calcMode === 'unit' ? 'Monthly Qty' : 'Monthly Amount (' + entity.currency + ')'}</th>
+                  ${SEED_DATA.months.map(m => `<th class="text-center" style="min-width: 55px; padding: 4px 6px;">${m}</th>`).join('')}
+                  <th class="num font-bold" style="min-width: 110px;">Line Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="font-bold exp-row-mode-label" data-index="${index}">${item.calcMode === 'unit' ? 'Units / Mo' : 'Cost (' + entity.currency + ')'}</td>
+                  ${SEED_DATA.months.map((m, mIdx) => `
+                    <td class="editable" style="padding: 2px;">
+                      <input type="number" class="form-input text-right font-mono exp-month-input" data-line="${index}" data-month="${mIdx}" value="${item.calcMode === 'unit' ? (item.unitMatrix?.[mIdx] || 0) : (item.monthlyValues?.[mIdx] || 0)}" min="0" step="any" style="padding: 5px 6px; font-size: 11px; font-weight: 600;">
+                    </td>
+                  `).join('')}
+                  <td class="num font-bold font-mono exp-row-total-cell" data-index="${index}" style="color: var(--accent-secondary); font-size: 13px;">${Utils.formatCurrency(item.totalCY || 0, entity.currency)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    };
+
+    const content = `
+      <div id="expenseInputWizardModal" style="font-size: var(--font-size-sm); display: flex; flex-direction: column; gap: 14px;">
+        ${(typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(dept)) ? `
+          <div class="card p-sm flex items-center justify-between" style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(99, 102, 241, 0.12)); border: 1px solid rgba(6, 182, 212, 0.35); border-radius: 8px;">
+            <div class="flex items-center gap-sm">
+              <span style="font-size: 1.3rem;">🎯</span>
+              <div>
+                <strong style="color: #0284c7; font-size: 12px;">Implementation Department Note:</strong>
+                <span class="text-secondary" style="font-size: 11.5px;">Planning training packages (ToTs, Kits, Models, Banners, Venues, or Supervision)?</span>
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" onclick="Utils.closeModal(); ImpTotModule.showEventWizard('bundled-tot');" style="background: linear-gradient(135deg, #0284c7, #6366f1); font-size: 11px; padding: 4px 10px; font-weight: 700;">
+              🎯 Launch ToT Package Planner
+            </button>
+          </div>
+        ` : ''}
+
+        <!-- Step 1: Employee & Shared 5-Dimensional Budget Tagging Header -->
+        <div class="card p-md" style="background: var(--bg-tertiary); border-color: var(--border-default);">
+          <div style="display: grid; grid-template-columns: 1.2fr repeat(4, 1fr); gap: 14px;" class="items-end">
+            <!-- Employee Selection -->
+            <div class="form-group mb-none">
+              <label class="form-label font-bold" style="font-size: 12px;">Responsible Employee / Requestor</label>
+              <select class="form-select" id="expEmployeeSelect" style="font-size: 12px; padding: 6px 8px;">
+                <option value="">👤 Staff (General / Non-Specific)</option>
+                ${employeeNames.map(name => `<option value="${name}" ${initialEmp === name ? 'selected' : ''}>👤 ${name}</option>`).join('')}
+                <option value="__CUSTOM__" ${initialEmp && !employeeNames.includes(initialEmp) ? 'selected' : ''}>✏️ Custom Name...</option>
+              </select>
+              <input type="text" class="form-input mt-xs" id="expCustomEmployeeInput" placeholder="Enter Full Name" value="${initialEmp && !employeeNames.includes(initialEmp) ? initialEmp : ''}" style="display: ${initialEmp && !employeeNames.includes(initialEmp) ? 'block' : 'none'}; font-size: 12px;">
+            </div>
+
+            <!-- 5-Dimensional Tagging (Shared across all line items) -->
+            <div class="form-group mb-none">
+              <label class="form-label font-bold" style="font-size: 11px; margin-bottom: 2px;">Activity (Tag)</label>
+              <select class="form-select" id="expActivitySelect" style="font-size: 11px; padding: 6px 8px;">
+                ${activities.map(a => `<option value="${a.name}" ${existingRecord?.activity === a.name ? 'selected' : ''}>${a.name}</option>`).join('')}
+              </select>
+            </div>
+
+            <div class="form-group mb-none">
+              <label class="form-label font-bold" style="font-size: 11px; margin-bottom: 2px;">Charging Location (Tag)</label>
+              <select class="form-select" id="expLocationSelect" style="font-size: 11px; padding: 6px 8px;">
+                ${locations.map(l => `<option value="${l.name}" ${existingRecord?.location === l.name ? 'selected' : ''}>${l.name}</option>`).join('')}
+              </select>
+            </div>
+
+            <div class="form-group mb-none">
+              <label class="form-label font-bold" style="font-size: 11px; margin-bottom: 2px;">Donor (Tag)</label>
+              <select class="form-select" id="expDonorSelect" style="font-size: 11px; padding: 6px 8px;">
+                ${donors.map(d => `<option value="${d.name}" ${existingRecord?.donor === d.name ? 'selected' : ''}>${d.name}</option>`).join('')}
+              </select>
+            </div>
+
+            <div class="form-group mb-none">
+              <label class="form-label font-bold" style="font-size: 11px; margin-bottom: 2px;">Condition Area (Tag)</label>
+              <select class="form-select" id="expConditionSelect" style="font-size: 11px; padding: 6px 8px;">
+                ${conditionAreas.map(c => `<option value="${c.name}" ${existingRecord?.conditionArea === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Multi-Line Expense Items Container -->
+        <div>
+          <div class="flex justify-between items-center mb-sm">
+            <div>
+              <h3 style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin: 0;">📋 Budget Expense Line Items</h3>
+              <div class="text-tertiary" style="font-size: 11px;">Completed lines reduce to a single line summary &bull; Click <strong>✏️ Expand</strong> to view or edit monthly amounts</div>
+            </div>
+            ${!isEdit ? `
+              <button type="button" class="btn btn-secondary btn-sm font-bold" id="btnAddAnotherLineBtn" style="border-color: var(--accent-primary); color: var(--accent-primary);">
+                ➕ + Add Another Line Item
+              </button>
+            ` : ''}
+          </div>
+
+          <div id="expenseLineItemsContainer">
+            ${lineItems.map((item, idx) => renderLineItemCardHtml(item, idx)).join('')}
+          </div>
+
+          ${!isEdit ? `
+            <div class="text-center mt-xs mb-sm">
+              <button type="button" class="btn btn-ghost btn-sm font-bold" id="btnAddAnotherLineBtnFooter" style="color: var(--accent-primary);">
+                ➕ + Add Another Line Item (Same 5D Tagging)
+              </button>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Live Summary Callout Banner -->
+        <div class="card p-md flex items-center justify-between" style="background: rgba(139, 92, 246, 0.06); border-color: rgba(139, 92, 246, 0.3);">
+          <div class="flex items-center gap-md">
+            <div style="font-size: 2rem;">💡</div>
+            <div>
+              <span class="text-tertiary" style="font-size: 11px; text-transform: uppercase;">COMBINED SUBMISSION BUDGET:</span>
+              <div class="flex items-center gap-sm">
+                <strong id="expLiveGrandLocal" style="color: var(--accent-secondary); font-size: 1.4rem;">${Utils.formatCurrency(0, entity.currency)}</strong>
+                <span id="expLiveGrandUSD" class="text-secondary font-bold" style="font-size: 13px;">(≈ $0 USD)</span>
+              </div>
+            </div>
+          </div>
+          <div id="expLiveLineItemsCount" class="text-secondary font-bold" style="font-size: 13px;">
+            ${lineItems.length} Line Item${lineItems.length === 1 ? '' : 's'}
+          </div>
+        </div>
+      </div>
+    `;
+
+    Utils.showModal(isEdit ? `✏️ Edit Expense Line Item` : `➕ Structured Expense Submission (Multi-Line Items)`, content, {
+      size: 'full',
+      modalWidth: '96vw',
+      modalHeight: '94vh',
+      footer: (footer, close) => {
+        footer.appendChild(Utils.createElement('button', { className: 'btn btn-ghost', textContent: 'Cancel (Esc)', onClick: close }));
+        footer.appendChild(Utils.createElement('button', {
+          className: 'btn btn-primary font-bold',
+          textContent: isEdit ? 'Update Expense Item' : `💾 Save & Link All Line Items`,
+          onClick: async () => {
+            syncCurrentCardsToLineItems();
+
+            const empSelect = Utils.$('#expEmployeeSelect').value;
+            const empCustom = Utils.$('#expCustomEmployeeInput').value.trim();
+            const employeeName = empSelect === '__CUSTOM__' ? empCustom : (empSelect || 'Staff');
+
+            const activity = Utils.$('#expActivitySelect').value;
+            const location = Utils.$('#expLocationSelect').value;
+            const donor = Utils.$('#expDonorSelect').value;
+            const conditionArea = Utils.$('#expConditionSelect').value;
+
+            const recordsToSave = [];
+
+            for (let i = 0; i < lineItems.length; i++) {
+              const item = lineItems[i];
+              if (!item.itemName) {
+                // Expand this item so user can fill it
+                lineItems.forEach((it, idx) => { it.isCollapsed = (idx !== i); });
+                reRenderLineItemsContainer();
+                Utils.showToast(`Please enter an Item Name / Specific Purpose for Line #${i + 1}`, 'warning');
+                return;
+              }
+
+              const lineCategoryKey = BudgetEntryModule.getOtherCostCategory({
+                parentAccount: item.parentAccount,
+                glDescription: item.glDescription,
+                ledgerCode: item.ledgerCode
+              });
+
+              // Generate clear basis of expense
+              let basisOfExpense = '';
+              const empPrefix = employeeName && employeeName !== 'Staff' ? `${employeeName}: ` : '';
+              if (item.calcMode === 'unit') {
+                const totalUnits = (item.unitMatrix || []).reduce((s, v) => s + (v || 0), 0);
+                basisOfExpense = `${empPrefix}${item.itemName}: ${totalUnits} ${item.unitName || 'Units'} @ ${Utils.formatCurrency(item.unitRate || 0, entity.currency)}`;
+              } else {
+                basisOfExpense = `${empPrefix}${item.itemName}: Monthly schedule for ${item.glDescription}`;
+              }
+
+              const record = {
+                ...(existingRecord && isEdit ? existingRecord : {}),
+                yearId,
+                entityId: entity.id,
+                deptId: dept.id,
+                categoryKey: lineCategoryKey,
+                subGroup: 'Direct Cost',
+                parentAccount: item.parentAccount || meta.defaultParent,
+                glDescription: item.glDescription || meta.defaultGl,
+                ledgerCode: item.ledgerCode || meta.defaultCode,
+                employeeName,
+                itemName: item.itemName,
+                calcMode: item.calcMode || 'schedule',
+                unitName: item.unitName || 'Units',
+                unitRate: item.unitRate || 0,
+                unitMatrix: item.unitMatrix || Array(12).fill(0),
+                basisOfExpense,
+                remarks: item.remarks || 'Budget allocation',
+                monthlyValues: item.monthlyValues || {},
+                totalCY: item.totalCY || 0,
+                activity,
+                location,
+                donor,
+                conditionArea
+              };
+
+              recordsToSave.push(record);
+            }
+
+            if (recordsToSave.length === 0) {
+              Utils.showToast('Please add at least one line item', 'warning');
+              return;
+            }
+
+            // Save records
+            if (isEdit && existingRecord?.id) {
+              await db.put(STORES.nonPayrollCost, recordsToSave[0]);
+            } else {
+              for (const rec of recordsToSave) {
+                await db.add(STORES.nonPayrollCost, rec);
+              }
+            }
+
+            Utils.showToast(isEdit ? 'Expense line item updated!' : `${recordsToSave.length} expense line item(s) saved & linked to budget!`, 'success');
+            close();
+
+            // Re-render grid
+            await BudgetEntryModule.renderGrid(BudgetEntryModule._entity || entity, BudgetEntryModule._dept || dept, BudgetEntryModule._budgetYear, BudgetEntryModule._actualsMonth);
+          }
+        }));
+      }
+    });
+
+    const modalEl = document.querySelector('#expenseInputWizardModal');
+    if (!modalEl) return;
+
+    // Custom Employee toggle
+    const empSelect = modalEl.querySelector('#expEmployeeSelect');
+    const empCustom = modalEl.querySelector('#expCustomEmployeeInput');
+    empSelect.addEventListener('change', () => {
+      empCustom.style.display = empSelect.value === '__CUSTOM__' ? 'block' : 'none';
+      if (empSelect.value === '__CUSTOM__') empCustom.focus();
+    });
+
+    // Synchronize DOM inputs back to lineItems array
+    const syncCurrentCardsToLineItems = () => {
+      const currentCards = modalEl.querySelectorAll('.exp-line-item-card');
+      currentCards.forEach(card => {
+        const idx = parseInt(card.dataset.lineIndex);
+        if (!lineItems[idx]) return;
+
+        // Only sync from form if the card is currently expanded
+        if (!card.classList.contains('collapsed-card')) {
+          const coaSel = card.querySelector('.exp-coa-select');
+          const isCustom = coaSel?.value === '__CUSTOM_COA__';
+          const opt = coaSel?.selectedOptions?.[0];
+
+          const mValues = {};
+          const uMatrix = Array(12).fill(0);
+          let totalCY = 0;
+          const calcMode = card.querySelector('.exp-calc-mode:checked')?.value || 'schedule';
+          const unitRate = Utils.parseNumber(card.querySelector('.exp-unit-rate')?.value) || 0;
+
+          card.querySelectorAll('.exp-month-input').forEach(inp => {
+            const mIdx = parseInt(inp.dataset.month);
+            const val = Utils.parseNumber(inp.value) || 0;
+            uMatrix[mIdx] = val;
+            if (calcMode === 'unit') {
+              const c = val * unitRate;
+              mValues[mIdx] = c;
+              totalCY += c;
+            } else {
+              mValues[mIdx] = val;
+              totalCY += val;
+            }
+          });
+
+          lineItems[idx] = {
+            ...lineItems[idx],
+            parentAccount: isCustom ? (card.querySelector('.exp-custom-parent')?.value.trim() || meta.defaultParent) : (opt?.dataset?.parent || meta.defaultParent),
+            glDescription: isCustom ? (card.querySelector('.exp-custom-gl')?.value.trim() || meta.defaultGl) : (opt?.dataset?.gl || meta.defaultGl),
+            ledgerCode: isCustom ? '93999' : (coaSel?.value || meta.defaultCode),
+            itemName: card.querySelector('.exp-item-name')?.value.trim() || '',
+            remarks: card.querySelector('.exp-line-remarks')?.value.trim() || '',
+            calcMode,
+            unitName: card.querySelector('.exp-unit-name')?.value.trim() || 'Units',
+            unitRate,
+            unitMatrix: uMatrix,
+            monthlyValues: mValues,
+            totalCY
+          };
+        }
+      });
+    };
+
+    // Recalculate grand totals across all line item cards
+    const refreshLiveModalTotals = () => {
+      let grandTotal = 0;
+      lineItems.forEach(item => {
+        grandTotal += (item.totalCY || 0);
+      });
+
+      const grandLocal = modalEl.querySelector('#expLiveGrandLocal');
+      const grandUSD = modalEl.querySelector('#expLiveGrandUSD');
+      const countEl = modalEl.querySelector('#expLiveLineItemsCount');
+
+      if (grandLocal) grandLocal.textContent = Utils.formatCurrency(grandTotal, entity.currency);
+      const convRate = BudgetEntryModule._conversionRates?.[entity.currency] || 1.0;
+      if (grandUSD) grandUSD.textContent = `(≈ ${Utils.formatCurrency(Utils.convertToUSD(grandTotal, convRate), 'USD')} USD)`;
+      if (countEl) countEl.textContent = `${lineItems.length} Line Item${lineItems.length === 1 ? '' : 's'}`;
+    };
+
+    // Wire up event listeners for a specific line item card
+    const attachLineItemListeners = (card) => {
+      const idx = parseInt(card.dataset.lineIndex);
+
+      if (card.classList.contains('collapsed-card')) {
+        // Expand button or card click
+        card.querySelector('.btn-toggle-expand')?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          syncCurrentCardsToLineItems();
+          lineItems.forEach((it, i) => { it.isCollapsed = (i !== idx); });
+          reRenderLineItemsContainer();
+        });
+
+        card.addEventListener('click', (e) => {
+          if (!e.target.closest('.btn-delete-line')) {
+            syncCurrentCardsToLineItems();
+            lineItems.forEach((it, i) => { it.isCollapsed = (i !== idx); });
+            reRenderLineItemsContainer();
+          }
+        });
+      } else {
+        // Collapse button
+        card.querySelector('.btn-collapse-line')?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          syncCurrentCardsToLineItems();
+          lineItems[idx].isCollapsed = true;
+          reRenderLineItemsContainer();
+        });
+
+        // COA Change
+        const coaSelect = card.querySelector('.exp-coa-select');
+        const customRow = card.querySelector('.custom-coa-inputs');
+        const headerTitle = card.querySelector('.exp-line-header-title');
+
+        coaSelect?.addEventListener('change', () => {
+          const isCustom = coaSelect.value === '__CUSTOM_COA__';
+          if (customRow) customRow.style.display = isCustom ? 'grid' : 'none';
+          if (headerTitle) {
+            const selectedOpt = coaSelect.selectedOptions[0];
+            headerTitle.textContent = isCustom ? 'Custom Line' : (selectedOpt.dataset.gl || 'Line Item');
+          }
+        });
+
+        // Mode Radio Change
+        card.querySelectorAll('.exp-calc-mode').forEach(radio => {
+          radio.addEventListener('change', () => {
+            const isUnit = radio.value === 'unit';
+            const unitRow = card.querySelector('.unit-rate-config-row');
+            if (unitRow) unitRow.style.display = isUnit ? 'grid' : 'none';
+
+            const colHeader = card.querySelector('.exp-header-mode-label');
+            const rowLabel = card.querySelector('.exp-row-mode-label');
+            if (colHeader) colHeader.textContent = isUnit ? 'Monthly Qty' : `Monthly Amount (${entity.currency})`;
+            if (rowLabel) rowLabel.textContent = isUnit ? 'Units / Mo' : `Cost (${entity.currency})`;
+
+            syncCurrentCardsToLineItems();
+            refreshLiveModalTotals();
+          });
+        });
+
+        // Month input listeners with forward auto-fill
+        card.querySelectorAll('.exp-month-input').forEach(inp => {
+          inp.addEventListener('input', (e) => {
+            const changedIdx = parseInt(e.target.dataset.month);
+            const val = e.target.value;
+            card.querySelectorAll('.exp-month-input').forEach(m => {
+              if (parseInt(m.dataset.month) > changedIdx) m.value = val;
+            });
+            syncCurrentCardsToLineItems();
+            const rowTotalCell = card.querySelector('.exp-row-total-cell');
+            const lineTotalBadge = card.querySelector('.exp-line-total-badge');
+            if (rowTotalCell) rowTotalCell.textContent = Utils.formatCurrency(lineItems[idx].totalCY || 0, entity.currency);
+            if (lineTotalBadge) lineTotalBadge.textContent = `Total: ${Utils.formatCurrency(lineItems[idx].totalCY || 0, entity.currency)}`;
+            refreshLiveModalTotals();
+          });
+        });
+
+        card.querySelector('.exp-unit-rate')?.addEventListener('input', () => {
+          syncCurrentCardsToLineItems();
+          const rowTotalCell = card.querySelector('.exp-row-total-cell');
+          const lineTotalBadge = card.querySelector('.exp-line-total-badge');
+          if (rowTotalCell) rowTotalCell.textContent = Utils.formatCurrency(lineItems[idx].totalCY || 0, entity.currency);
+          if (lineTotalBadge) lineTotalBadge.textContent = `Total: ${Utils.formatCurrency(lineItems[idx].totalCY || 0, entity.currency)}`;
+          refreshLiveModalTotals();
+        });
+      }
+
+      // Delete Line Item button
+      card.querySelector('.btn-delete-line')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        syncCurrentCardsToLineItems();
+        lineItems.splice(idx, 1);
+        if (lineItems.length > 0 && !lineItems.some(it => !it.isCollapsed)) {
+          lineItems[lineItems.length - 1].isCollapsed = false;
+        }
+        reRenderLineItemsContainer();
+      });
+    };
+
+    // Re-render all line items in the container
+    const reRenderLineItemsContainer = () => {
+      const container = modalEl.querySelector('#expenseLineItemsContainer');
+      if (!container) return;
+
+      container.innerHTML = lineItems.map((item, idx) => renderLineItemCardHtml(item, idx)).join('');
+      container.querySelectorAll('.exp-line-item-card').forEach(card => attachLineItemListeners(card));
+      refreshLiveModalTotals();
+    };
+
+    // Attach initial listeners
+    modalEl.querySelectorAll('.exp-line-item-card').forEach(card => attachLineItemListeners(card));
+
+    // "+ Add Another Line Item" handler: reduces earlier lines to single lines and opens new line
+    const addAnotherLineHandler = () => {
+      syncCurrentCardsToLineItems();
+
+      // Reduce earlier lines to single lines
+      lineItems.forEach(item => {
+        item.isCollapsed = true;
+      });
+
+      // Add fresh active line item
+      lineItems.push({
+        parentAccount: meta.defaultParent,
+        glDescription: meta.defaultGl,
+        ledgerCode: meta.defaultCode,
+        itemName: '',
+        remarks: '',
+        calcMode: 'schedule',
+        unitName: 'Units',
+        unitRate: 0,
+        unitMatrix: Array(12).fill(0),
+        monthlyValues: {},
+        totalCY: 0,
+        isCollapsed: false
+      });
+
+      reRenderLineItemsContainer();
+
+      // Scroll to newly added line
+      const allCards = modalEl.querySelectorAll('.exp-line-item-card');
+      const lastCard = allCards[allCards.length - 1];
+      if (lastCard) lastCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    modalEl.querySelector('#btnAddAnotherLineBtn')?.addEventListener('click', addAnotherLineHandler);
+    modalEl.querySelector('#btnAddAnotherLineBtnFooter')?.addEventListener('click', addAnotherLineHandler);
+
+    refreshLiveModalTotals();
+  },
+
+  async editExpenseItem(id) {
+    const item = await db.get(STORES.nonPayrollCost, id);
+    if (!item) return;
+    if (item.isTravelPackage && item.travelPackageId) {
+      const pkg = await db.get(STORES.travelPackages, item.travelPackageId);
+      this.showTravelPackageWizard(this._yearId, this._entity, this._dept, this._locations, this._donors, this._activities, this._conditionAreas, pkg || item);
+    } else {
+      const catKey = this.getOtherCostCategory(item);
+      this.showExpenseInputWizard(catKey, item);
+    }
+  },
+
+  async deleteExpenseItem(id) {
+    if (await Utils.confirm('Delete this expense line item?')) {
+      await db.delete(STORES.nonPayrollCost, id);
+      Utils.showToast('Expense item deleted', 'info');
+      await this.renderGrid(this._entity, this._dept, this._budgetYear, this._actualsMonth);
+    }
+  },
+
+  // ─── Travel & Lodging Package Wizard & Calculator ───
+  async showTravelPackageWizard(yearId, entity, dept, locations, donors, activities, conditionAreas, existingPackage = null) {
+    const isEdit = !!existingPackage;
+    const masterEmployees = await db.getEmployeesMaster(entity.id);
+    const personnel = await db.getBudgetData(STORES.payrollPersonnel, yearId, entity.id, dept.id);
+    const employeeNames = Array.from(new Set([
+      ...masterEmployees.map(e => e.name),
+      ...personnel.map(p => p.name)
+    ].filter(Boolean))).sort();
+    const travelRates = await db.getTravelRatesForEntity(entity.id);
+
+    const defaultLoc = existingPackage?.destinationLocation || locations[0]?.name || 'India KA';
+    const defaultCat = existingPackage?.travelCategory || 'City';
+
+    const getRate = (loc, cat) => {
+      const norm = (s) => String(s || '').trim().toLowerCase();
+      const locNorm = norm(loc);
+      const catNorm = norm(cat);
+
+      // 1. Exact match on location & category
+      let match = travelRates.find(r => norm(r.location) === locNorm && norm(r.category) === catNorm && !r.isDefault && !norm(r.location).includes('default'));
+      if (match) return { ...match, isFallback: false };
+
+      // 2. Any match for specific location
+      match = travelRates.find(r => norm(r.location) === locNorm && !r.isDefault && !norm(r.location).includes('default'));
+      if (match) return { ...match, isFallback: false };
+
+      // 3. Fallback: Default rate for the specific category (City / Non-City)
+      match = travelRates.find(r => (r.isDefault || norm(r.location).includes('default') || norm(r.location) === 'all') && norm(r.category) === catNorm);
+      if (match) return { ...match, isFallback: true };
+
+      // 4. Fallback: Any Default rate for entity
+      match = travelRates.find(r => r.isDefault || norm(r.location).includes('default') || norm(r.location) === 'all');
+      if (match) return { ...match, isFallback: true };
+
+      // 5. General entity rate fallback
+      if (travelRates.length > 0) return { ...travelRates[0], isFallback: true };
+
+      return {
+        hotelPerDay: 3000, foodPerDay: 1000, cabPerDay: 1000, airfarePerTrip: 8000, busTrainPerTrip: 2000, isFallback: true
+      };
+    };
+
+    let activeRate = getRate(defaultLoc, defaultCat);
+
+    const matrix = existingPackage?.unitMatrix || [
+      Array(12).fill(0), // Hotel
+      Array(12).fill(0), // Food
+      Array(12).fill(0), // Cab
+      Array(12).fill(0), // Airfare
+      Array(12).fill(0)  // Bus/Train
+    ];
+
+    const itemMeta = [
+      { id: 'hotel', label: '🏨 Hotel Accommodation', unit: 'Days / Nights', rateKey: 'hotelPerDay', glDesc: 'Hotel Accommodation', code: '93101' },
+      { id: 'food', label: '🍽️ Food Expenses', unit: 'Days', rateKey: 'foodPerDay', glDesc: 'Food Expenses', code: '93102' },
+      { id: 'cab', label: '🚕 Local Cab / Auto', unit: 'Days', rateKey: 'cabPerDay', glDesc: 'Cab/Auto', code: '93104' },
+      { id: 'airfare', label: '✈️ Air Fare', unit: 'Flights / Tickets', rateKey: 'airfarePerTrip', glDesc: 'Air fare', code: '93103' },
+      { id: 'bustrain', label: '🚆 Bus / Train', unit: 'Trips', rateKey: 'busTrainPerTrip', glDesc: 'Bus/Train', code: '93105' }
+    ];
+
+    const content = `
+      <div id="travelWizardModal" style="font-size: var(--font-size-sm);">
+        <!-- Step 1: Trip & Dimension Info -->
+        <div class="card p-md mb-md" style="background: var(--bg-card); border-color: var(--border-default);">
+          <div class="form-row mb-sm">
+            <div class="form-group mb-xs">
+              <label class="form-label font-bold">Employee Name</label>
+              <select class="form-select" id="pkgEmployeeSelect">
+                <option value="">Select Employee...</option>
+                ${employeeNames.map(name => `<option value="${name}" ${existingPackage?.employeeName === name ? 'selected' : ''}>👤 ${name}</option>`).join('')}
+                <option value="__CUSTOM__" ${existingPackage?.employeeName && !employeeNames.includes(existingPackage.employeeName) ? 'selected' : ''}>✏️ Manual Entry / Custom Name...</option>
+              </select>
+              <input type="text" class="form-input mt-xs" id="pkgCustomEmployeeInput" placeholder="Enter Full Name" value="${existingPackage?.employeeName && !employeeNames.includes(existingPackage.employeeName) ? existingPackage.employeeName : ''}" style="display: ${existingPackage?.employeeName && !employeeNames.includes(existingPackage.employeeName) ? 'block' : 'none'};">
+            </div>
+
+            <div class="form-group mb-xs">
+              <label class="form-label font-bold">Purpose / Details of Travel <span style="color: var(--danger);">*</span></label>
+              <input type="text" class="form-input" id="pkgPurposeInput" placeholder="e.g. Field visit for clinic training in Patna" value="${existingPackage?.travelDetails || ''}" required>
+            </div>
+          </div>
+
+          <div class="form-row mb-sm">
+            <div class="form-group mb-xs">
+              <label class="form-label font-bold">Destination Location</label>
+              <select class="form-select" id="pkgDestLocationSelect">
+                ${locations.map(l => `<option value="${l.name}" ${defaultLoc === l.name ? 'selected' : ''}>📍 ${l.name}</option>`).join('')}
+                <option value="Default (All Locations)" ${defaultLoc === 'Default (All Locations)' ? 'selected' : ''}>⭐ Default (All Locations)</option>
+              </select>
+            </div>
+
+            <div class="form-group mb-xs">
+              <label class="form-label font-bold">Travel Category</label>
+              <select class="form-select" id="pkgCategorySelect">
+                <option value="City" ${defaultCat === 'City' ? 'selected' : ''}>🏙️ City (Metro / Urban)</option>
+                <option value="Non-City" ${defaultCat === 'Non-City' ? 'selected' : ''}>🌾 Non-City (Rural / Field / District)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group mb-sm">
+            <label class="form-label font-bold">Remarks for Amount Addition / Justification <span style="color: var(--danger);">*</span></label>
+            <textarea class="form-input" id="pkgRemarksInput" rows="2" placeholder="Explain the trip necessity, program milestones, or justification for adding travel budget..." required style="resize: vertical;">${existingPackage?.remarks || ''}</textarea>
+          </div>
+
+          <!-- 5 Dimensions -->
+          <div class="form-row">
+            <div class="form-group mb-xs">
+              <label class="form-label" style="font-size: 11px;">Activity</label>
+              <select class="form-select" id="pkgActivitySelect" style="font-size: 11px;">
+                ${activities.map(a => `<option value="${a.name}" ${existingPackage?.activity === a.name ? 'selected' : ''}>${a.name}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-group mb-xs">
+              <label class="form-label" style="font-size: 11px;">Charging Location</label>
+              <select class="form-select" id="pkgLocationSelect" style="font-size: 11px;">
+                ${locations.map(l => `<option value="${l.name}" ${existingPackage?.location === l.name ? 'selected' : ''}>${l.name}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-group mb-xs">
+              <label class="form-label" style="font-size: 11px;">Donor</label>
+              <select class="form-select" id="pkgDonorSelect" style="font-size: 11px;">
+                ${donors.map(d => `<option value="${d.name}" ${existingPackage?.donor === d.name ? 'selected' : ''}>${d.name}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-group mb-xs">
+              <label class="form-label" style="font-size: 11px;">Condition Area</label>
+              <select class="form-select" id="pkgConditionSelect" style="font-size: 11px;">
+                ${conditionAreas.map(c => `<option value="${c.name}" ${existingPackage?.conditionArea === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin Benchmark Rates Box (Read-only / Locked) -->
+        <div class="travel-rate-badge-box" id="pkgRatesDisplay">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Step 2: Monthly Travel Schedule Quantities Matrix -->
+        <div class="table-container mb-md" style="max-height: 280px;">
+          <table class="travel-matrix-table" id="pkgMatrixTable">
+            <thead>
+              <tr>
+                <th style="min-width: 170px;">Expense Category</th>
+                <th style="min-width: 110px;">Admin Rate (Locked)</th>
+                ${SEED_DATA.months.map(m => `<th class="text-center" style="min-width: 55px;">${m}</th>`).join('')}
+                <th class="num" style="min-width: 80px;">Total Units</th>
+                <th class="num" style="min-width: 100px;">Total Cost (${entity.currency})</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemMeta.map((item, rIdx) => `
+                <tr data-row="${rIdx}">
+                  <td>
+                    <strong>${item.label}</strong>
+                    <div class="text-tertiary" style="font-size: 10px;">Unit: ${item.unit}</div>
+                  </td>
+                  <td class="font-mono font-bold field-rate-display" style="color: var(--accent-primary);">
+                    ${Utils.formatCurrency(activeRate[item.rateKey] || 0, entity.currency)}
+                  </td>
+                  ${SEED_DATA.months.map((m, mIdx) => `
+                    <td class="editable">
+                      <input type="number" class="matrix-input" data-row="${rIdx}" data-month="${mIdx}" value="${matrix[rIdx][mIdx] || 0}" min="0" step="1">
+                    </td>
+                  `).join('')}
+                  <td class="num font-mono font-bold row-total-units">0</td>
+                  <td class="num font-mono font-bold row-total-cost" style="color: var(--accent-primary);">${Utils.formatCurrency(0, entity.currency)}</td>
+                </tr>
+              `).join('')}
+              <tr class="total-row" style="background: #f1f5f9; border-top: 2px solid var(--border-default);">
+                <td colspan="2" class="font-bold text-right" style="padding-right: 10px;">MONTHLY 1-LINER BUDGET:</td>
+                ${SEED_DATA.months.map((m, mIdx) => `
+                  <td class="num font-mono font-bold col-monthly-total" data-month="${mIdx}" style="font-size: 11px;">0</td>
+                `).join('')}
+                <td class="num font-bold grand-total-units">0 Units</td>
+                <td class="num font-bold grand-total-cost" style="color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(0, entity.currency)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Summary & USD Equivalent Callout -->
+        <div class="card p-sm flex items-center justify-between" style="background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.2);">
+          <div class="flex items-center gap-md">
+            <div>
+              <span class="text-tertiary" style="font-size: 11px;">TOTAL TRAVEL DAYS:</span>
+              <strong id="liveSummaryDays" style="font-size: 13px; margin-left: 4px;">0 Days</strong>
+            </div>
+            <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-md);">
+              <span class="text-tertiary" style="font-size: 11px;">TOTAL FLIGHTS:</span>
+              <strong id="liveSummaryFlights" style="font-size: 13px; margin-left: 4px;">0 Flights</strong>
+            </div>
+          </div>
+          <div>
+            <span class="text-tertiary" style="font-size: 11px;">CALCULATED 1-LINER BUDGET:</span>
+            <strong id="liveSummaryGrandLocal" style="color: var(--success); font-size: 1.1rem; margin-left: 6px;">${Utils.formatCurrency(0, entity.currency)}</strong>
+            <span id="liveSummaryGrandUSD" class="text-tertiary" style="font-size: 12px; margin-left: 6px;">(≈ $0 USD)</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    Utils.showModal(isEdit ? '✈️ Edit Travel & Lodging Package' : '✈️ New Travel & Lodging Package Calculator', content, {
+      size: 'full',
+      modalWidth: '96vw',
+      modalHeight: '94vh',
+      footer: (footer, close) => {
+        footer.appendChild(Utils.createElement('button', { className: 'btn btn-ghost', textContent: 'Cancel (Esc)', onClick: close }));
+        footer.appendChild(Utils.createElement('button', {
+          className: 'btn btn-primary', textContent: isEdit ? 'Update Package & Budget' : 'Save & Link to Budget',
+          onClick: async () => {
+            const empSelect = Utils.$('#pkgEmployeeSelect').value;
+            const empCustom = Utils.$('#pkgCustomEmployeeInput').value.trim();
+            const employeeName = (empSelect === '__CUSTOM__' ? empCustom : empSelect) || 'Staff';
+
+            const travelDetails = Utils.$('#pkgPurposeInput').value.trim() || 'Travel';
+            const remarks = Utils.$('#pkgRemarksInput').value.trim() || travelDetails;
+            const destinationLocation = Utils.$('#pkgDestLocationSelect').value;
+            const travelCategory = Utils.$('#pkgCategorySelect').value;
+            const activity = Utils.$('#pkgActivitySelect').value;
+            const location = Utils.$('#pkgLocationSelect').value;
+            const donor = Utils.$('#pkgDonorSelect').value;
+            const conditionArea = Utils.$('#pkgConditionSelect').value;
+
+            // Compute month-wise 1-liner totals
+            const monthlyValues = {};
+            let totalCY = 0;
+
+            for (let m = 0; m < 12; m++) {
+              let mSum = 0;
+              itemMeta.forEach((item, rIdx) => {
+                const qty = Utils.parseNumber(matrix[rIdx][m]) || 0;
+                const rRate = activeRate[item.rateKey] || 0;
+                mSum += (qty * rRate);
+              });
+              monthlyValues[m] = mSum;
+              totalCY += mSum;
+            }
+
+            // Generate basis notes
+            const basisParts = [];
+            itemMeta.forEach((item, rIdx) => {
+              const rUnits = matrix[rIdx].reduce((s, v) => s + (Utils.parseNumber(v) || 0), 0);
+              if (rUnits > 0) {
+                basisParts.push(`${rUnits} ${item.unit} @ ${Utils.formatCurrency(activeRate[item.rateKey], entity.currency)}`);
+              }
+            });
+            const basisSummary = `${employeeName} (${destinationLocation} - ${travelDetails}): ${basisParts.join(', ') || '0 units'}`;
+
+            // Save in travelPackages store
+            const pkgRecord = {
+              ...(existingPackage || {}),
+              yearId,
+              entityId: entity.id,
+              deptId: dept.id,
+              employeeName,
+              travelDetails,
+              remarks,
+              destinationLocation,
+              travelCategory,
+              activity,
+              location,
+              donor,
+              conditionArea,
+              unitMatrix: matrix,
+              activeRate,
+              monthlyValues,
+              totalCY
+            };
+
+            let savedPkgId;
+            if (isEdit) {
+              await db.put(STORES.travelPackages, pkgRecord);
+              savedPkgId = existingPackage.id;
+            } else {
+              savedPkgId = await db.add(STORES.travelPackages, pkgRecord);
+            }
+
+            // Save / Update corresponding 1-liner month-wise budget row in STORES.nonPayrollCost
+            const existingNonPayroll = await db.getBudgetData(STORES.nonPayrollCost, yearId, entity.id, dept.id);
+            let npRow = existingNonPayroll.find(r => r.travelPackageId === savedPkgId || (isEdit && r.travelPackageId === existingPackage.id));
+
+            const nonPayrollData = {
+              ...(npRow || {}),
+              yearId,
+              entityId: entity.id,
+              deptId: dept.id,
+              isTravelPackage: true,
+              travelPackageId: savedPkgId,
+              categoryKey: 'travel',
+              subGroup: 'Direct Cost',
+              parentAccount: 'Travel & Lodging Expenses',
+              glDescription: `Travel & Lodging — ${employeeName} (${destinationLocation})`,
+              ledgerCode: '93100',
+              employeeName,
+              itemName: travelDetails,
+              basisOfExpense: basisSummary,
+              monthlyValues,
+              totalCY,
+              activity,
+              location,
+              donor,
+              conditionArea,
+              remarks
+            };
+
+            if (npRow?.id) {
+              await db.put(STORES.nonPayrollCost, nonPayrollData);
+            } else {
+              await db.add(STORES.nonPayrollCost, nonPayrollData);
+            }
+
+            Utils.showToast(isEdit ? 'Travel package updated!' : 'Travel package saved & linked as 1-liner budget!', 'success');
+            close();
+
+            // Re-render
+            await BudgetEntryModule.renderGrid(BudgetEntryModule._entity || entity, BudgetEntryModule._dept || dept, BudgetEntryModule._budgetYear, BudgetEntryModule._actualsMonth);
+          }
+        }));
+      }
+    });
+
+    // Helper to refresh live calculation inside modal
+    const refreshLiveModalCalculations = () => {
+      const modal = document.querySelector('#travelWizardModal');
+      if (!modal) return;
+
+      // Update rate pills box in a single continuous line
+      const rateBox = modal.querySelector('#pkgRatesDisplay');
+      if (rateBox) {
+        const isFallback = activeRate.isFallback;
+        rateBox.innerHTML = `
+          <div class="flex items-center gap-xs" style="flex-shrink: 0;">
+            <span class="text-tertiary font-bold" style="font-size: 11px; text-transform: uppercase; white-space: nowrap;">
+              📍 Rates for ${modal.querySelector('#pkgDestLocationSelect').value} (${modal.querySelector('#pkgCategorySelect').value}):
+            </span>
+            ${isFallback ? `<span class="badge badge-warning" style="font-size: 10px; white-space: nowrap;">⚠️ Default</span>` : `<span class="badge badge-emerald" style="font-size: 10px; white-space: nowrap;">✓ Standard</span>`}
+          </div>
+          <div class="travel-rate-pills">
+            <div class="rate-pill"><span class="pill-label">🏨 Hotel/Day:</span> <strong class="pill-val">${Utils.formatCurrency(activeRate.hotelPerDay || 0, entity.currency)}</strong></div>
+            <div class="rate-pill"><span class="pill-label">🍽️ Food/Day:</span> <strong class="pill-val">${Utils.formatCurrency(activeRate.foodPerDay || 0, entity.currency)}</strong></div>
+            <div class="rate-pill"><span class="pill-label">🚕 Cab/Day:</span> <strong class="pill-val">${Utils.formatCurrency(activeRate.cabPerDay || 0, entity.currency)}</strong></div>
+            <div class="rate-pill"><span class="pill-label">✈️ Flight/Trip:</span> <strong class="pill-val">${Utils.formatCurrency(activeRate.airfarePerTrip || 0, entity.currency)}</strong></div>
+            <div class="rate-pill"><span class="pill-label">🚆 Bus-Train/Trip:</span> <strong class="pill-val">${Utils.formatCurrency(activeRate.busTrainPerTrip || 0, entity.currency)}</strong></div>
+          </div>
+        `;
+      }
+
+      // Update locked rate display in table
+      modal.querySelectorAll('.field-rate-display').forEach((td, idx) => {
+        const rKey = itemMeta[idx]?.rateKey;
+        if (rKey) td.textContent = Utils.formatCurrency(activeRate[rKey] || 0, entity.currency);
+      });
+
+      // Recalculate row totals & column totals
+      let grandTotalUnits = 0;
+      let grandTotalCost = 0;
+      let totalHotelDays = 0;
+      let totalFlights = 0;
+      const colTotals = Array(12).fill(0);
+
+      itemMeta.forEach((item, rIdx) => {
+        let rowUnits = 0;
+        let rowCost = 0;
+        const rateVal = activeRate[item.rateKey] || 0;
+
+        for (let m = 0; m < 12; m++) {
+          const qty = Utils.parseNumber(matrix[rIdx][m]) || 0;
+          rowUnits += qty;
+          const cost = qty * rateVal;
+          rowCost += cost;
+          colTotals[m] += cost;
+        }
+
+        grandTotalUnits += rowUnits;
+        grandTotalCost += rowCost;
+        if (rIdx === 0) totalHotelDays = rowUnits;
+        if (rIdx === 3) totalFlights = rowUnits;
+
+        const rowTr = modal.querySelector(`tr[data-row="${rIdx}"]`);
+        if (rowTr) {
+          const unitsTd = rowTr.querySelector('.row-total-units');
+          const costTd = rowTr.querySelector('.row-total-cost');
+          if (unitsTd) unitsTd.textContent = `${rowUnits} ${item.unit.split('/')[0].trim()}`;
+          if (costTd) costTd.textContent = Utils.formatCurrency(rowCost, entity.currency);
+        }
+      });
+
+      // Update monthly column sums
+      colTotals.forEach((cCost, mIdx) => {
+        const cTd = modal.querySelector(`.col-monthly-total[data-month="${mIdx}"]`);
+        if (cTd) {
+          cTd.textContent = Utils.formatNumber(cCost);
+          cTd.style.color = cCost > 0 ? 'var(--accent-primary)' : 'var(--text-tertiary)';
+        }
+      });
+
+      // Update grand totals
+      const grandUnitsTd = modal.querySelector('.grand-total-units');
+      const grandCostTd = modal.querySelector('.grand-total-cost');
+      if (grandUnitsTd) grandUnitsTd.textContent = `${grandTotalUnits} Units`;
+      if (grandCostTd) grandCostTd.textContent = Utils.formatCurrency(grandTotalCost, entity.currency);
+
+      const summaryDays = modal.querySelector('#liveSummaryDays');
+      const summaryFlights = modal.querySelector('#liveSummaryFlights');
+      const summaryGrandLocal = modal.querySelector('#liveSummaryGrandLocal');
+      const summaryGrandUSD = modal.querySelector('#liveSummaryGrandUSD');
+
+      const rateNum = BudgetEntryModule._conversionRates?.[entity.currency] || 1.0;
+      if (summaryDays) summaryDays.textContent = `${totalHotelDays} Days`;
+      if (summaryFlights) summaryFlights.textContent = `${totalFlights} Flights`;
+      if (summaryGrandLocal) summaryGrandLocal.textContent = Utils.formatCurrency(grandTotalCost, entity.currency);
+      if (summaryGrandUSD) summaryGrandUSD.textContent = `(≈ ${Utils.formatCurrency(Utils.convertToUSD(grandTotalCost, rateNum), 'USD')} USD)`;
+    };
+
+    // Modal Event Listeners
+    const modalEl = document.querySelector('#travelWizardModal');
+    if (modalEl) {
+      // Employee custom toggle
+      const empSelect = modalEl.querySelector('#pkgEmployeeSelect');
+      const empCustom = modalEl.querySelector('#pkgCustomEmployeeInput');
+      empSelect.addEventListener('change', () => {
+        empCustom.style.display = empSelect.value === '__CUSTOM__' ? 'block' : 'none';
+        if (empSelect.value === '__CUSTOM__') empCustom.focus();
+      });
+
+      // Destination / Category change &rarr; update activeRate
+      const destSelect = modalEl.querySelector('#pkgDestLocationSelect');
+      const catSelect = modalEl.querySelector('#pkgCategorySelect');
+
+      const onRateParamsChange = () => {
+        activeRate = getRate(destSelect.value, catSelect.value);
+        refreshLiveModalCalculations();
+      };
+
+      destSelect.addEventListener('change', onRateParamsChange);
+      catSelect.addEventListener('change', onRateParamsChange);
+
+      // Matrix input changes
+      const matrixTable = modalEl.querySelector('#pkgMatrixTable');
+      matrixTable.addEventListener('input', (e) => {
+        if (e.target.classList.contains('matrix-input')) {
+          const rIdx = parseInt(e.target.dataset.row);
+          const mIdx = parseInt(e.target.dataset.month);
+          const val = Utils.parseNumber(e.target.value) || 0;
+          matrix[rIdx][mIdx] = val;
+          refreshLiveModalCalculations();
+        }
+      });
+    }
+
+    refreshLiveModalCalculations();
+  },
+
+  async editTravelPackage(id) {
+    const pkg = await db.get(STORES.travelPackages, id);
+    if (!pkg) return;
+    this.showTravelPackageWizard(this._yearId, this._entity, this._dept, this._locations, this._donors, this._activities, this._conditionAreas, pkg);
+  },
+
+  async deleteTravelPackage(id) {
+    if (await Utils.confirm('Delete this Travel Package and its 1-liner budget?')) {
+      await db.delete(STORES.travelPackages, id);
+
+      // Also delete the associated non-payroll row
+      const existingNp = await db.getBudgetData(STORES.nonPayrollCost, this._yearId, this._entity.id, this._dept.id);
+      const matchingNp = existingNp.find(r => r.travelPackageId === id);
+      if (matchingNp?.id) {
+        await db.delete(STORES.nonPayrollCost, matchingNp.id);
+      }
+
+      Utils.showToast('Travel package deleted', 'info');
+      await this.renderGrid(this._entity, this._dept, this._budgetYear, this._actualsMonth);
+    }
+  },
+
+  // ─── Total Dept Cost Grid (Master Summary Linked from Input Sheets) ───
+  async renderTotalCostGrid(container, yearId, entity, dept, budgetYear) {
+    const coa = await db.getAll(STORES.chartOfAccounts);
+
+    // Fetch all input records for this department & year
+    const personnelAll = await db.getBudgetData(STORES.payrollPersonnel, yearId, entity.id, dept.id);
+    const salariesRows = personnelAll.filter(p => !p.subCategory || p.subCategory === 'salaries-wages');
+    const otherStaffRows = personnelAll.filter(p => p.subCategory === 'other-staff-expenses');
+    const gratuityRows = personnelAll.filter(p => p.subCategory === 'gratuity-bonus');
+    const ehaRows = await db.getBudgetData(STORES.payrollEHA, yearId, entity.id, dept.id);
+    const fixedAssetRows = await db.getBudgetData(STORES.payrollFixedAsset, yearId, entity.id, dept.id);
+    const otherCostRows = await db.getBudgetData(STORES.nonPayrollCost, yearId, entity.id, dept.id);
+
+    // Fetch stored basis and remarks notes
+    const savedTotalCostRecords = await db.getBudgetData(STORES.totalCostSheet, yearId, entity.id, dept.id);
+    const savedBasisMap = {};
+    const savedRemarksMap = {};
+    savedTotalCostRecords.forEach(r => {
+      if (r.ledgerCode) {
+        savedBasisMap[r.ledgerCode] = r.basisOfExpense || '';
+        savedRemarksMap[r.ledgerCode] = r.remarks || '';
+      } else if (r.glDescription) {
+        savedBasisMap[r.glDescription] = r.basisOfExpense || '';
+        savedRemarksMap[r.glDescription] = r.remarks || '';
+      }
+    });
+
+    const sumMonths = (rows) => {
+      const months = Array(12).fill(0);
+      let total = 0;
+      rows.forEach(r => {
+        if (r.monthlyValues) {
+          Object.entries(r.monthlyValues).forEach(([mIdx, val]) => {
+            const num = Utils.parseNumber(val);
+            months[mIdx] += num;
+            total += num;
+          });
+        }
+      });
+      return { monthlyValues: months, totalCY: total };
+    };
+
+    const cleanStr = (s) => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    const matchedOtherCostIndices = new Set();
+
+    const lines = coa.map(account => {
+      let linkedSource = '';
+      let sourceIcon = '📑';
+      let rollup = { monthlyValues: Array(12).fill(0), totalCY: 0 };
+      let basis = '';
+      let remarks = savedRemarksMap[account.ledgerCode] || savedRemarksMap[account.glDescription] || '';
+
+      const accGlClean = cleanStr(account.glDescription);
+      const accLedgerClean = cleanStr(account.ledgerCode);
+      const accParentClean = cleanStr(account.parentAccount);
+
+      // 1. Salaries and Wages
+      if (accGlClean.includes('salariesandwages') || accLedgerClean.startsWith('911') || accParentClean.includes('salariesandwages')) {
+        linkedSource = 'Payroll — Salaries & Wages';
+        sourceIcon = '👥';
+        rollup = sumMonths(salariesRows);
+        basis = salariesRows.length > 0 ? `${salariesRows.length} Employee(s)` : '';
+      }
+      // 2. Staff Training, Learning (Other Staff Expenses)
+      else if (accGlClean.includes('stafftraining') || accLedgerClean.startsWith('913') || accParentClean.includes('otherstaff')) {
+        linkedSource = 'Payroll — Other Staff Expenses';
+        sourceIcon = '👥';
+        rollup = sumMonths(otherStaffRows);
+        basis = otherStaffRows.length > 0 ? `${otherStaffRows.length} Item(s)` : '';
+      }
+      // 3. Gratuity and Bonus
+      else if (accGlClean.includes('gratuity') || accLedgerClean.startsWith('912') || accParentClean.includes('health') || accParentClean.includes('retirement')) {
+        linkedSource = 'Payroll — Gratuity & Bonus';
+        sourceIcon = '👥';
+        rollup = sumMonths(gratuityRows);
+        basis = gratuityRows.length > 0 ? `${gratuityRows.length} Item(s)` : '';
+      }
+      // 4. Program Resource Consultant (EHA)
+      else if (accGlClean.includes('programresource') || accGlClean.includes('eha') || accLedgerClean.startsWith('921') || accParentClean.includes('resourceperson')) {
+        linkedSource = 'Payroll — EHA Consultants';
+        sourceIcon = '🤝';
+        rollup = sumMonths(ehaRows);
+        basis = ehaRows.length > 0 ? `${ehaRows.length} Consultant(s)` : '';
+      }
+      // 5. Fixed Assets (Laptop/Printer)
+      else if (accGlClean.includes('laptop') || accGlClean.includes('printer') || accLedgerClean.startsWith('113') || accParentClean.includes('fixedasset')) {
+        linkedSource = 'Fixed Assets';
+        sourceIcon = '💻';
+        rollup = sumMonths(fixedAssetRows);
+        basis = fixedAssetRows.length > 0 ? `${fixedAssetRows.length} Asset(s)` : '';
+      }
+      // 6. Other non-payroll expenses (Direct Costs & Indirect Costs)
+      else {
+        const catKey = this.getOtherCostCategory(account);
+        const catLabels = {
+          travel: { label: 'Travel & Lodging Package', icon: '✈️' },
+          supplies: { label: 'Supplies & Printing', icon: '🖨️' },
+          communication: { label: 'Communication Expenses', icon: '📡' },
+          office: { label: 'Office Expenses', icon: '🏢' },
+          professional: { label: 'Professional & Consulting', icon: '💼' },
+          other: { label: 'Other Operating Costs', icon: '📑' }
+        };
+        const cMeta = catLabels[catKey] || catLabels.other;
+        linkedSource = cMeta.label;
+        sourceIcon = cMeta.icon;
+
+        const matchingOther = otherCostRows.filter((o, idx) => {
+          const oLedger = cleanStr(o.ledgerCode);
+          const oGl = cleanStr(o.glDescription);
+          const oParent = cleanStr(o.parentAccount);
+
+          const isMatch = (oLedger && accLedgerClean && oLedger === accLedgerClean) ||
+                          (oGl && accGlClean && (oGl === accGlClean || oGl.includes(accGlClean) || accGlClean.includes(oGl))) ||
+                          (oParent && accParentClean && oParent === accParentClean && oGl === accGlClean);
+
+          if (isMatch) matchedOtherCostIndices.add(idx);
+          return isMatch;
+        });
+
+        rollup = sumMonths(matchingOther);
+
+        const bases = matchingOther.map(o => o.basisOfExpense).filter(Boolean);
+        if (bases.length > 0) {
+          basis = bases.join('; ');
+        }
+
+        if (!remarks) {
+          const rems = matchingOther.map(o => o.remarks).filter(Boolean);
+          if (rems.length > 0) remarks = rems.join('; ');
+        }
+      }
+
+      const savedBasis = savedBasisMap[account.ledgerCode] || savedBasisMap[account.glDescription];
+      if (savedBasis) basis = savedBasis;
+
+      return {
+        subGroup: account.subGroup,
+        parentAccount: account.parentAccount,
+        glDescription: account.glDescription,
+        ledgerCode: account.ledgerCode,
+        linkedSource,
+        sourceIcon,
+        basisOfExpense: basis,
+        remarks,
+        monthlyValues: rollup.monthlyValues,
+        totalCY: rollup.totalCY
+      };
+    });
+
+    // Also include any custom added lines from Other Costs that were not in default chart of accounts
+    otherCostRows.forEach((o, idx) => {
+      if (!matchedOtherCostIndices.has(idx)) {
+        const months = Array(12).fill(0);
+        let total = 0;
+        if (o.monthlyValues) {
+          Object.entries(o.monthlyValues).forEach(([mIdx, val]) => {
+            const num = Utils.parseNumber(val);
+            months[mIdx] += num;
+            total += num;
+          });
+        }
+
+        const catKey = o.categoryKey || this.getOtherCostCategory(o);
+        const catLabels = {
+          travel: { label: 'Travel & Lodging Package', icon: '✈️' },
+          supplies: { label: 'Supplies & Printing', icon: '🖨️' },
+          communication: { label: 'Communication Expenses', icon: '📡' },
+          office: { label: 'Office Expenses', icon: '🏢' },
+          professional: { label: 'Professional & Consulting', icon: '💼' },
+          other: { label: 'Other Operating Costs', icon: '📑' }
+        };
+        const cMeta = catLabels[catKey] || catLabels.other;
+
+        lines.push({
+          subGroup: o.subGroup || 'Direct Cost',
+          parentAccount: o.parentAccount || 'Other Costs',
+          glDescription: o.glDescription || 'Miscellaneous Expense',
+          ledgerCode: o.ledgerCode || '93999',
+          linkedSource: cMeta.label,
+          sourceIcon: cMeta.icon,
+          basisOfExpense: o.basisOfExpense || '',
+          remarks: o.remarks || '',
+          monthlyValues: months,
+          totalCY: total
+        });
+      }
+    });
+
+    const totalCost = lines.reduce((sum, r) => sum + r.totalCY, 0);
+    const colMonthlySums = Array(12).fill(0);
+    lines.forEach(r => {
+      if (r.monthlyValues) {
+        r.monthlyValues.forEach((v, idx) => {
+          colMonthlySums[idx] += (Utils.parseNumber(v) || 0);
+        });
+      }
+    });
+
+    const deptDisplayName = Utils.getDeptName(dept, entity.deptPrefix);
+    const rate = this._conversionRates?.[entity.currency] || 1.0;
+
+    container.innerHTML = `
+      <div class="card p-md mb-md flex items-center justify-between" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(6, 182, 212, 0.06)); border-color: rgba(16, 185, 129, 0.2);">
+        <div class="flex items-center gap-lg">
+          <div>
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Total Dept Cost Lines</div>
+            <div id="bannerCount" style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary);">${lines.length} Account Lines</div>
+          </div>
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Total Dept Cost Budget (${entity.currency})</div>
+            <div id="bannerTotal" style="font-size: 1.4rem; font-weight: 700; color: var(--success);">${Utils.formatCurrency(totalCost, entity.currency)}</div>
+            <div id="bannerTotalUSD" style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); margin-top: 2px;">
+              ${entity.currency !== 'USD' ? `≈ ${Utils.formatCurrency(Utils.convertToUSD(totalCost, rate), 'USD')} <span class="text-tertiary" style="font-size: 11px;">(@ ${rate} ${entity.currency}/USD)</span>` : ''}
+            </div>
+          </div>
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Department</div>
+            <div style="font-size: 1rem; font-weight: 600; color: var(--text-secondary);">${deptDisplayName}</div>
+          </div>
+        </div>
+        <div>
+          <span class="badge badge-emerald" style="padding: 6px 12px; font-size: 12px;">🔗 Auto-Linked to Input Sheets</span>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table" id="totalCostTable">
+          <thead>
+            <tr>
+              <th class="sticky-col-1">Parent Account</th>
+              <th class="sticky-col-2">GL Line Item Description</th>
+              <th>Ledger Code</th>
+              <th>Linked Input Source</th>
+              <th style="width: 160px; max-width: 160px; min-width: 120px;">Basis of Expense</th>
+              <th class="num month-group budget-year total-toggle-th" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${budgetYear} <span class="months-toggle-arrow">&#9664;</span></th>
+              ${SEED_DATA.months.map(m => `<th class="num month-group budget-year">${m}-${budgetYear}</th>`).join('')}
+              <th style="width: 180px; max-width: 180px; min-width: 130px;">Remarks</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- ─── Monthly Totals at the Top of the List ─── -->
+            <tr class="total-row top-total-row">
+              <td class="sticky-col-1 font-bold">TOTAL DEPT BUDGET:</td>
+              <td class="sticky-col-2 font-bold">All Department Costs</td>
+              <td><code>—</code></td>
+              <td><span class="badge badge-primary font-bold">🎯 Master Rollup</span></td>
+              <td class="font-bold text-secondary" style="font-size: 11px;">12-Month Rollup</td>
+              <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(totalCost, entity.currency)}</td>
+              ${SEED_DATA.months.map((m, idx) => `
+                <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
+              `).join('')}
+              <td></td>
+            </tr>
+
+            <!-- ─── Line Items ─── -->
+            ${lines.map(r => `
+              <tr data-ledger="${r.ledgerCode}" data-gldesc="${r.glDescription}">
+                <td class="sticky-col-1 font-bold"><strong>${r.parentAccount || ''}</strong></td>
+                <td class="sticky-col-2 font-medium">${r.glDescription || ''}</td>
+                <td><code>${r.ledgerCode || ''}</code></td>
+                <td><span class="badge ${r.linkedSource.includes('Travel') ? 'badge-cyan' : r.linkedSource.includes('Supplies') ? 'badge-primary' : r.linkedSource.includes('Communication') ? 'badge-info' : r.linkedSource.includes('Office') ? 'badge-warning' : r.linkedSource.includes('Professional') ? 'badge-emerald' : 'badge-subtle'}" style="font-size: 11px; white-space: nowrap;">${r.sourceIcon} ${r.linkedSource}</span></td>
+                <td class="editable basis-cell" style="width: 160px; max-width: 160px; padding: 4px 6px;">
+                  <input type="text" class="field-basis" value="${Utils.escapeHtml(r.basisOfExpense || '')}" placeholder="Basis of calculation" title="${Utils.escapeHtml(r.basisOfExpense || '')}" style="width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                </td>
+                <td class="num font-bold field-total-cy" style="color: ${r.totalCY > 0 ? 'var(--accent-primary)' : 'inherit'};">${Utils.formatNumber(r.totalCY || 0)}</td>
+                ${SEED_DATA.months.map((m, idx) => `
+                  <td class="num month-col font-mono" style="${r.monthlyValues[idx] > 0 ? 'font-weight: 600;' : 'color: var(--text-tertiary);'}">${Utils.formatNumber(r.monthlyValues[idx] || 0)}</td>
+                `).join('')}
+                <td class="editable remarks-cell" style="width: 180px; max-width: 180px; padding: 4px 6px;">
+                  <input type="text" class="field-remarks" value="${Utils.escapeHtml(r.remarks || '')}" placeholder="Remarks" title="${Utils.escapeHtml(r.remarks || '')}" style="width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                </td>
+              </tr>
+            `).join('')}
+
+            <!-- ─── Monthly Totals at the Bottom of the List ─── -->
+            <tr class="total-row">
+              <td class="sticky-col-1 font-bold">TOTAL DEPT BUDGET:</td>
+              <td class="sticky-col-2 font-bold text-right" style="padding-right: 16px;">(${entity.currency})</td>
+              <td colspan="3"></td>
+              <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(totalCost, entity.currency)}</td>
+              ${SEED_DATA.months.map((m, idx) => `
+                <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
+              `).join('')}
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    const table = container.querySelector('#totalCostTable');
+    if (table) {
+      table.addEventListener('change', (e) => {
+        if (e.target.classList.contains('field-basis') || e.target.classList.contains('field-remarks')) {
+          const row = e.target.closest('tr');
+          if (row) this.saveTotalCostRow(row, yearId, entity.id, dept.id);
+        }
+      });
+    }
+  },
+
+  // ─── Add Row ───
+  async addRow() {
+    if (this.activeTab === 'total-costs') {
+      Utils.showToast('Total Dept Cost is auto-aggregated from the input sheets. Please add items in Payroll, EHA, Fixed Assets, or Other Costs.', 'info');
+      return;
+    }
+
+    const storeMap = {
+      'personnel': STORES.payrollPersonnel,
+      'eha': STORES.payrollEHA,
+      'fixed-assets': STORES.payrollFixedAsset,
+      'other-costs': STORES.nonPayrollCost,
+      'non-payroll': STORES.nonPayrollCost,
+      'total-costs': STORES.totalCostSheet,
+      'total-cost-sheet': STORES.totalCostSheet
+    };
+
+    const storeName = storeMap[this.activeTab];
+    if (!storeName) {
+      Utils.showToast('Unknown tab — cannot add row', 'error');
+      return;
+    }
+
+    // Use the exact yearId that was resolved in render() — NOT App.selectedYear which may be null
+    const yearId = this._yearId || App.selectedYear || '2026';
+    const entityId = this.currentEntityId;
+    const deptId = this.currentDeptId;
+
+    if (!entityId || !deptId) {
+      Utils.showToast('Please select an Entity and Department first', 'warning');
+      return;
+    }
+
+    const newRecord = {
+      yearId,
+      entityId,
+      deptId,
+      monthlyValues: {},
+      totalCY: 0
+    };
+
+    if (this.activeTab === 'personnel') {
+      newRecord.subCategory = this.activePersonnelSubTab || 'salaries-wages';
+    } else if (this.activeTab === 'other-costs' || this.activeTab === 'non-payroll') {
+      newRecord.subGroup = 'Operational Costs';
+      newRecord.parentAccount = 'Other Expenses';
+      newRecord.glDescription = 'Miscellaneous Expense Item';
+      newRecord.ledgerCode = '93999';
+      newRecord.basisOfExpense = '';
+    }
+
+    try {
+      await db.add(storeName, newRecord);
+      Utils.showToast('New row added!', 'success');
+    } catch (err) {
+      console.error('addRow failed:', err);
+      Utils.showToast('Failed to add row: ' + err.message, 'error');
+      return;
+    }
+
+    // Re-render only the grid (preserves toolbar & tabs)
+    if (this._entity && this._dept && this._budgetYear) {
+      await this.renderGrid(this._entity, this._dept, this._budgetYear, this._actualsMonth);
+    } else {
+      await App.renderCurrentPage();
+    }
+  },
+
+  async deleteRow(storeName, id) {
+    if (await Utils.confirm('Delete this line item?')) {
+      try {
+        await db.delete(storeName, id);
+        Utils.showToast('Row deleted', 'info');
+      } catch (err) {
+        console.error('deleteRow failed:', err);
+        Utils.showToast('Failed to delete row: ' + err.message, 'error');
+        return;
+      }
+
+      // Re-render only the grid (preserves toolbar & tabs)
+      if (this._entity && this._dept && this._budgetYear) {
+        await this.renderGrid(this._entity, this._dept, this._budgetYear, this._actualsMonth);
+      } else {
+        await App.renderCurrentPage();
+      }
+    }
+  }
+};
+
+window.BudgetEntryModule = BudgetEntryModule;
