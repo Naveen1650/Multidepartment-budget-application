@@ -3978,12 +3978,13 @@ const BudgetEntryModule = {
               const doneCount = visibleItems.filter(i => i.status === 'done').length;
 
               let taskBadgeHtml = '';
+              const safeGlDesc = Utils.escapeJs(r.glDescription || '');
               if (openCount > 0) {
-                taskBadgeHtml = `<button class="btn btn-warning btn-xs flex items-center gap-xs mt-xs" style="padding: 2px 7px; font-size: 10.5px; border-radius: 12px; font-weight: 600;" onclick="BudgetEntryModule.openLineRemarksModal('${yearId}', '${entity.id}', '${dept.id}', '${r.ledgerCode}', '${Utils.escapeHtml(r.glDescription)}')" title="View open tasks & remarks">🟡 ${openCount} Task${openCount > 1 ? 's' : ''}</button>`;
+                taskBadgeHtml = `<button class="btn btn-warning btn-xs flex items-center gap-xs mt-xs" style="padding: 2px 7px; font-size: 10.5px; border-radius: 12px; font-weight: 600;" onclick="BudgetEntryModule.openLineRemarksModal('${yearId}', '${entity.id}', '${dept.id}', '${r.ledgerCode}', '${safeGlDesc}')" title="View open tasks & remarks">🟡 ${openCount} Task${openCount > 1 ? 's' : ''}</button>`;
               } else if (doneCount > 0) {
-                taskBadgeHtml = `<button class="btn btn-secondary btn-xs flex items-center gap-xs mt-xs" style="padding: 2px 7px; font-size: 10.5px; border-radius: 12px; font-weight: 600; color: var(--success); border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.06);" onclick="BudgetEntryModule.openLineRemarksModal('${yearId}', '${entity.id}', '${dept.id}', '${r.ledgerCode}', '${Utils.escapeHtml(r.glDescription)}')" title="View resolved remarks">🟢 ✓ ${doneCount} Done</button>`;
+                taskBadgeHtml = `<button class="btn btn-secondary btn-xs flex items-center gap-xs mt-xs" style="padding: 2px 7px; font-size: 10.5px; border-radius: 12px; font-weight: 600; color: var(--success); border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.06);" onclick="BudgetEntryModule.openLineRemarksModal('${yearId}', '${entity.id}', '${dept.id}', '${r.ledgerCode}', '${safeGlDesc}')" title="View resolved remarks">🟢 ✓ ${doneCount} Done</button>`;
               } else {
-                taskBadgeHtml = `<button class="btn btn-ghost btn-xs flex items-center gap-xs mt-xs text-tertiary" style="padding: 2px 7px; font-size: 10.5px; border-radius: 12px;" onclick="BudgetEntryModule.openLineRemarksModal('${yearId}', '${entity.id}', '${dept.id}', '${r.ledgerCode}', '${Utils.escapeHtml(r.glDescription)}')" title="Tag colleague or add action item">💬 + Tag/Assign</button>`;
+                taskBadgeHtml = `<button class="btn btn-ghost btn-xs flex items-center gap-xs mt-xs text-tertiary" style="padding: 2px 7px; font-size: 10.5px; border-radius: 12px;" onclick="BudgetEntryModule.openLineRemarksModal('${yearId}', '${entity.id}', '${dept.id}', '${r.ledgerCode}', '${safeGlDesc}')" title="Tag colleague or add action item">💬 + Tag/Assign</button>`;
               }
 
               return `
@@ -4302,11 +4303,11 @@ const BudgetEntryModule = {
 
                 <div class="flex justify-end gap-sm mt-sm pt-xs" style="border-top: 1px solid var(--border-subtle);">
                   ${!isDone ? `
-                    <button class="btn btn-success btn-xs flex items-center gap-xs" onclick="BudgetEntryModule.resolveRemarkPrompt('${r.id}', '${yearId}', '${entityId}', '${deptId}', '${ledgerCode}', '${Utils.escapeHtml(glDescription)}')">
+                    <button class="btn btn-success btn-xs flex items-center gap-xs" onclick="BudgetEntryModule.resolveRemarkPrompt('${r.id}', '${yearId}', '${entityId}', '${deptId}', '${ledgerCode}', '${Utils.escapeJs(glDescription)}')">
                       <span>✓ Mark as Done</span>
                     </button>
                   ` : `
-                    <button class="btn btn-ghost btn-xs text-tertiary" onclick="BudgetEntryModule.reopenRemark('${r.id}', '${yearId}', '${entityId}', '${deptId}', '${ledgerCode}', '${Utils.escapeHtml(glDescription)}')">
+                    <button class="btn btn-ghost btn-xs text-tertiary" onclick="BudgetEntryModule.reopenRemark('${r.id}', '${yearId}', '${entityId}', '${deptId}', '${ledgerCode}', '${Utils.escapeJs(glDescription)}')">
                       <span>↺ Reopen Thread</span>
                     </button>
                   `}
@@ -4336,7 +4337,7 @@ const BudgetEntryModule = {
               </select>
             </div>
             <div class="form-group mb-none flex items-end">
-              <button class="btn btn-primary btn-sm flex items-center gap-xs w-full justify-center" style="height: 36px;" onclick="BudgetEntryModule.saveNewRemark('${yearId}', '${entityId}', '${deptId}', '${ledgerCode}', '${Utils.escapeHtml(glDescription)}')">
+              <button class="btn btn-primary btn-sm flex items-center gap-xs w-full justify-center" style="height: 36px;" onclick="BudgetEntryModule.saveNewRemark('${yearId}', '${entityId}', '${deptId}', '${ledgerCode}', '${Utils.escapeJs(glDescription)}')">
                 <span>💬 Post Remark & Assign</span>
               </button>
             </div>

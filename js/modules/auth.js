@@ -172,10 +172,31 @@ const Auth = {
     if (remark.entityId && !this.canAccessEntity(remark.entityId)) return false;
     if (remark.entityId && remark.deptId && !this.canAccessDept(remark.entityId, remark.deptId)) return false;
 
-    // Hierarchy visibility
-    const myLevel = this.getUserHierarchyLevel(user);
-    const creatorLevel = remark.assignedByRoleLevel || 10;
-    return myLevel >= creatorLevel;
+    return true;
+  },
+
+  async getAccessibleUsersForDept(entityId, deptId) {
+    await db.ready;
+    let allUsers = [];
+    try {
+      allUsers = await db.getUsers();
+    } catch (e) {
+      console.warn('Error fetching users in getAccessibleUsersForDept:', e);
+    }
+    if (!allUsers || allUsers.length === 0) {
+      const seedObj = typeof SEED_DATA !== 'undefined' ? SEED_DATA : (typeof window !== 'undefined' ? window.SEED_DATA : {});
+      allUsers = seedObj.users || [];
+    }
+
+    // Return users mapped with role name for easy tagging
+    const roles = await db.getRoles();
+    return allUsers.map(u => {
+      const r = roles.find(role => role.id === u.roleId);
+      return {
+        ...u,
+        roleName: r ? r.name : (u.roleName || u.title || 'Team Member')
+      };
+    });
   },
 
   async saveLineItemRolePermissions(roleId, lineKey, perms) {

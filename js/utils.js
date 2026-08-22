@@ -97,6 +97,16 @@ const Utils = {
       .replace(/'/g, '&#039;');
   },
 
+  escapeJs(str) {
+    if (!str && str !== 0) return '';
+    return String(str)
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '&quot;')
+      .replace(/\n/g, ' ')
+      .replace(/\r/g, '');
+  },
+
   formatNumber(value) {
     if (value === null || value === undefined || value === '' || isNaN(value)) return '';
     const num = typeof value === 'string' ? parseFloat(value.replace(/,/g, '')) : value;

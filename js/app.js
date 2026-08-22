@@ -423,10 +423,10 @@ const App = {
                   </div>
 
                   <div class="flex justify-between items-center mt-sm pt-xs" style="border-top: 1px solid var(--border-subtle);">
-                    <button class="btn btn-primary btn-xs flex items-center gap-xs" onclick="App.goToLineItemFromNotification('${r.yearId}', '${r.entityId}', '${r.deptId}', '${r.ledgerCode}', '${Utils.escapeHtml(r.glDescription)}')">
+                    <button class="btn btn-primary btn-xs flex items-center gap-xs" onclick="App.goToLineItemFromNotification('${r.yearId}', '${r.entityId}', '${r.deptId}', '${r.ledgerCode}', '${Utils.escapeJs(r.glDescription)}')">
                       <span>🎯 Go to Line Item</span>
                     </button>
-                    <button class="btn btn-success btn-xs flex items-center gap-xs" onclick="App.resolveNotificationPrompt('${r.id}', '${r.yearId}', '${r.entityId}', '${r.deptId}', '${r.ledgerCode}', '${Utils.escapeHtml(r.glDescription)}')">
+                    <button class="btn btn-success btn-xs flex items-center gap-xs" onclick="App.resolveNotificationPrompt('${r.id}', '${r.yearId}', '${r.entityId}', '${r.deptId}', '${r.ledgerCode}', '${Utils.escapeJs(r.glDescription)}')">
                       <span>✓ Mark as Done</span>
                     </button>
                   </div>
@@ -471,10 +471,10 @@ const App = {
                 </div>
 
                 <div class="flex justify-between items-center mt-sm pt-xs" style="border-top: 1px solid var(--border-subtle);">
-                  <button class="btn btn-secondary btn-xs flex items-center gap-xs" onclick="App.goToLineItemFromNotification('${r.yearId}', '${r.entityId}', '${r.deptId}', '${r.ledgerCode}', '${Utils.escapeHtml(r.glDescription)}')">
+                  <button class="btn btn-secondary btn-xs flex items-center gap-xs" onclick="App.goToLineItemFromNotification('${r.yearId}', '${r.entityId}', '${r.deptId}', '${r.ledgerCode}', '${Utils.escapeJs(r.glDescription)}')">
                     <span>🔍 View Line Item</span>
                   </button>
-                  <button class="btn btn-ghost btn-xs text-tertiary" onclick="App.reopenNotification('${r.id}', '${r.yearId}', '${r.entityId}', '${r.deptId}', '${r.ledgerCode}', '${Utils.escapeHtml(r.glDescription)}')">
+                  <button class="btn btn-ghost btn-xs text-tertiary" onclick="App.reopenNotification('${r.id}', '${r.yearId}', '${r.entityId}', '${r.deptId}', '${r.ledgerCode}', '${Utils.escapeJs(r.glDescription)}')">
                     <span>↺ Reopen Request</span>
                   </button>
                 </div>
