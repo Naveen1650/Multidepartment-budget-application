@@ -248,6 +248,15 @@ const ConfigModule = {
   },
 
   // ─── 3. Budget Year Setup ───
+  BUDGET_STATUS_OPTIONS: [
+    { value: 'draft', label: 'Draft (In Progress)', icon: '📝', badgeClass: 'badge-subtle', dotClass: 'draft' },
+    { value: 'active', label: 'Active (Open for Budgeting)', icon: '🟢', badgeClass: 'badge-emerald', dotClass: 'active' },
+    { value: 'under-review', label: 'Under Review (Dept Submissions)', icon: '🟡', badgeClass: 'badge-cyan', dotClass: 'active' },
+    { value: 'finance-approved', label: 'Finance Approved (Pending CFO)', icon: '🔵', badgeClass: 'badge-primary', dotClass: 'active' },
+    { value: 'finalized-locked', label: 'Finalized & Locked (CFO Approved)', icon: '🔒', badgeClass: 'badge-purple', dotClass: 'draft' },
+    { value: 'closed', label: 'Closed / Archived', icon: '📁', badgeClass: 'badge-danger', dotClass: 'draft' }
+  ],
+
   async renderBudgetYear(container) {
     const budgetYears = await db.getAll(STORES.budgetYears);
     const entities = await db.getAll(STORES.entities);
@@ -263,7 +272,7 @@ const ConfigModule = {
         <div class="card-header">
           <div>
             <div class="card-title">Budget Cycles (${budgetYears.length})</div>
-            <div class="card-subtitle">Budgets run on Calendar Year (Jan–Dec)</div>
+            <div class="card-subtitle">Budgets run on Calendar Year (Jan–Dec) &bull; Select a workflow status to update immediately</div>
           </div>
           <button class="btn btn-primary" id="addYearBtn">+ Create Budget Year</button>
         </div>
@@ -271,56 +280,187 @@ const ConfigModule = {
         <div class="config-list">
           ${budgetYears.length === 0 ? `
             <div class="empty-state p-md">
-              <p>No budget year configured yet. Click "+ Create Budget Year" to initialize CY-2026.</p>
+              <p>No budget year configured yet. Click "+ Create Budget Year" to initialize a budget cycle.</p>
             </div>
-          ` : budgetYears.map(y => `
+          ` : budgetYears.map(y => {
+            const currentStatus = y.status || 'draft';
+            const statusOpt = this.BUDGET_STATUS_OPTIONS.find(o => o.value === currentStatus) || this.BUDGET_STATUS_OPTIONS[0];
+
+            return `
             <div class="config-list-item">
               <div class="item-info">
-                <span class="status-dot ${y.status === 'active' ? 'active' : 'draft'}"></span>
+                <span class="status-dot ${statusOpt.dotClass}"></span>
                 <div>
-                  <div class="item-name">Calendar Year ${y.year} <span class="badge badge-${y.status === 'active' ? 'emerald' : 'amber'}">${y.status}</span></div>
-                  <div class="item-detail">Prior Actuals Available: Jan–${y.actualsThroughMonth || 'Oct'} | Conversion Rates set for 5 currencies</div>
+                  <div class="item-name flex items-center gap-xs flex-wrap">
+                    <span style="font-weight: 700;">Calendar Year ${y.year}</span>
+                    <select class="form-select form-select-sm year-status-selector" data-year-id="${y.id}" style="font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 12px; cursor: pointer; border: 1.5px solid var(--border-default); background: var(--bg-surface); color: var(--text-primary);" title="Change Budget Status">
+                      ${this.BUDGET_STATUS_OPTIONS.map(opt => `
+                        <option value="${opt.value}" ${currentStatus === opt.value ? 'selected' : ''}>
+                          ${opt.icon} ${opt.label}
+                        </option>
+                      `).join('')}
+                    </select>
+                  </div>
+                  <div class="item-detail">Prior Reference Base: CY-${y.priorYear || (y.year - 1)} &bull; Actuals Available: Jan–${y.actualsThroughMonth || 'Oct'} &bull; Conversion Rates configured for 5 currencies</div>
                 </div>
               </div>
               <div class="item-actions">
+                <button class="btn btn-secondary btn-sm" onclick="ConfigModule.showEditBudgetYearModal('${y.id}')">✏️ Edit Year</button>
                 <button class="btn btn-ghost btn-sm" onclick="ConfigModule.configureYearRates('${y.id}')">💱 Rates</button>
                 <button class="btn btn-ghost btn-sm" onclick="ConfigModule.configureYearDepts('${y.id}')">🏛️ Dept Activation</button>
                 <button class="btn btn-ghost btn-sm" onclick="ConfigModule.managePriorPeriodCosts('${y.id}')">📊 Prior Period Costs</button>
                 <button class="btn btn-danger btn-sm" onclick="ConfigModule.deleteBudgetYear('${y.id}')">🗑️ Delete</button>
               </div>
             </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>
       </div>
     `;
 
     Utils.$('#addYearBtn').addEventListener('click', () => this.showBudgetYearForm());
+
+    container.querySelectorAll('.year-status-selector').forEach(sel => {
+      sel.addEventListener('change', async (e) => {
+        const yId = e.target.dataset.yearId;
+        const newStatus = e.target.value;
+        await this.changeBudgetYearStatus(yId, newStatus);
+      });
+    });
+  },
+
+  async changeBudgetYearStatus(yearId, newStatus) {
+    const year = await db.get(STORES.budgetYears, yearId);
+    if (!year) return;
+
+    const oldStatus = year.status;
+    year.status = newStatus;
+    await db.put(STORES.budgetYears, year);
+
+    // Sync with budget lock status
+    if (newStatus === 'finalized-locked') {
+      await db.setLockStatus(yearId, 'finalized-locked', {
+        unlockedNotes: '',
+        status: 'finalized-locked'
+      });
+    } else if (oldStatus === 'finalized-locked' && newStatus !== 'finalized-locked') {
+      await db.setLockStatus(yearId, newStatus, {
+        status: newStatus
+      });
+    } else {
+      await db.setLockStatus(yearId, newStatus, {
+        status: newStatus
+      });
+    }
+
+    if (typeof Auth !== 'undefined') {
+      await Auth.refreshLockStatus(yearId);
+    }
+
+    const opt = this.BUDGET_STATUS_OPTIONS.find(o => o.value === newStatus);
+    Utils.showToast(`Calendar Year ${year.year} status updated to "${opt?.label || newStatus}"`, 'success');
+    
+    if (typeof App !== 'undefined') {
+      App.populateGlobalSelectors();
+      App.renderCurrentPage();
+    }
+  },
+
+  async showEditBudgetYearModal(yearId) {
+    const year = await db.get(STORES.budgetYears, yearId);
+    if (!year) return;
+
+    const currentStatus = year.status || 'draft';
+
+    const content = `
+      <form id="editYearForm">
+        <div class="form-row mb-sm">
+          <div class="form-group">
+            <label class="form-label font-bold">Calendar Year (CY to Budget)</label>
+            <input type="number" class="form-input" id="editYearNum" value="${year.year}" disabled style="background: var(--bg-secondary); cursor: not-allowed;">
+          </div>
+          <div class="form-group">
+            <label class="form-label font-bold">Prior Reference Year (Historical Base)</label>
+            <input type="number" class="form-input" id="editPriorYearNum" value="${year.priorYear || (year.year - 1)}" required>
+          </div>
+        </div>
+
+        <div class="form-group mb-sm">
+          <label class="form-label font-bold">Workflow Status</label>
+          <select class="form-select" id="editYearStatus">
+            ${this.BUDGET_STATUS_OPTIONS.map(opt => `
+              <option value="${opt.value}" ${currentStatus === opt.value ? 'selected' : ''}>
+                ${opt.icon} ${opt.label}
+              </option>
+            `).join('')}
+          </select>
+          <div class="text-tertiary mt-xs" style="font-size: 11px;">
+            Choose from Draft, Active (Open), Under Review, Finance Approved, Finalized & Locked (CFO), or Closed.
+          </div>
+        </div>
+
+        <div class="form-group mb-sm">
+          <label class="form-label font-bold">Prior-Year Actuals Available Through Month</label>
+          <select class="form-select" id="editActualsThroughMonth">
+            <option value="Sep" ${year.actualsThroughMonth === 'Sep' ? 'selected' : ''}>September (Jan-Sep)</option>
+            <option value="Oct" ${(!year.actualsThroughMonth || year.actualsThroughMonth === 'Oct') ? 'selected' : ''}>October (Jan-Oct)</option>
+            <option value="Nov" ${year.actualsThroughMonth === 'Nov' ? 'selected' : ''}>November (Jan-Nov)</option>
+            <option value="Dec" ${year.actualsThroughMonth === 'Dec' ? 'selected' : ''}>Full Year (Jan-Dec)</option>
+          </select>
+        </div>
+      </form>
+    `;
+
+    Utils.showModal(`✏️ Edit Budget Year — CY ${year.year}`, content, {
+      footer: (footer, close) => {
+        footer.appendChild(Utils.createElement('button', { className: 'btn btn-ghost', textContent: 'Cancel', onClick: close }));
+        footer.appendChild(Utils.createElement('button', {
+          className: 'btn btn-primary',
+          textContent: 'Save Changes',
+          onClick: async () => {
+            const priorYear = parseInt(Utils.$('#editPriorYearNum').value) || (year.year - 1);
+            const status = Utils.$('#editYearStatus').value;
+            const actualsMonth = Utils.$('#editActualsThroughMonth').value;
+
+            year.priorYear = priorYear;
+            year.status = status;
+            year.actualsThroughMonth = actualsMonth;
+
+            await db.put(STORES.budgetYears, year);
+            await this.changeBudgetYearStatus(yearId, status);
+            close();
+          }
+        }));
+      }
+    });
   },
 
   showBudgetYearForm() {
     const currentYear = Utils.getCurrentYear();
     const content = `
       <form id="yearForm">
-        <div class="form-row">
+        <div class="form-row mb-sm">
           <div class="form-group">
-            <label class="form-label">Calendar Year (CY to Budget)</label>
+            <label class="form-label font-bold">Calendar Year (CY to Budget)</label>
             <input type="number" class="form-input" id="yearNum" value="${currentYear + 1}" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Prior Reference Year (Historical Base)</label>
+            <label class="form-label font-bold">Prior Reference Year (Historical Base)</label>
             <input type="number" class="form-input" id="priorYearNum" value="${currentYear}" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Status</label>
+            <label class="form-label font-bold">Workflow Status</label>
             <select class="form-select" id="yearStatus">
-              <option value="active">Active (Open for Budgeting)</option>
-              <option value="draft">Draft</option>
-              <option value="closed">Closed</option>
+              ${this.BUDGET_STATUS_OPTIONS.map(opt => `
+                <option value="${opt.value}" ${opt.value === 'active' ? 'selected' : ''}>
+                  ${opt.icon} ${opt.label}
+                </option>
+              `).join('')}
             </select>
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Prior-Year Actuals Available Through Month</label>
+        <div class="form-group mb-sm">
+          <label class="form-label font-bold">Prior-Year Actuals Available Through Month</label>
           <select class="form-select" id="actualsThroughMonth">
             <option value="Sep">September (Jan-Sep)</option>
             <option value="Oct" selected>October (Jan-Oct)</option>
@@ -330,7 +470,7 @@ const ConfigModule = {
         </div>
 
         <h4 class="mt-md mb-md">Approved Currency Exchange Rates to USD (Fixed for the Year)</h4>
-        <div class="form-row">
+        <div class="form-row mb-sm">
           <div class="form-group">
             <label class="form-label">1 USD = INR (India)</label>
             <input type="number" step="0.01" class="form-input" id="rateINR" value="83.50">

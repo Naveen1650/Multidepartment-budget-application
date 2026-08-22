@@ -94,7 +94,11 @@ const App = {
       if (!this.selectedYear) {
         this.selectedYear = years[0].id;
       }
-      yearSelect.innerHTML = years.map(y => `<option value="${y.id}" ${String(y.id) === String(this.selectedYear) ? 'selected' : ''}>CY-${y.year}</option>`).join('');
+      yearSelect.innerHTML = years.map(y => {
+        const statusIcons = { 'draft': '📝', 'active': '🟢', 'under-review': '🟡', 'finance-approved': '🔵', 'finalized-locked': '🔒', 'closed': '📁' };
+        const icon = statusIcons[y.status] || '🟢';
+        return `<option value="${y.id}" ${String(y.id) === String(this.selectedYear) ? 'selected' : ''}>${icon} CY-${y.year}</option>`;
+      }).join('');
       yearSelect.value = this.selectedYear;
     }
 
