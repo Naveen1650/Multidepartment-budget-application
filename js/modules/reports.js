@@ -1281,7 +1281,7 @@ const ReportsModule = {
                   <th style="min-width: 130px;">Basis of Expense</th>
                   <th class="num font-bold total-toggle-th month-group" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${budgetYear} (${entity.currency} & USD) <span class="months-toggle-arrow">&#9664;</span></th>
                   ${SEED_DATA.months.map(m => `<th class="num month-group">${m}-${budgetYear}</th>`).join('')}
-                  <th class="num font-bold month-group" style="min-width: 130px; background: rgba(59, 130, 246, 0.08); color: var(--accent-primary);">Prior Period Cost (${entity.currency})</th>
+                  <th class="num font-bold month-group" style="min-width: 130px; background: #e2e8f0; color: var(--accent-primary);">Prior Period Cost (${entity.currency})</th>
                   <th style="min-width: 180px;">Remarks & Tasks</th>
                 </tr>
               </thead>

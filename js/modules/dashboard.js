@@ -218,7 +218,6 @@ const DashboardModule = {
                       <a href="javascript:void(0)" onclick="DashboardModule.goToDeptBudget('${m.entity.id}', '${d.dept.id}')" style="color: var(--accent-primary); font-weight: 600; text-decoration: none;" title="Open Department Budget">
                         ${d.deptName} ↗
                       </a>
-                      <span class="text-tertiary" style="font-size: 11px;">(${d.dept.name})</span>
                     </td>
                     <td><code>${m.entity.currency}</code></td>
                     <td class="num">${m.rate}</td>

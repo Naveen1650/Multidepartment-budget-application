@@ -3949,7 +3949,7 @@ const BudgetEntryModule = {
               <th style="width: 160px; max-width: 160px; min-width: 120px;">Basis of Expense</th>
               <th class="num month-group budget-year total-toggle-th" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${budgetYear} <span class="months-toggle-arrow">&#9664;</span></th>
               ${SEED_DATA.months.map(m => `<th class="num month-group budget-year">${m}-${budgetYear}</th>`).join('')}
-              <th class="num month-group" style="min-width: 130px; background: rgba(59, 130, 246, 0.08); color: var(--accent-primary);">Prior Period Cost (${entity.currency})</th>
+              <th class="num month-group" style="min-width: 130px; background: #e2e8f0; color: var(--accent-primary);">Prior Period Cost (${entity.currency})</th>
               <th style="width: 220px; max-width: 220px; min-width: 160px;">Remarks & Tasks</th>
             </tr>
           </thead>

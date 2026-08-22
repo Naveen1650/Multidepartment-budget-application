@@ -495,7 +495,7 @@ const ConfigModule = {
         return `
           <label class="form-checkbox p-sm" style="border-bottom: 1px solid var(--border-subtle);">
             <input type="checkbox" data-key="${key}" ${isChecked ? 'checked' : ''}>
-            <span>${displayName} <span class="text-tertiary">(${d.name})</span></span>
+            <span>${displayName}</span>
           </label>
         `;
       }).join('');
@@ -618,24 +618,24 @@ const ConfigModule = {
       </div>
 
       <!-- Summary Bar -->
-      <div class="flex justify-between items-center px-sm py-xs mb-sm" style="background: rgba(59, 130, 246, 0.05); border-radius: var(--radius-sm); border: 1px dashed rgba(59, 130, 246, 0.3);">
+      <div class="flex justify-between items-center px-sm py-xs mb-sm" style="background: #f8fafc; border-radius: var(--radius-sm); border: 1px solid #cbd5e1;">
         <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary);" id="pyaFilteredSummary">Showing records...</div>
         <div style="font-size: 13px; font-weight: 700; color: var(--accent-primary);" id="pyaFilteredTotal">Total: 0</div>
       </div>
 
       <!-- Editable Table Container -->
-      <div class="table-container" style="max-height: 380px; overflow-y: auto;">
+      <div class="table-container" style="max-height: 380px; overflow-y: auto; background: #ffffff;">
         <table class="data-table">
           <thead>
             <tr>
-              <th style="min-width: 80px;">Entity</th>
-              <th style="min-width: 120px;">Department</th>
-              <th>Parent Account</th>
-              <th>GL Description</th>
-              <th>Ledger Code</th>
-              <th class="num" style="min-width: 150px; background: rgba(59, 130, 246, 0.08); color: var(--accent-primary);">Prior Period Cost</th>
-              <th style="min-width: 180px;">Remarks</th>
-              <th style="width: 50px; text-align: center;">Del</th>
+              <th style="min-width: 80px; background: #e2e8f0;">Entity</th>
+              <th style="min-width: 120px; background: #e2e8f0;">Department</th>
+              <th style="background: #e2e8f0;">Parent Account</th>
+              <th style="background: #e2e8f0;">GL Description</th>
+              <th style="background: #e2e8f0;">Ledger Code</th>
+              <th class="num" style="min-width: 150px; background: #e2e8f0; color: var(--accent-primary); font-weight: 700;">Prior Period Cost</th>
+              <th style="min-width: 180px; background: #e2e8f0;">Remarks</th>
+              <th style="width: 50px; text-align: center; background: #e2e8f0;">Del</th>
             </tr>
           </thead>
           <tbody id="priorCostTableBody"></tbody>
@@ -659,7 +659,7 @@ const ConfigModule = {
       departments.forEach(d => {
         const shortCode = selectedEnt ? Utils.getDeptShortCode(d, selectedEnt.deptPrefix) : (d.codeTemplate || d.id.toUpperCase());
         const isSel = (selectedDeptVal && d.id === selectedDeptVal) || (!selectedDeptVal && activeDeptId && d.id === activeDeptId);
-        html += `<option value="${d.id}" ${isSel ? 'selected' : ''}>${shortCode} — ${d.name}</option>`;
+        html += `<option value="${d.id}" ${isSel ? 'selected' : ''}>${shortCode}</option>`;
       });
       deptFilterEl.innerHTML = html;
     };
@@ -894,6 +894,7 @@ const ConfigModule = {
 
     const initialEntId = defaultEntityId || entities[0]?.id || '';
     const initialDeptId = defaultDeptId || departments[0]?.id || '';
+    const initialEnt = entities.find(e => e.id === initialEntId) || entities[0];
 
     const content = `
       <form id="addPyaForm">
@@ -907,7 +908,10 @@ const ConfigModule = {
           <div class="form-group">
             <label class="form-label font-bold">Department (Short Code)</label>
             <select class="form-select" id="addPyaDeptSelect">
-              ${departments.map(d => `<option value="${d.id}" ${d.id === initialDeptId ? 'selected' : ''}>${d.name}</option>`).join('')}
+              ${departments.map(d => {
+                const sc = initialEnt ? Utils.getDeptShortCode(d, initialEnt.deptPrefix) : (d.codeTemplate || d.id.toUpperCase());
+                return `<option value="${d.id}" ${d.id === initialDeptId ? 'selected' : ''}>${sc}</option>`;
+              }).join('')}
             </select>
           </div>
         </div>
@@ -6142,7 +6146,7 @@ const ConfigModule = {
               <div id="userDeptCheckboxes" class="p-xs" style="max-height: 120px; overflow-y: auto; background: rgba(0,0,0,0.02); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); ${userDepts === 'all' ? 'display: none;' : ''}">
                 ${departments.map(d => {
                   const isChecked = Array.isArray(userDepts) && userDepts.includes(d.id);
-                  return `<label style="display: block; font-size: 11.5px; margin-bottom: 3px; cursor: pointer;"><input type="checkbox" class="user-dept-cb" value="${d.id}" ${isChecked ? 'checked' : ''}> <code>${d.id.toUpperCase()}</code> — ${d.name}</label>`;
+                  return `<label style="display: block; font-size: 11.5px; margin-bottom: 3px; cursor: pointer;"><input type="checkbox" class="user-dept-cb" value="${d.id}" ${isChecked ? 'checked' : ''}> <code>${d.codeTemplate ? d.codeTemplate.replace('{CC}', 'IN') : d.id.toUpperCase()}</code></label>`;
                 }).join('')}
               </div>
             </div>
