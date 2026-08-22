@@ -294,11 +294,33 @@ const Utils = {
 
   // ─── Modal Helpers ───
 
-  showModal(title, content, options = {}) {
-    const overlay = this.createElement('div', { className: 'modal-overlay active' });
-    const sizeClass = options.size ? `modal-${options.size}` : '';
+  showModal(title, content, options = {}, sizeParam = '') {
+    let buttons = null;
+    let sizeClass = '';
+    let footerOption = null;
 
-    const modal = this.createElement('div', { className: `modal ${sizeClass}` }, [
+    if (Array.isArray(options)) {
+      buttons = options;
+      if (sizeParam) {
+        sizeClass = sizeParam.startsWith('modal-') ? sizeParam : `modal-${sizeParam}`;
+      }
+    } else if (typeof options === 'object' && options !== null) {
+      if (options.size) {
+        sizeClass = options.size.startsWith('modal-') ? options.size : `modal-${options.size}`;
+      }
+      footerOption = options.footer;
+    } else if (typeof options === 'string') {
+      sizeClass = options.startsWith('modal-') ? options : `modal-${options}`;
+    }
+
+    // Dynamic stacking z-index for nested modals
+    const existingOverlays = document.querySelectorAll('.modal-overlay');
+    const zIndex = 1000 + (existingOverlays.length * 20);
+
+    const overlay = this.createElement('div', { className: 'modal-overlay active' });
+    overlay.style.zIndex = zIndex;
+
+    const modal = this.createElement('div', { className: `modal ${sizeClass}`.trim() }, [
       this.createElement('div', { className: 'modal-header' }, [
         this.createElement('h3', { textContent: title }),
         this.createElement('button', {
@@ -310,13 +332,15 @@ const Utils = {
       this.createElement('div', { className: 'modal-body' })
     ]);
 
-    if (options.modalWidth) {
-      modal.style.width = options.modalWidth;
-      modal.style.maxWidth = options.modalWidth;
-    }
-    if (options.modalHeight) {
-      modal.style.height = options.modalHeight;
-      modal.style.maxHeight = options.modalHeight;
+    if (options && typeof options === 'object' && !Array.isArray(options)) {
+      if (options.modalWidth) {
+        modal.style.width = options.modalWidth;
+        modal.style.maxWidth = options.modalWidth;
+      }
+      if (options.modalHeight) {
+        modal.style.height = options.modalHeight;
+        modal.style.maxHeight = options.modalHeight;
+      }
     }
 
     const body = modal.querySelector('.modal-body');
@@ -326,20 +350,39 @@ const Utils = {
       body.appendChild(content);
     }
 
-    if (options.footer) {
+    if (buttons && buttons.length > 0) {
       const footer = this.createElement('div', { className: 'modal-footer' });
-      if (typeof options.footer === 'function') {
-        options.footer(footer, () => overlay.remove());
+      buttons.forEach(b => {
+        const btn = this.createElement('button', {
+          className: `btn ${b.class || b.className || 'btn-secondary'}`,
+          textContent: b.label || b.text || 'Button'
+        });
+        if (b.onclick || b.onClick) {
+          btn.addEventListener('click', (e) => {
+            const handler = b.onclick || b.onClick;
+            handler(e, () => overlay.remove());
+          });
+        }
+        footer.appendChild(btn);
+      });
+      modal.appendChild(footer);
+    } else if (footerOption) {
+      const footer = this.createElement('div', { className: 'modal-footer' });
+      if (typeof footerOption === 'function') {
+        footerOption(footer, () => overlay.remove());
       } else {
-        footer.innerHTML = options.footer;
+        footer.innerHTML = footerOption;
       }
       modal.appendChild(footer);
     }
 
-    // Escape key listener to close modal
+    // Escape key listener to close only topmost overlay
     const escListener = (e) => {
       if (e.key === 'Escape' || e.keyCode === 27) {
-        overlay.remove();
+        const overlays = document.querySelectorAll('.modal-overlay');
+        if (overlays.length > 0 && overlays[overlays.length - 1] === overlay) {
+          overlay.remove();
+        }
       }
     };
     document.addEventListener('keydown', escListener);
@@ -359,9 +402,15 @@ const Utils = {
     return overlay;
   },
 
-  closeModal() {
+  closeModal(all = false) {
     const overlays = document.querySelectorAll('.modal-overlay.active, .modal-overlay');
-    overlays.forEach(o => o.remove());
+    if (overlays.length === 0) return;
+    if (all) {
+      overlays.forEach(o => o.remove());
+    } else {
+      // Remove only the topmost active modal
+      overlays[overlays.length - 1].remove();
+    }
   },
 
   // ─── Confirm Dialog ───
