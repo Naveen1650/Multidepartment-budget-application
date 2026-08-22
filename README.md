@@ -29,8 +29,6 @@ A centralized, bottom-up financial budgeting and multi-dimensional analytics pla
   - Single-dimension clean sheets (`By Department`, `By Donor`, `By Location`, `By Activity`, `By Condition Area`).
   - **`5D Consolidated Report` / `5D Master Matrix`** flat dataset.
   - Full bottom-up input detail sheets for all cost categories.
-- **Presentation Deck**:
-  - Includes a 13-slide PowerPoint file (`Noora_Health_Budget_Platform_Demo_Deck.pptx`) and interactive HTML presentation (`presentation_deck.html`).
 
 ---
 
@@ -57,8 +55,6 @@ This static web application can be deployed instantly to:
 ```text
 ├── index.html                  # Main application entry point
 ├── styles.css                  # Core design system & theme tokens
-├── presentation_deck.html      # Interactive team demo presentation
-├── Noora_Health_Budget_Platform_Demo_Deck.pptx # 16:9 PPT presentation
 ├── data/
 │   └── seed-data.js            # Initial entity, department & COA seed data
 ├── js/
