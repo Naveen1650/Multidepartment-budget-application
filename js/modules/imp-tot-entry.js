@@ -1078,10 +1078,15 @@ const ImpTotModule = {
   // Save the full Annual Batch Matrix into IndexedDB and sync to NonPayrollCost
   async saveAnnualMatrix() {
     try {
+      const yearId = this._yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026');
+      if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
+        Utils.showToast(`🔒 Matrix saving is disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses permit modifications.`, 'warning');
+        return;
+      }
+
       const activeLocation = this.activeLocationFilter;
       const entity = this._entity;
       const dept = this._dept;
-      const yearId = this._yearId;
       const budgetYear = this._budgetYear;
 
       const conditionArea = document.getElementById('matrixConditionSelect')?.value || 'Maternal & Newborn Care';
@@ -2563,6 +2568,12 @@ const ImpTotModule = {
   },
 
   async deleteEvent(eventId) {
+    const yearId = this._yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026');
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
+      Utils.showToast(`🔒 Deletions are disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses permit modifications.`, 'warning');
+      return;
+    }
+
     if (!confirm('Are you sure you want to delete this training event? It will also remove the linked budget lines from Other Costs.')) {
       return;
     }

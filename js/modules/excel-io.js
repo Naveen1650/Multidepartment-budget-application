@@ -276,6 +276,12 @@ const ExcelIOModule = {
   },
 
   showSalaryUploadModal(defaultEntityId = null, defaultDeptId = null, subCategory = 'salaries-wages') {
+    const yearId = typeof App !== 'undefined' ? App.selectedYear : '2026';
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
+      Utils.showToast(`🔒 Bulk uploads are disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses allow uploads.`, 'warning');
+      return;
+    }
+
     const titles = {
       'salaries-wages': { title: '💼 Bulk Upload Salaries & Wages', label: 'Salaries & Wages' },
       'other-staff-expenses': { title: '📚 Bulk Upload Other Staff Expenses', label: 'Other Staff Expenses' },
@@ -666,6 +672,12 @@ const ExcelIOModule = {
   },
 
   showEhaUploadModal(defaultEntityId = null, defaultDeptId = null) {
+    const yearId = typeof App !== 'undefined' ? App.selectedYear : '2026';
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
+      Utils.showToast(`🔒 Bulk uploads are disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses allow uploads.`, 'warning');
+      return;
+    }
+
     const content = `
       <form id="ehaUploadModalForm">
         <p class="mb-md text-secondary">Upload an Excel file (.xlsx, .xls) or CSV containing External Hired Assistance (EHA) consultant details, roles, monthly payments, and 5D tags.</p>
@@ -959,6 +971,12 @@ const ExcelIOModule = {
   },
 
   showFixedAssetUploadModal(defaultEntityId = null, defaultDeptId = null) {
+    const yearId = typeof App !== 'undefined' ? App.selectedYear : '2026';
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
+      Utils.showToast(`🔒 Bulk uploads are disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses allow uploads.`, 'warning');
+      return;
+    }
+
     const content = `
       <form id="faUploadModalForm">
         <p class="mb-md text-secondary">Upload an Excel file (.xlsx, .xls) or CSV containing staff fixed asset equipment requests (Laptop/Printer, Model, monthly purchase cost).</p>
@@ -1269,6 +1287,12 @@ const ExcelIOModule = {
   },
 
   showNonPayrollUploadModal(defaultEntityId = null, defaultDeptId = null) {
+    const yearId = typeof App !== 'undefined' ? App.selectedYear : '2026';
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
+      Utils.showToast(`🔒 Bulk uploads are disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses allow uploads.`, 'warning');
+      return;
+    }
+
     const content = `
       <form id="npUploadModalForm">
         <p class="mb-md text-secondary">Upload an Excel file (.xlsx, .xls) or CSV containing non-payroll operational expenses (Travel, Supplies, Communication, Office Expenses, Professional Fees, Basis of Calculation, 5D tags).</p>
@@ -1870,6 +1894,12 @@ const ExcelIOModule = {
   },
 
   showTotalCostUploadModal(defaultEntityId = null, defaultDeptId = null) {
+    const yearId = typeof App !== 'undefined' ? App.selectedYear : '2026';
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
+      Utils.showToast(`🔒 Bulk uploads are disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses allow uploads.`, 'warning');
+      return;
+    }
+
     const content = `
       <form id="tcUploadModalForm">
         <p class="mb-md text-secondary">Upload an Excel file (.xlsx, .xls) or CSV containing total department cost line items, accounts, monthly values, and 5D tags.</p>

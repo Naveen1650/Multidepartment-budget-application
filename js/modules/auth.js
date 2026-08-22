@@ -291,16 +291,40 @@ const Auth = {
     }
   },
 
+  getYearStatus(yearId) {
+    const yId = String(yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026'));
+    return this._lockStatusCache[yId] || 'active';
+  },
+
+  getYearStatusLabel(yearId) {
+    const status = this.getYearStatus(yearId);
+    const map = {
+      'draft': 'Draft (In Progress)',
+      'active': 'Active (Open for Budgeting)',
+      'under-review': 'Under Review (Dept Submissions)',
+      'finance-approved': 'Finance Approved (Pending CFO)',
+      'finalized-locked': 'Finalized & Locked (CFO Approved)',
+      'closed': 'Closed / Archived'
+    };
+    return map[status] || status;
+  },
+
+  isYearEditable(yearId) {
+    const status = this.getYearStatus(yearId);
+    // User Directive: When status is active or draft, only then additions/edits are permitted!
+    return status === 'draft' || status === 'active';
+  },
+
   isYearLocked(yearId) {
-    const status = this._lockStatusCache[String(yearId)];
-    return status === 'finalized-locked';
+    // When status changes to anything else (under-review, finance-approved, finalized-locked, closed), additions are NOT permitted!
+    return !this.isYearEditable(yearId);
   },
 
   _isLockedOperation(operation, context) {
     const yearId = context && context.yearId ? context.yearId : (typeof App !== 'undefined' ? App.selectedYear : null);
     if (!yearId) return false;
     if (this.isYearLocked(yearId)) {
-      const writeOps = ['add', 'edit', 'delete', 'approve', 'finalize'];
+      const writeOps = ['add', 'edit', 'delete', 'approve', 'finalize', 'upload', 'import', 'save'];
       return writeOps.includes(operation);
     }
     return false;
@@ -453,20 +477,25 @@ const Auth = {
     const canDelete = this.hasPermission('delete', context);
 
     if (!canAdd) {
-      container.querySelectorAll('.btn-add-row, button[onclick*="addRow"]').forEach(b => {
+      container.querySelectorAll('.btn-add-row, button[onclick*="addRow"], button[onclick*="autoPopulate"], button[onclick*="showExpenseInputWizard"], button[onclick*="showExpenseLauncherModal"], button[onclick*="showTravelPackageWizard"], button[onclick*="saveAnnualMatrix"], #btnEmptyNewTrip').forEach(b => {
         b.style.display = 'none';
       });
     }
     if (!canEdit) {
       container.querySelectorAll('input:not([readonly]), select:not([disabled])').forEach(el => {
-        if (!el.classList.contains('filter-control') && !el.closest('.toolbar-selectors')) {
+        if (!el.classList.contains('filter-control') && !el.closest('.toolbar-selectors') && !el.classList.contains('year-status-selector')) {
           el.setAttribute('disabled', 'true');
           el.style.pointerEvents = 'none';
+          el.style.cursor = 'not-allowed';
+          el.style.opacity = '0.85';
         }
+      });
+      container.querySelectorAll('button[onclick*="editExpenseItem"], button[onclick*="editTravelPackage"]').forEach(b => {
+        b.style.display = 'none';
       });
     }
     if (!canDelete) {
-      container.querySelectorAll('.btn-delete-row, button[onclick*="deleteRow"]').forEach(b => {
+      container.querySelectorAll('.btn-delete-row, button[onclick*="deleteRow"], button[onclick*="deleteExpenseItem"], button[onclick*="deleteTravelPackage"], button[onclick*="deleteEvent"]').forEach(b => {
         b.style.display = 'none';
       });
     }

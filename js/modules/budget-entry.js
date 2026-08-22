@@ -122,6 +122,9 @@ const BudgetEntryModule = {
       }
     }
 
+    const canEditYear = typeof Auth === 'undefined' || Auth.isYearEditable(yearId);
+    const yearStatusLabel = typeof Auth !== 'undefined' ? Auth.getYearStatusLabel(yearId) : 'Active';
+
     container.innerHTML = `
       <div class="page-header flex justify-between items-center">
         <div>
@@ -132,6 +135,23 @@ const BudgetEntryModule = {
           <button class="btn btn-secondary btn-sm" onclick="BudgetEntryModule.showDeptAuditTrail(BudgetEntryModule.currentEntityId, BudgetEntryModule.currentDeptId)" title="View tamper-evident history of entries, modifications, and deletions for this department">📜 Dept Audit History</button>
         </div>
       </div>
+
+      ${!canEditYear ? `
+        <div class="card p-sm mb-md flex items-center justify-between" style="background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: var(--radius-md);">
+          <div class="flex items-center gap-sm">
+            <span style="font-size: 1.3rem;">🔒</span>
+            <div>
+              <div style="font-weight: 700; color: var(--text-primary); font-size: 13px;">
+                Budget Year CY-${budgetYear} is currently in <strong>"${yearStatusLabel}"</strong> mode (Locked / Read-Only)
+              </div>
+              <div class="text-secondary" style="font-size: 11.5px;">
+                Additions, row insertions, edits, and bulk uploads are disabled. Only budget cycles with <strong>Active (Open)</strong> or <strong>Draft</strong> status permit additions.
+              </div>
+            </div>
+          </div>
+          <span class="badge badge-amber font-bold" style="padding: 5px 10px; font-size: 11px;">🔒 ${yearStatusLabel}</span>
+        </div>
+      ` : ''}
 
       <!-- Toolbar Selection -->
       <div class="budget-toolbar">
@@ -228,25 +248,25 @@ const BudgetEntryModule = {
       });
     });
 
-    // Personnel Sub-Tabs
+    // Personnel Sub-tabs
     container.querySelectorAll('#personnelSubTabs .sub-tab').forEach(st => {
       st.addEventListener('click', () => {
-        container.querySelectorAll('#personnelSubTabs .sub-tab').forEach(t => t.classList.remove('active'));
+        container.querySelectorAll('#personnelSubTabs .sub-tab').forEach(tab => tab.classList.remove('active'));
         st.classList.add('active');
         this.activePersonnelSubTab = st.dataset.subtab;
         this.updateToolbarActions();
-        this.renderGrid(this._entity || selectedEntity, this._dept || selectedDept, budgetYear, yearObj.actualsThroughMonth || 'Oct');
+        this.renderGrid(selectedEntity, selectedDept, budgetYear, yearObj.actualsThroughMonth || 'Oct');
       });
     });
 
-    // Other Costs Sub-Tabs
+    // Other Costs Sub-tabs
     container.querySelectorAll('#otherCostSubTabs .sub-tab').forEach(st => {
       st.addEventListener('click', () => {
-        container.querySelectorAll('#otherCostSubTabs .sub-tab').forEach(t => t.classList.remove('active'));
+        container.querySelectorAll('#otherCostSubTabs .sub-tab').forEach(tab => tab.classList.remove('active'));
         st.classList.add('active');
         this.activeOtherCostSubTab = st.dataset.subtab;
         this.updateToolbarActions();
-        this.renderGrid(this._entity || selectedEntity, this._dept || selectedDept, budgetYear, yearObj.actualsThroughMonth || 'Oct');
+        this.renderGrid(selectedEntity, selectedDept, budgetYear, yearObj.actualsThroughMonth || 'Oct');
       });
     });
 
@@ -2343,6 +2363,12 @@ const BudgetEntryModule = {
 
   // ─── Quick Expense Launcher Modal ───
   async showExpenseLauncherModal(yearId, entity, dept, locations, donors, activities, conditionAreas) {
+    const yId = yearId || this._yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026');
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yId)) {
+      Utils.showToast(`🔒 Expense additions are disabled: Budget year status is "${Auth.getYearStatusLabel(yId)}". Only Draft or Active statuses permit additions.`, 'warning');
+      return;
+    }
+
     const content = `
       <div style="font-size: var(--font-size-sm); padding: 8px;">
         <p class="text-secondary mb-lg" style="font-size: 13px;">Select an expense category below to open its full-screen structured input format with employee assignment, 12-month calculation schedule, and justification remarks.</p>
@@ -2418,6 +2444,11 @@ const BudgetEntryModule = {
   async showExpenseInputWizard(categoryKey = 'supplies', existingRecord = null, defaultCoa = null) {
     const isEdit = !!existingRecord;
     const yearId = this._yearId || App.selectedYear || '2026';
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
+      Utils.showToast(`🔒 ${isEdit ? 'Editing' : 'Additions'} disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses permit modifications.`, 'warning');
+      return;
+    }
+
     const entity = this._entity;
     const dept = this._dept;
     const locations = this._locations || await db.getLocationsForEntity(entity.id);
@@ -3069,6 +3100,12 @@ const BudgetEntryModule = {
   },
 
   async editExpenseItem(id) {
+    const yearId = this._yearId || App.selectedYear || '2026';
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
+      Utils.showToast(`🔒 Editing is disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses permit modifications.`, 'warning');
+      return;
+    }
+
     const item = await db.get(STORES.nonPayrollCost, id);
     if (!item) return;
     if (item.isTravelPackage && item.travelPackageId) {
@@ -3081,6 +3118,12 @@ const BudgetEntryModule = {
   },
 
   async deleteExpenseItem(id) {
+    const yearId = this._yearId || App.selectedYear || '2026';
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
+      Utils.showToast(`🔒 Deletion is disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses permit modifications.`, 'warning');
+      return;
+    }
+
     if (await Utils.confirm('Delete this expense line item?')) {
       await db.delete(STORES.nonPayrollCost, id);
       Utils.showToast('Expense item deleted', 'info');
@@ -3090,7 +3133,12 @@ const BudgetEntryModule = {
 
   // ─── Travel & Lodging Package Wizard & Calculator ───
   async showTravelPackageWizard(yearId, entity, dept, locations, donors, activities, conditionAreas, existingPackage = null) {
+    const yId = yearId || this._yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026');
     const isEdit = !!existingPackage;
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yId)) {
+      Utils.showToast(`🔒 ${isEdit ? 'Editing' : 'Travel package additions are'} disabled: Budget year status is "${Auth.getYearStatusLabel(yId)}". Only Draft or Active statuses permit modifications.`, 'warning');
+      return;
+    }
     const masterEmployees = await db.getEmployeesMaster(entity.id);
     const personnel = await db.getBudgetData(STORES.payrollPersonnel, yearId, entity.id, dept.id);
     const employeeNames = Array.from(new Set([
@@ -3544,12 +3592,24 @@ const BudgetEntryModule = {
   },
 
   async editTravelPackage(id) {
+    const yearId = this._yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026');
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
+      Utils.showToast(`🔒 Editing is disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses permit modifications.`, 'warning');
+      return;
+    }
+
     const pkg = await db.get(STORES.travelPackages, id);
     if (!pkg) return;
     this.showTravelPackageWizard(this._yearId, this._entity, this._dept, this._locations, this._donors, this._activities, this._conditionAreas, pkg);
   },
 
   async deleteTravelPackage(id) {
+    const yearId = this._yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026');
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
+      Utils.showToast(`🔒 Deletion is disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses permit modifications.`, 'warning');
+      return;
+    }
+
     if (await Utils.confirm('Delete this Travel Package and its 1-liner budget?')) {
       await db.delete(STORES.travelPackages, id);
 
@@ -3997,6 +4057,12 @@ const BudgetEntryModule = {
       return;
     }
 
+    const yearId = this._yearId || App.selectedYear || '2026';
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
+      Utils.showToast(`🔒 Additions are disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses permit additions.`, 'warning');
+      return;
+    }
+
     const entityId = this.currentEntityId;
     const deptId = this.currentDeptId;
     const categoryKey = this.getActiveCategoryKey();
@@ -4021,9 +4087,6 @@ const BudgetEntryModule = {
       Utils.showToast('Unknown tab — cannot add row', 'error');
       return;
     }
-
-    // Use the exact yearId that was resolved in render() — NOT App.selectedYear which may be null
-    const yearId = this._yearId || App.selectedYear || '2026';
 
     if (!entityId || !deptId) {
       Utils.showToast('Please select an Entity and Department first', 'warning');
@@ -4075,6 +4138,12 @@ const BudgetEntryModule = {
   },
 
   async deleteRow(storeName, id) {
+    const yearId = this._yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026');
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
+      Utils.showToast(`🔒 Deletion is disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses permit modifications.`, 'warning');
+      return;
+    }
+
     const entityId = this.currentEntityId;
     const deptId = this.currentDeptId;
     const categoryKey = this.getActiveCategoryKey();
@@ -4540,7 +4609,12 @@ const BudgetEntryModule = {
 
   // ─── Auto-Populate Department Employees from Employee Master ───
   async autoPopulateDeptEmployees() {
-    const yearId = this._yearId || App.selectedYear || '2026';
+    const yearId = this._yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026');
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
+      Utils.showToast(`🔒 Auto-population is disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses permit additions.`, 'warning');
+      return;
+    }
+
     const entity = this._entity || (await db.getEntity(this.currentEntityId));
     const dept = this._dept || (await db.getDepartment(this.currentDeptId));
     if (!entity || !dept) {

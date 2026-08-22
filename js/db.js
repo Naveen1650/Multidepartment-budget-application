@@ -1350,20 +1350,27 @@ class BudgetDB {
    */
   async getLockStatus(yearId) {
     await this.ready;
-    if (!this.db || !this.db.objectStoreNames.contains(STORES.budgetLockStatus)) {
-      return { yearId: String(yearId), status: 'draft' };
-    }
+    let status = 'draft';
     try {
-      const record = await this.get(STORES.budgetLockStatus, String(yearId));
-      return record || { yearId: String(yearId), status: 'draft' };
-    } catch (e) {
-      return { yearId: String(yearId), status: 'draft' };
-    }
+      if (this.db && this.db.objectStoreNames.contains(STORES.budgetYears)) {
+        const yearRec = await this.get(STORES.budgetYears, String(yearId));
+        if (yearRec && yearRec.status) {
+          status = yearRec.status;
+        }
+      }
+      if (this.db && this.db.objectStoreNames.contains(STORES.budgetLockStatus)) {
+        const record = await this.get(STORES.budgetLockStatus, String(yearId));
+        if (record && record.status) {
+          status = record.status;
+        }
+      }
+    } catch (e) {}
+    return { yearId: String(yearId), status };
   }
 
   /**
    * Set lock status for a budget year.
-   * Allowed statuses: 'draft', 'under-review', 'finance-approved', 'finalized-locked'
+   * Allowed statuses: 'draft', 'active', 'under-review', 'finance-approved', 'finalized-locked', 'closed'
    */
   async setLockStatus(yearId, status, meta = {}) {
     await this.ready;
@@ -1381,12 +1388,13 @@ class BudgetDB {
   }
 
   /**
-   * Check if a budget year is locked (finalized).
-   * Returns true if status === 'finalized-locked'.
+   * Check if a budget year is locked (read-only).
+   * Only 'draft' and 'active' permit additions/edits.
+   * Any other status ('under-review', 'finance-approved', 'finalized-locked', 'closed') is locked.
    */
   async isYearLocked(yearId) {
     const ls = await this.getLockStatus(yearId);
-    return ls.status === 'finalized-locked';
+    return ls.status !== 'draft' && ls.status !== 'active';
   }
 
   /**
