@@ -455,20 +455,6 @@ const ReportsModule = {
                   </tr>
                 </thead>
                 <tbody>
-                  <!-- ─── Top Master Rollup Total ─── -->
-                  <tr class="total-row top-total-row">
-                    <td class="sticky-col-1 font-bold">GRAND TOTAL (GLOBAL USD):</td>
-                    <td class="sticky-col-2 font-bold">All Countries & Departments</td>
-                    <td><code>—</code></td>
-                    <td><span class="badge badge-primary font-bold">🌐 Global Rollup</span></td>
-                    <td class="num font-bold" style="color: var(--accent-primary); font-size: 1.05rem;">
-                      ${Utils.formatCurrency(grandTotalUSD, 'USD')}
-                    </td>
-                    ${grandMonthlyUSD.map(v => `
-                      <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatCurrency(v, 'USD')}</td>
-                    `).join('')}
-                  </tr>
-
                   <!-- ─── Line Items ─── -->
                   ${lines.map(r => `
                     <tr>
@@ -645,20 +631,6 @@ const ReportsModule = {
                   </tr>
                 </thead>
                 <tbody>
-                  <!-- ─── Top Master Rollup Total ─── -->
-                  <tr class="total-row top-total-row">
-                    <td class="sticky-col-1 font-bold">INDIA CONSOLIDATED TOTAL:</td>
-                    <td class="sticky-col-2 font-bold">NHIPL + YAIF Combined</td>
-                    <td><code>—</code></td>
-                    <td><span class="badge badge-primary font-bold">🇮🇳 India Rollup</span></td>
-                    <td class="num font-bold" style="color: var(--accent-primary); font-size: 1.05rem;">
-                      ${Utils.formatDualCurrency(grandTotalINR, 'INR', inrRate, { multiline: true })}
-                    </td>
-                    ${grandMonthlyINR.map(v => `
-                      <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatCurrency(v, 'INR')}</td>
-                    `).join('')}
-                  </tr>
-
                   <!-- ─── Line Items ─── -->
                   ${lines.map(r => `
                     <tr>
@@ -881,20 +853,6 @@ const ReportsModule = {
                   </tr>
                 </thead>
                 <tbody>
-                  <!-- ─── Top Master Rollup Total ─── -->
-                  <tr class="total-row top-total-row">
-                    <td class="sticky-col-1 font-bold">${entity.shortName} TOTAL:</td>
-                    <td class="sticky-col-2 font-bold">All Departments Combined</td>
-                    <td><code>—</code></td>
-                    <td><span class="badge badge-primary font-bold">🏢 Entity Rollup</span></td>
-                    <td class="num font-bold" style="color: var(--accent-primary); font-size: 1.05rem;">
-                      ${Utils.formatDualCurrency(grandTotalLocal, entity.currency, rate, { multiline: true })}
-                    </td>
-                    ${grandMonthlyLocal.map(v => `
-                      <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatCurrency(v, entity.currency)}</td>
-                    `).join('')}
-                  </tr>
-
                   <!-- ─── Line Items ─── -->
                   ${lines.map(r => `
                     <tr>
@@ -1286,23 +1244,6 @@ const ReportsModule = {
                 </tr>
               </thead>
               <tbody>
-                <!-- ─── Top Master Rollup Total ─── -->
-                <tr class="total-row top-total-row">
-                  <td class="sticky-col-1 font-bold">TOTAL DEPT BUDGET:</td>
-                  <td class="sticky-col-2 font-bold">All Department Costs</td>
-                  <td><code>—</code></td>
-                  <td><span class="badge badge-primary font-bold">🎯 Master Rollup</span></td>
-                  <td class="font-bold text-secondary" style="font-size: 11px;">12-Month Rollup</td>
-                  <td class="num font-bold" style="color: var(--accent-primary); font-size: 1.05rem;">
-                    ${Utils.formatDualCurrency(totalCost, entity.currency, rate, { multiline: true })}
-                  </td>
-                  ${SEED_DATA.months.map((m, idx) => `
-                    <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatCurrency(colMonthlySums[idx] || 0, entity.currency)}</td>
-                  `).join('')}
-                  <td class="num month-col font-mono font-bold" style="background: rgba(59, 130, 246, 0.08); color: var(--accent-primary);">${Utils.formatCurrency(totalPriorCost, entity.currency)}</td>
-                  <td></td>
-                </tr>
-
                 <!-- ─── Master Account Lines ─── -->
                 ${visibleLines.map(r => {
                   const remKey = r.ledgerCode || (r.glDescription ? Utils.slugify(r.glDescription) : 'line');
@@ -1779,17 +1720,6 @@ const ReportsModule = {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr class="total-row top-total-row">
-                      <td class="sticky-col-1 font-bold">GRAND TOTAL (${activeMeta.plural.toUpperCase()})</td>
-                      <td style="text-align: center;" class="font-bold">${filteredItems.length}</td>
-                      <td style="text-align: center;" class="font-bold">100.0%</td>
-                      <td class="num font-bold font-mono" style="color: var(--accent-primary); font-size: 1.05rem;">
-                        ${this.dimensionScope === 'india' ? Utils.formatCurrency(grandTotalLocal, 'INR') : Utils.formatCurrency(grandTotalUSD, 'USD')}
-                      </td>
-                      ${(this.dimensionScope === 'india' ? grandMonthlyLocal : grandMonthlyUSD).map(v => `
-                        <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${this.dimensionScope === 'india' ? Utils.formatCurrency(v, 'INR') : Utils.formatCurrency(v, 'USD')}</td>
-                      `).join('')}
-                    </tr>
                     ${groupKeys.map(grpVal => {
                       const grpItems = groups[grpVal];
                       const grpLocal = grpItems.reduce((s, r) => s + r.totalLocal, 0);
@@ -1828,6 +1758,18 @@ const ReportsModule = {
                         </tr>
                       `;
                     }).join('')}
+                    <!-- ─── Bottom Master Rollup Total ─── -->
+                    <tr class="total-row">
+                      <td class="sticky-col-1 font-bold">GRAND TOTAL (${activeMeta.plural.toUpperCase()})</td>
+                      <td style="text-align: center;" class="font-bold">${filteredItems.length}</td>
+                      <td style="text-align: center;" class="font-bold">100.0%</td>
+                      <td class="num font-bold font-mono" style="color: var(--accent-primary); font-size: 1.05rem;">
+                        ${this.dimensionScope === 'india' ? Utils.formatCurrency(grandTotalLocal, 'INR') : Utils.formatCurrency(grandTotalUSD, 'USD')}
+                      </td>
+                      ${(this.dimensionScope === 'india' ? grandMonthlyLocal : grandMonthlyUSD).map(v => `
+                        <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${this.dimensionScope === 'india' ? Utils.formatCurrency(v, 'INR') : Utils.formatCurrency(v, 'USD')}</td>
+                      `).join('')}
+                    </tr>
                   </tbody>
                 </table>
               </div>

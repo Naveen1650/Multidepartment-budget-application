@@ -548,40 +548,6 @@ const BudgetEntryModule = {
       }
     });
 
-    const topTotalRowHtml = subTab === 'salaries-wages' ? `
-      <tr class="total-row top-total-row">
-        <td class="sticky-col-status font-bold">TOTAL:</td>
-        <td class="sticky-col-emp font-bold">${records.length} Employees</td>
-        <td colspan="8" class="text-secondary font-bold" style="font-size: 11px;">Monthly Salary Rollup</td>
-        <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalSalaryCost)}</td>
-        ${SEED_DATA.months.map((m, idx) => `
-          <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
-        `).join('')}
-        <td colspan="6"></td>
-      </tr>
-    ` : subTab === 'gratuity-bonus' ? `
-      <tr class="total-row top-total-row">
-        <td class="sticky-col-1 font-bold">TOTAL:</td>
-        <td class="sticky-col-2 font-bold">${records.length} Items</td>
-        <td></td>
-        <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalSalaryCost)}</td>
-        ${SEED_DATA.months.map((m, idx) => `
-          <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
-        `).join('')}
-        <td colspan="6"></td>
-      </tr>
-    ` : `
-      <tr class="total-row top-total-row">
-        <td class="sticky-col-1 font-bold">TOTAL:</td>
-        <td class="sticky-col-2 font-bold">${records.length} Items</td>
-        <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalSalaryCost)}</td>
-        ${SEED_DATA.months.map((m, idx) => `
-          <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
-        `).join('')}
-        <td colspan="6"></td>
-      </tr>
-    `;
-
     const bottomTotalRowHtml = subTab === 'salaries-wages' ? `
       <tr class="total-row">
         <td class="sticky-col-status font-bold">TOTAL:</td>
@@ -644,7 +610,6 @@ const BudgetEntryModule = {
             ${records.length === 0 ? `
               <tr><td colspan="${emptyColspan}" class="text-center p-lg text-muted">${subTabConfig.emptyMsg}</td></tr>
             ` : `
-              ${topTotalRowHtml}
               ${records.map(r => this.renderPersonnelRow(r, entity, locations, donors, activities, conditionAreas, subTab, masterEmployees, deptEmployees, deptDisplayName)).join('')}
               ${bottomTotalRowHtml}
             `}
@@ -1414,18 +1379,6 @@ const BudgetEntryModule = {
       }
     });
 
-    const topTotalRowHtml = `
-      <tr class="total-row top-total-row">
-        <td class="sticky-col-1 font-bold">TOTAL EHA BUDGET:</td>
-        <td class="sticky-col-2 font-bold">${records.length} Consultants</td>
-        <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalCost)}</td>
-        ${SEED_DATA.months.map((m, idx) => `
-          <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
-        `).join('')}
-        <td colspan="6"></td>
-      </tr>
-    `;
-
     const bottomTotalRowHtml = `
       <tr class="total-row">
         <td class="sticky-col-1 font-bold">TOTAL EHA BUDGET:</td>
@@ -1477,7 +1430,6 @@ const BudgetEntryModule = {
             ${records.length === 0 ? `
               <tr><td colspan="21" class="text-center p-lg text-muted">No external consultants (EHA) added yet. Click <strong>"📤 Bulk Upload EHA File"</strong> above to upload, or click <strong>"+ Add Consultant Row"</strong>.</td></tr>
             ` : `
-              ${topTotalRowHtml}
               ${records.map(r => `
                 <tr data-id="${r.id}">
                   <td class="sticky-col-1 editable">
@@ -1600,19 +1552,6 @@ const BudgetEntryModule = {
       }
     });
 
-    const topTotalRowHtml = `
-      <tr class="total-row top-total-row">
-        <td class="sticky-col-1 font-bold">TOTAL ASSET BUDGET:</td>
-        <td class="sticky-col-2 font-bold">${records.length} Requests</td>
-        <td></td>
-        <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalCost)}</td>
-        ${SEED_DATA.months.map((m, idx) => `
-          <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
-        `).join('')}
-        <td colspan="6"></td>
-      </tr>
-    `;
-
     const bottomTotalRowHtml = `
       <tr class="total-row">
         <td class="sticky-col-1 font-bold">TOTAL ASSET BUDGET:</td>
@@ -1666,7 +1605,6 @@ const BudgetEntryModule = {
             ${records.length === 0 ? `
               <tr><td colspan="22" class="text-center p-lg text-muted">No fixed asset requests added. Click <strong>"📤 Bulk Upload Assets File"</strong> above to upload, or click <strong>"+ Add Asset Row"</strong>.</td></tr>
             ` : `
-              ${topTotalRowHtml}
               ${records.map(r => `
                 <tr data-id="${r.id}">
                   <td class="sticky-col-1">${this.buildEmpNameCell({ name: r.employeeName || r.name || '' }, masterEmps)}</td>
@@ -2059,20 +1997,7 @@ const BudgetEntryModule = {
                   <th>Actions</th>
                 </tr>
               </thead>
-                <!-- Monthly Totals at the Top of the List -->
-                <tr class="total-row top-total-row">
-                  <td class="sticky-col-1 font-bold">TOTAL OTHER COSTS:</td>
-                  <td class="sticky-col-2 font-bold">All Operating Accounts</td>
-                  <td><code>—</code></td>
-                  <td colspan="3" class="font-bold text-secondary" style="font-size: 11px;">Monthly Operating Rollup</td>
-                  <td class="num font-bold field-total-cy" style="color: var(--accent-secondary); font-size: 1.05rem;">${Utils.formatCurrency(grandTotalAll, entity.currency)}</td>
-                  ${SEED_DATA.months.map((m, idx) => {
-                    const mSum = coaRows.reduce((sum, r) => sum + (r.monthlyValues[idx] || 0), 0);
-                    return `<td class="num font-bold month-col font-mono" style="color: var(--accent-secondary); font-size: 11px;">${Utils.formatNumber(mSum)}</td>`;
-                  }).join('')}
-                  <td></td>
-                </tr>
-
+              <tbody>
                 ${coaRows.map(r => {
                   const catIcons = { travel: '✈️', supplies: '🖨️', communication: '📡', office: '🏢', professional: '💼', other: '📑' };
                   const icon = catIcons[r.categoryKey] || '📑';
@@ -2181,17 +2106,6 @@ const BudgetEntryModule = {
                   </tr>
                 </thead>
                 <tbody>
-                  <!-- Monthly Totals at the Top of the List -->
-                  <tr class="total-row top-total-row">
-                    <td></td>
-                    <td class="sticky-col-1 font-bold">TOTAL:</td>
-                    <td class="sticky-col-2 font-bold">${travelRecords.length} Trip Packages</td>
-                    <td colspan="4" class="text-secondary font-bold" style="font-size: 11px;">12-Month Travel Rollup</td>
-                    <td class="num font-bold" style="color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(totalTravelCost, entity.currency)}</td>
-                    <td class="num font-bold" style="color: var(--accent-secondary); font-size: 13px;">≈ ${Utils.formatCurrency(Utils.convertToUSD(totalTravelCost, rate), 'USD')}</td>
-                    <td></td>
-                  </tr>
-
                   ${travelRecords.map(pkg => `
                     <!-- Single-Line Main Row -->
                     <tr class="exp-item-main-row" data-row-id="${pkg.id}">
@@ -2333,17 +2247,6 @@ const BudgetEntryModule = {
                 </tr>
               </thead>
               <tbody>
-                <!-- Monthly Totals at the Top of the List -->
-                <tr class="total-row top-total-row">
-                  <td></td>
-                  <td class="sticky-col-1 font-bold">TOTAL:</td>
-                  <td class="sticky-col-2 font-bold">${catRecords.length} Items</td>
-                  <td colspan="6" class="text-secondary font-bold" style="font-size: 11px;">12-Month ${catMeta.title} Rollup</td>
-                  <td class="num font-bold" style="color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(catTotal, entity.currency)}</td>
-                  <td class="num font-bold" style="color: var(--accent-secondary); font-size: 13px;">≈ ${Utils.formatCurrency(Utils.convertToUSD(catTotal, rate), 'USD')}</td>
-                  <td></td>
-                </tr>
-
                 ${catRecords.map(r => `
                   <!-- Single-Line Main Row -->
                   <tr class="exp-item-main-row" data-row-id="${r.id}">
@@ -3951,21 +3854,6 @@ const BudgetEntryModule = {
             </tr>
           </thead>
           <tbody>
-            <!-- ─── Monthly Totals at the Top of the List ─── -->
-            <tr class="total-row top-total-row">
-              <td class="sticky-col-1 font-bold">TOTAL DEPT BUDGET:</td>
-              <td class="sticky-col-2 font-bold">All Department Costs</td>
-              <td><code>—</code></td>
-              <td><span class="badge badge-primary font-bold">🎯 Master Rollup</span></td>
-              <td class="font-bold text-secondary" style="font-size: 11px;">12-Month Rollup</td>
-              <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(totalCost, entity.currency)}</td>
-              ${SEED_DATA.months.map((m, idx) => `
-                <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
-              `).join('')}
-              <td class="num month-col font-mono font-bold" style="background: rgba(59, 130, 246, 0.08); color: var(--accent-primary);">${Utils.formatNumber(totalPriorCost)}</td>
-              <td></td>
-            </tr>
-
             <!-- ─── Line Items ─── -->
             ${visibleLines.map(r => {
               const remKey = r.ledgerCode || (r.glDescription ? Utils.slugify(r.glDescription) : 'line');

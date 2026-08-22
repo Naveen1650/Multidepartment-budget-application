@@ -540,24 +540,6 @@ const ImpTotModule = {
                 </tr>
               </thead>
               <tbody>
-                <!-- Top Summary Rollup Row -->
-                <tr class="total-row top-total-row" style="background: var(--bg-primary); border-bottom: 2px solid var(--border-default);">
-                  <td class="sticky-col-1 font-bold">TOTAL MONTHLY BUDGET:</td>
-                  <td class="sticky-col-2 font-bold num text-secondary" style="font-size: 11px;">12-Month Rollup</td>
-                  ${SEED_DATA.months.map((m, idx) => `
-                    <td class="num month-col font-mono font-bold" id="topColTotal_${idx}" style="text-align: center; color: var(--accent-primary); font-size: 11px; padding: 8px 4px;">
-                      <div class="col-batches font-bold" style="font-size: 12px;">${monthlyBatches[idx]}</div>
-                      <div class="col-cost text-secondary" style="font-size: 10px;">${monthlyCosts[idx] > 0 ? Utils.formatCurrency(monthlyCosts[idx], entity.currency) : '—'}</div>
-                    </td>
-                  `).join('')}
-                  <td class="num font-bold" id="topGrandBatches" style="text-align: center; font-size: 13px; color: var(--accent-primary);">
-                    ${totalAnnualBatches}
-                  </td>
-                  <td class="num font-bold" id="topGrandCost" style="font-size: 13px; color: var(--accent-primary);">
-                    ${Utils.formatCurrency(totalAnnualCost, entity.currency)}
-                  </td>
-                </tr>
-
                 <!-- Activity Rows (10.1 to 10.8) -->
                 ${activityList.map(comp => {
                   const code = comp.code;
