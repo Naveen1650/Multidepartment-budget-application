@@ -268,11 +268,11 @@ const BudgetEntryModule = {
     if (this.activeTab === 'personnel') {
       if (this.activePersonnelSubTab === 'other-staff-expenses') {
         actionsContainer.innerHTML = `
-          <button class="btn btn-primary btn-sm" onclick="BudgetEntryModule.addRow()">+ Add Staff Expense Row</button>
+          <button class="btn btn-primary btn-sm font-bold" onclick="BudgetEntryModule.addRow()">+ Add Staff Expense Row</button>
         `;
       } else if (this.activePersonnelSubTab === 'gratuity-bonus') {
         actionsContainer.innerHTML = `
-          <button class="btn btn-primary btn-sm" onclick="BudgetEntryModule.addRow()">+ Add Gratuity/Bonus Row</button>
+          <button class="btn btn-primary btn-sm font-bold" onclick="BudgetEntryModule.addRow()">+ Add Gratuity/Bonus Row</button>
         `;
       } else {
         actionsContainer.innerHTML = `
@@ -282,16 +282,16 @@ const BudgetEntryModule = {
           <button class="btn btn-secondary btn-sm flex items-center gap-xs" onclick="App.navigateTo('config-employees')" title="Open Employees Master directory to add, edit, or upload employee records">
             <span>⚙️</span> Manage Employees Master
           </button>
-          <button class="btn btn-secondary btn-sm" onclick="BudgetEntryModule.addRow()">+ Add Staff Row</button>
+          <button class="btn btn-primary btn-sm font-bold" onclick="BudgetEntryModule.addRow()">+ Add Staff Row</button>
         `;
       }
     } else if (this.activeTab === 'eha') {
       actionsContainer.innerHTML = `
-        <button class="btn btn-primary btn-sm" onclick="BudgetEntryModule.addRow()">+ Add Consultant Row</button>
+        <button class="btn btn-primary btn-sm font-bold" onclick="BudgetEntryModule.addRow()">+ Add Consultant Row</button>
       `;
     } else if (this.activeTab === 'fixed-assets') {
       actionsContainer.innerHTML = `
-        <button class="btn btn-primary btn-sm" onclick="BudgetEntryModule.addRow()">+ Add Asset Row</button>
+        <button class="btn btn-primary btn-sm font-bold" onclick="BudgetEntryModule.addRow()">+ Add Asset Row</button>
       `;
     } else if (this.activeTab === 'other-costs') {
       if (this.activeOtherCostSubTab === 'tot' || this.activeOtherCostSubTab === 'imp-tot') {
@@ -302,9 +302,9 @@ const BudgetEntryModule = {
         `;
       } else {
         actionsContainer.innerHTML = `
-          <button class="btn btn-primary btn-sm" onclick="ExcelIOModule.showNonPayrollUploadModal(BudgetEntryModule.currentEntityId, BudgetEntryModule.currentDeptId)">📤 Bulk Upload Other Costs</button>
+          <button class="btn btn-primary btn-sm font-bold" onclick="BudgetEntryModule.addRow()">+ Add Expense Line</button>
+          <button class="btn btn-secondary btn-sm" onclick="ExcelIOModule.showNonPayrollUploadModal(BudgetEntryModule.currentEntityId, BudgetEntryModule.currentDeptId)">📤 Bulk Upload Other Costs</button>
           <button class="btn btn-secondary btn-sm" onclick="ExcelIOModule.downloadNonPayrollTemplate()">📥 Other Costs Template</button>
-          <button class="btn btn-secondary btn-sm" onclick="BudgetEntryModule.addRow()">+ Add Expense Line</button>
         `;
       }
     } else if (this.activeTab === 'imp-tot') {
