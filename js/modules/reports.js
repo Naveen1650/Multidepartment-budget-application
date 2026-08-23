@@ -46,6 +46,9 @@ const ReportsModule = {
               ${years.map(y => `<option value="${y.id}" ${String(y.id) === String(activeYearObj.id) ? 'selected' : ''}>CY-${y.year}</option>`).join('')}
             </select>
           </div>
+          <button class="btn btn-secondary btn-sm flex items-center gap-xs" onclick="Utils.ColumnWidths.openSettingsModal()" title="Adjust and save column widths with live slider preview">
+            <span>📐</span> Column Widths
+          </button>
           <button class="btn btn-secondary btn-sm flex items-center gap-xs" id="exportReportBtn">
             <span>📥</span> Export Excel
           </button>
