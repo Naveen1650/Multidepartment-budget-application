@@ -719,9 +719,19 @@ const Auth = {
     );
   },
 
+  isAdmin() {
+    const user = this.getCurrentUser();
+    return !!(user && (user.isAdmin || user.roleId === 'role-admin' || user.isSuperAdmin));
+  },
+
+  isSuperAdmin() {
+    const user = this.getCurrentUser();
+    return !!(user && (user.isAdmin || user.roleId === 'role-admin' || user.isSuperAdmin));
+  },
+
   canAccessEntity(entityId) {
     const user = this.getCurrentUser();
-    if (!user || user.isAdmin) return true;
+    if (!user || this.isAdmin()) return true;
     const ents = this.filterAccessibleEntities([{ id: entityId }]);
     return ents.length > 0;
   },

@@ -155,7 +155,7 @@ const BudgetEntryModule = {
           <p>Prepare monthly budgets with 5-dimensional tagging and prior year reference data</p>
         </div>
         <div class="flex gap-xs items-center">
-          ${typeof Auth !== 'undefined' && (Auth.isSuperAdmin() || Auth.isAdmin()) ? `
+          ${typeof Auth !== 'undefined' && (typeof Auth.isAdmin === 'function' ? Auth.isAdmin() : !!(Auth.getCurrentUser && (Auth.getCurrentUser()?.isAdmin || Auth.getCurrentUser()?.roleId === 'role-admin'))) ? `
             <button class="btn btn-secondary btn-sm flex items-center gap-xs" onclick="Utils.ColumnWidths.openSettingsModal()" title="Adjust and save column widths for all tables (Super Admin)">
               <span>📐</span> Column Widths
             </button>
@@ -2065,6 +2065,10 @@ const BudgetEntryModule = {
 
     const openLauncher = () => {
       this.showExpenseLauncherModal(yearId, entity, dept, locations, donors, activities, conditionAreas);
+    };
+
+    const openTravelWizard = () => {
+      this.showTravelPackageWizard(yearId, entity, dept, locations, donors, activities, conditionAreas);
     };
 
     const btnQuickNew = container.querySelector('#btnQuickNewExpense');
