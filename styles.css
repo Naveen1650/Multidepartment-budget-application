@@ -952,9 +952,9 @@ a:hover { color: var(--accent-primary-hover); }
   position: sticky;
   left: 0;
   z-index: 6;
-  width: 220px;
-  min-width: 200px;
-  max-width: 240px;
+  width: 200px;
+  min-width: 180px;
+  max-width: 220px;
   box-sizing: border-box;
   background: #ffffff;
   border-right: 1px solid var(--border-subtle);
@@ -974,18 +974,19 @@ a:hover { color: var(--accent-primary-hover); }
 .data-table th.sticky-col-2,
 .data-table td.sticky-col-2 {
   position: sticky;
-  left: 220px;
+  left: 200px;
   z-index: 5;
-  width: 240px;
-  min-width: 220px;
-  max-width: 260px;
+  width: 340px;
+  min-width: 300px;
+  max-width: 440px;
   box-sizing: border-box;
   background: #ffffff;
   border-right: 2px solid #94a3b8;
   box-shadow: 4px 0 8px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.35;
+  word-break: normal;
+  padding: 6px 10px;
 }
 
 .data-table th.sticky-col-2 {
@@ -993,6 +994,7 @@ a:hover { color: var(--accent-primary-hover); }
   z-index: 31;
   background: #e2e8f0;
   border-right: 2px solid #94a3b8;
+  white-space: nowrap;
 }
 
 /* Salaries & Wages Multi-Column Sticky: Status + Employee Name */

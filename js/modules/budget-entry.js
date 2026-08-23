@@ -155,9 +155,6 @@ const BudgetEntryModule = {
           <p>Prepare monthly budgets with 5-dimensional tagging and prior year reference data</p>
         </div>
         <div class="flex gap-xs items-center">
-          <button class="btn btn-secondary btn-sm flex items-center gap-xs" onclick="Utils.ColumnWidths.openSettingsModal()" title="Adjust and save column widths with live slider preview">
-            <span>📐</span> Column Widths
-          </button>
           <button class="btn btn-secondary btn-sm" onclick="BudgetEntryModule.showDeptAuditTrail(BudgetEntryModule.currentEntityId, BudgetEntryModule.currentDeptId)" title="View tamper-evident history of entries, modifications, and deletions for this department">📜 Dept Audit History</button>
         </div>
       </div>

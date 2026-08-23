@@ -764,14 +764,14 @@ const Utils = {
     STORAGE_KEY: 'noora_custom_column_widths_v1',
 
     DEFAULT_WIDTHS: {
-      stickyStatus: 110,
+      stickyStatus: 100,
       stickyEmp: 180,
-      stickyCol1: 220,
-      stickyCol2: 240,
+      stickyCol1: 200,
+      stickyCol2: 340,
       monthCol: 82,
       totalCol: 115,
-      remarksCol: 150,
-      basisCol: 140,
+      remarksCol: 160,
+      basisCol: 150,
       tagCol: 130
     },
 
@@ -816,8 +816,8 @@ const Utils = {
         document.head.appendChild(styleEl);
       }
 
-      const empLeft = parseInt(w.stickyStatus, 10) || 110;
-      const col2Left = parseInt(w.stickyCol1, 10) || 220;
+      const empLeft = parseInt(w.stickyStatus, 10) || 100;
+      const col2Left = parseInt(w.stickyCol1, 10) || 200;
 
       styleEl.innerHTML = `
         /* Dynamic Column Width Customizer Overrides */
@@ -848,8 +848,11 @@ const Utils = {
         .data-table td.sticky-col-2 {
           width: ${w.stickyCol2}px !important;
           min-width: ${w.stickyCol2}px !important;
-          max-width: ${w.stickyCol2}px !important;
+          max-width: ${Math.max(w.stickyCol2 + 60, 440)}px !important;
           left: ${col2Left}px !important;
+          white-space: normal !important;
+          word-break: normal !important;
+          line-height: 1.35 !important;
         }
         .data-table th.month-group,
         .data-table td.month-col,
