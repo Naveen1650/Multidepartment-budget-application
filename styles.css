@@ -188,33 +188,35 @@ a:hover { color: var(--accent-primary-hover); }
 .sidebar.collapsed { width: var(--sidebar-collapsed); }
 
 .sidebar-header {
-  padding: 10px 14px;
+  padding: 12px 18px;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  min-height: 52px;
-  max-height: 52px;
+  min-height: 64px;
+  max-height: 64px;
   background: #ffffff;
 }
 
 .sidebar-logo-img {
-  height: 24px;
-  max-height: 24px;
+  height: 38px;
+  max-height: 42px;
   width: auto;
-  max-width: 135px;
+  max-width: 190px;
   object-fit: contain;
   display: block;
 }
 
 .sidebar.collapsed .sidebar-header {
-  padding: 10px 6px;
+  padding: 10px 8px;
   justify-content: center;
+  min-height: 64px;
+  max-height: 64px;
 }
 
 .sidebar.collapsed .sidebar-logo-img {
-  height: 22px;
-  max-width: 26px;
+  height: 32px;
+  max-width: 32px;
   object-fit: cover;
   object-position: left;
 }
@@ -437,32 +439,12 @@ a:hover { color: var(--accent-primary-hover); }
   background: rgba(16, 185, 129, 0.02);
 }
 
-/* ─── Content Page & Center Watermark ─── */
+/* ─── Content Page ─── */
 .page-content {
   flex: 1;
   overflow-y: auto;
   padding: var(--space-xl);
   position: relative;
-}
-
-.page-content::before {
-  content: '';
-  position: fixed;
-  top: 50%;
-  left: calc(50% + var(--sidebar-width) / 2);
-  transform: translate(-50%, -50%);
-  width: 380px;
-  height: 140px;
-  background: url('assets/noora-health-logo.png') no-repeat center center;
-  background-size: contain;
-  opacity: 0.025;
-  pointer-events: none;
-  z-index: 0;
-  transition: left var(--transition-base);
-}
-
-.sidebar.collapsed ~ .main-content .page-content::before {
-  left: calc(50% + var(--sidebar-collapsed) / 2);
 }
 
 .page-header {
@@ -2422,21 +2404,6 @@ tr.exp-breakdown-row td {
               radial-gradient(circle at 90% 80%, rgba(14, 165, 233, 0.12) 0%, transparent 40%),
               var(--bg-primary);
   overflow: hidden;
-}
-
-.login-wrapper::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 440px;
-  height: 160px;
-  background: url('assets/noora-health-logo.png') no-repeat center center;
-  background-size: contain;
-  opacity: 0.03;
-  pointer-events: none;
-  z-index: 0;
 }
 
 .login-card {
