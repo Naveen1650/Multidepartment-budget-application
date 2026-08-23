@@ -475,9 +475,15 @@ class BudgetDB {
     }
 
     if (this.db.objectStoreNames.contains(STORES.employeesMaster)) {
+      const storedVersion = localStorage.getItem('noora_employees_master_version');
+      const targetVersion = '2027_v3_all_depts_countries';
       const empCount = await this.count(STORES.employeesMaster);
-      if (empCount === 0 && SEED_DATA.sampleEmployeesMaster) {
+
+      if ((empCount === 0 || storedVersion !== targetVersion) && SEED_DATA.sampleEmployeesMaster) {
+        await this.clear(STORES.employeesMaster);
         await this.putMany(STORES.employeesMaster, SEED_DATA.sampleEmployeesMaster);
+        localStorage.setItem('noora_employees_master_version', targetVersion);
+        console.log(`[DB] Refreshed Employee Master with ${SEED_DATA.sampleEmployeesMaster.length} multi-country records (${targetVersion}).`);
       }
     }
 
@@ -577,6 +583,22 @@ class BudgetDB {
     } catch (err) {
       console.warn('Fallback getting employees master:', err);
       return (SEED_DATA.sampleEmployeesMaster || []).filter(e => !entityId || e.entityId === entityId);
+    }
+  }
+
+  async resetEmployeesMasterToDefault() {
+    try {
+      await this.ready;
+      if (this.db && this.db.objectStoreNames.contains(STORES.employeesMaster)) {
+        await this.clear(STORES.employeesMaster);
+        await this.putMany(STORES.employeesMaster, SEED_DATA.sampleEmployeesMaster || []);
+        localStorage.setItem('noora_employees_master_version', '2027_v3_all_depts_countries');
+        return await this.getAll(STORES.employeesMaster);
+      }
+      return SEED_DATA.sampleEmployeesMaster || [];
+    } catch (err) {
+      console.error('Failed to reset employees master:', err);
+      throw err;
     }
   }
 

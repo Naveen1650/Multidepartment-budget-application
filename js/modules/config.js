@@ -2324,6 +2324,7 @@ const ConfigModule = {
               </div>
 
               <div class="flex gap-sm items-center">
+                <button class="btn btn-secondary btn-sm" id="btnResetEmployeesMaster" title="Reset and reload complete multi-country dummy dataset">🔄 Reset Dummy Master Data</button>
                 <span class="badge badge-subtle font-mono">${filtered.length} of ${allEmployees.length} Shown</span>
               </div>
             </div>
@@ -2462,6 +2463,22 @@ const ConfigModule = {
         if (addBtn) {
           addBtn.addEventListener('click', () => {
             this.showEmployeeMasterForm();
+          });
+        }
+
+        const resetBtn = container.querySelector('#btnResetEmployeesMaster');
+        if (resetBtn) {
+          resetBtn.addEventListener('click', async () => {
+            if (confirm('Are you sure you want to reset and reload the complete multi-country dummy Employee Master dataset? Any custom unsaved modifications will be replaced with fresh trial records.')) {
+              try {
+                Utils.showToast('Reloading dummy employee master...', 'info');
+                await db.resetEmployeesMasterToDefault();
+                Utils.showToast('✓ Employee Master successfully reset with multi-country dummy dataset!', 'success');
+                this.renderEmployeesMaster(container);
+              } catch (err) {
+                Utils.showToast('Failed to reset employee master: ' + err.message, 'error');
+              }
+            }
           });
         }
       };
