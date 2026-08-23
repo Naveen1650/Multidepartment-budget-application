@@ -19,137 +19,146 @@
 </head>
 <body>
   <div id="app">
-    <!-- Sidebar Navigation -->
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <div class="sidebar-logo">N</div>
-        <div class="sidebar-brand">
-          <h1>Noora Health</h1>
-          <span>Budget Preparation</span>
-        </div>
-      </div>
+    <!-- Dedicated Authentication Screen (Displayed when logged out) -->
+    <div id="authContainer" class="auth-container" style="display: none;"></div>
 
-      <nav class="sidebar-nav">
-        <div class="nav-section">
-          <div class="nav-section-title">Overview</div>
-          <div class="nav-item active" data-page="dashboard">
-            <span class="nav-icon">📊</span>
-            <span class="nav-label">Dashboard</span>
+    <!-- Main Budget Application Layout (Displayed when logged in) -->
+    <div id="appLayout" class="app-layout">
+      <!-- Sidebar Navigation -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-logo">N</div>
+          <div class="sidebar-brand">
+            <h1>Noora Health</h1>
+            <span>Budget Preparation</span>
           </div>
         </div>
 
-        <div class="nav-section">
-          <div class="nav-section-title">Budget</div>
-          <div class="nav-item" data-page="budget-entry">
-            <span class="nav-icon">📝</span>
-            <span class="nav-label">Budget Entry</span>
+        <nav class="sidebar-nav">
+          <div class="nav-section">
+            <div class="nav-section-title">Overview</div>
+            <div class="nav-item active" data-page="dashboard">
+              <span class="nav-icon">📊</span>
+              <span class="nav-label">Dashboard</span>
+            </div>
           </div>
-          <div class="nav-item" data-page="reports">
-            <span class="nav-icon">📈</span>
-            <span class="nav-label">Reports</span>
-          </div>
-        </div>
 
-        <div class="nav-section">
-          <div class="nav-section-title">Configuration</div>
-          <div class="nav-item" data-page="config-entities">
-            <span class="nav-icon">🏢</span>
-            <span class="nav-label">Entities</span>
+          <div class="nav-section">
+            <div class="nav-section-title">Budget</div>
+            <div class="nav-item" data-page="budget-entry">
+              <span class="nav-icon">📝</span>
+              <span class="nav-label">Budget Entry</span>
+            </div>
+            <div class="nav-item" data-page="reports">
+              <span class="nav-icon">📈</span>
+              <span class="nav-label">Reports</span>
+            </div>
           </div>
-          <div class="nav-item" data-page="config-departments">
-            <span class="nav-icon">🏛️</span>
-            <span class="nav-label">Departments</span>
-          </div>
-          <div class="nav-item" data-page="config-budget-year">
-            <span class="nav-icon">📅</span>
-            <span class="nav-label">Budget Year</span>
-          </div>
-          <div class="nav-item" data-page="config-dimensions">
-            <span class="nav-icon">🏷️</span>
-            <span class="nav-label">Dimensions</span>
-          </div>
-          <div class="nav-item" data-page="config-coa">
-            <span class="nav-icon">📒</span>
-            <span class="nav-label">Chart of Accounts</span>
-          </div>
-          <div class="nav-item" data-page="config-travel-rates">
-            <span class="nav-icon">✈️</span>
-            <span class="nav-label">Travel Rates Master</span>
-          </div>
-          <div class="nav-item" data-page="config-employees">
-            <span class="nav-icon">👥</span>
-            <span class="nav-label">Employees Master</span>
-          </div>
-          <div class="nav-item" data-page="config-imp-rates">
-            <span class="nav-icon">🎯</span>
-            <span class="nav-label">IMP ToT Rates Master</span>
-          </div>
-          <div class="nav-item" data-page="config-roles">
-            <span class="nav-icon">🛡️</span>
-            <span class="nav-label">Permissions & Access Matrix</span>
-          </div>
-          <div class="nav-item" data-page="config-users">
-            <span class="nav-icon">👤</span>
-            <span class="nav-label">Users & Access</span>
-          </div>
-          <div class="nav-item" data-page="config-audit">
-            <span class="nav-icon">📜</span>
-            <span class="nav-label">Audit Trail & Logs</span>
-          </div>
-          <div class="nav-item" data-page="config-cloud-sync">
-            <span class="nav-icon">☁️</span>
-            <span class="nav-label">Cloud Sync & Work Cloud</span>
-          </div>
-        </div>
 
-        <div class="nav-section">
-          <div class="nav-section-title">Tools & Resources</div>
-          <div class="nav-item" data-page="excel-import">
-            <span class="nav-icon">📥</span>
-            <span class="nav-label">Import / Export</span>
+          <div class="nav-section">
+            <div class="nav-section-title">Configuration</div>
+            <div class="nav-item" data-page="config-entities">
+              <span class="nav-icon">🏢</span>
+              <span class="nav-label">Entities</span>
+            </div>
+            <div class="nav-item" data-page="config-departments">
+              <span class="nav-icon">🏛️</span>
+              <span class="nav-label">Departments</span>
+            </div>
+            <div class="nav-item" data-page="config-budget-year">
+              <span class="nav-icon">📅</span>
+              <span class="nav-label">Budget Year</span>
+            </div>
+            <div class="nav-item" data-page="config-dimensions">
+              <span class="nav-icon">🏷️</span>
+              <span class="nav-label">Dimensions</span>
+            </div>
+            <div class="nav-item" data-page="config-coa">
+              <span class="nav-icon">📒</span>
+              <span class="nav-label">Chart of Accounts</span>
+            </div>
+            <div class="nav-item" data-page="config-travel-rates">
+              <span class="nav-icon">✈️</span>
+              <span class="nav-label">Travel Rates Master</span>
+            </div>
+            <div class="nav-item" data-page="config-employees">
+              <span class="nav-icon">👥</span>
+              <span class="nav-label">Employees Master</span>
+            </div>
+            <div class="nav-item" data-page="config-imp-rates">
+              <span class="nav-icon">🎯</span>
+              <span class="nav-label">IMP ToT Rates Master</span>
+            </div>
+            <div class="nav-item" data-page="config-roles">
+              <span class="nav-icon">🛡️</span>
+              <span class="nav-label">Permissions & Access Matrix</span>
+            </div>
+            <div class="nav-item" data-page="config-users">
+              <span class="nav-icon">👤</span>
+              <span class="nav-label">Users & Access</span>
+            </div>
+            <div class="nav-item" data-page="config-audit">
+              <span class="nav-icon">📜</span>
+              <span class="nav-label">Audit Trail & Logs</span>
+            </div>
+            <div class="nav-item" data-page="config-cloud-sync">
+              <span class="nav-icon">☁️</span>
+              <span class="nav-label">Cloud Sync & Work Cloud</span>
+            </div>
           </div>
-        </div>
-      </nav>
 
-      <div class="sidebar-toggle">
-        <button id="sidebarToggle" title="Toggle sidebar">◀ Collapse</button>
-      </div>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="main-content">
-      <!-- Top Bar -->
-      <header class="topbar">
-        <div class="topbar-left">
-          <div class="topbar-breadcrumb">
-            <span>Budget App</span>
-            <span class="separator">›</span>
-            <span class="current" id="pageTitle">Dashboard</span>
+          <div class="nav-section">
+            <div class="nav-section-title">Tools & Resources</div>
+            <div class="nav-item" data-page="excel-import">
+              <span class="nav-icon">📥</span>
+              <span class="nav-label">Import / Export</span>
+            </div>
           </div>
-        </div>
-        <div class="topbar-right flex items-center gap-sm">
-          <div id="cloud-sync-badge-container" class="cloud-sync-badge-container"></div>
-          <select class="form-select" id="globalUserSelect" style="width: auto; min-width: 220px; font-weight: 600; border-color: rgba(59, 130, 246, 0.4);" title="Switch active operating user / role">
-            <!-- Populated dynamically by Auth -->
-          </select>
-          <select class="form-select" id="globalYearSelect" style="width: auto; min-width: 140px;">
-            <option value="">Select Year</option>
-          </select>
-          <select class="form-select" id="globalEntitySelect" style="width: auto; min-width: 200px;">
-            <option value="">All Entities</option>
-          </select>
-          <button id="topbarNotificationsBtn" class="topbar-notif-btn" title="View Tagging Requests & Notifications" onclick="App.openNotificationsModal()">
-            <span class="notif-icon">🔔</span>
-            <span id="notifBadge" class="notif-badge" style="display: none;">0</span>
-          </button>
-        </div>
-      </header>
+        </nav>
 
-      <!-- Page Content -->
-      <div class="page-content" id="pageContent">
-        <!-- Dynamic content loaded here -->
-      </div>
-    </main>
+        <div class="sidebar-toggle">
+          <button id="sidebarToggle" title="Toggle sidebar">◀ Collapse</button>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Top Bar -->
+        <header class="topbar">
+          <div class="topbar-left">
+            <div class="topbar-breadcrumb">
+              <span>Budget App</span>
+              <span class="separator">›</span>
+              <span class="current" id="pageTitle">Dashboard</span>
+            </div>
+          </div>
+          <div class="topbar-right flex items-center gap-sm">
+            <div id="cloud-sync-badge-container" class="cloud-sync-badge-container"></div>
+            <select class="form-select" id="globalUserSelect" style="width: auto; min-width: 220px; font-weight: 600; border-color: rgba(59, 130, 246, 0.4);" title="Switch active operating user / role">
+              <!-- Populated dynamically by Auth -->
+            </select>
+            <select class="form-select" id="globalYearSelect" style="width: auto; min-width: 140px;">
+              <option value="">Select Year</option>
+            </select>
+            <select class="form-select" id="globalEntitySelect" style="width: auto; min-width: 200px;">
+              <option value="">All Entities</option>
+            </select>
+            <button id="topbarNotificationsBtn" class="topbar-notif-btn" title="View Tagging Requests & Notifications" onclick="App.openNotificationsModal()">
+              <span class="notif-icon">🔔</span>
+              <span id="notifBadge" class="notif-badge" style="display: none;">0</span>
+            </button>
+            <button id="topbarLogoutBtn" class="btn btn-ghost btn-sm" title="Sign out of current account" onclick="Auth.logout()" style="color: var(--text-secondary); display: flex; align-items: center; gap: 4px; border: 1px solid var(--border-color); padding: 5px 10px;">
+              <span>🚪</span> <span>Sign Out</span>
+            </button>
+          </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="page-content" id="pageContent">
+          <!-- Dynamic content loaded here -->
+        </div>
+      </main>
+    </div>
   </div>
 
   <!-- Supabase CDN Client -->

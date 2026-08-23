@@ -6582,6 +6582,17 @@ const ConfigModule = {
           </div>
         </div>
 
+        <div class="form-row mb-md">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label font-bold">Mobile Number (for SMS / OTP Recovery)</label>
+            <input type="text" class="form-input" id="userFormMobile" value="${user?.mobile || ''}" placeholder="e.g. +91 98765 43210">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label font-bold">Sign-In Password</label>
+            <input type="text" class="form-input" id="userFormPassword" value="${user?.password || 'Password@123'}" placeholder="Password@123">
+          </div>
+        </div>
+
         <!-- Entity & Department Scoping -->
         <div class="card p-sm mb-md" style="background: var(--bg-surface); border: 1px solid var(--border-default);">
           <h4 style="margin:0 0 8px; font-size: 13px; text-transform: uppercase;">🌍 Access Scoping: Entities & Departments</h4>
@@ -6683,6 +6694,8 @@ const ConfigModule = {
             const title = Utils.$('#userFormTitle').value.trim();
             const roleId = Utils.$('#userFormRole').value;
             const status = Utils.$('#userFormStatus').value;
+            const mobile = Utils.$('#userFormMobile')?.value.trim() || user?.mobile || '';
+            const password = Utils.$('#userFormPassword')?.value.trim() || user?.password || 'Password@123';
 
             // Entities Scope
             const entRadio = document.querySelector('input[name="entityScopeRadio"]:checked')?.value;
@@ -6734,6 +6747,8 @@ const ConfigModule = {
               id: user?.id || `user_${Date.now()}`,
               name,
               email,
+              mobile,
+              password,
               title,
               avatar,
               roleId,

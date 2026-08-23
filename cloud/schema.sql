@@ -222,6 +222,8 @@ CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(50) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) DEFAULT 'Password@123',
+    mobile VARCHAR(50),
     role_id VARCHAR(50) REFERENCES roles(id),
     role_name VARCHAR(100),
     assigned_entities JSONB DEFAULT '["*"]'::jsonb,

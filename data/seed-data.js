@@ -1803,6 +1803,8 @@ const SEED_DATA = {
       id: 'user-admin',
       name: 'Arun Kumar',
       email: 'arun.admin@noorahealth.org',
+      password: 'Password@123',
+      mobile: '+91 98765 43210',
       title: 'Global Systems & Budget Admin',
       roleId: 'role-admin',          // legacy compat (also drives initial enrichment)
       roleAssignments: [
@@ -1824,6 +1826,8 @@ const SEED_DATA = {
       id: 'user-entity-admin-nhipl',
       name: 'Priya Iyer',
       email: 'priya.ea@noorahealth.org',
+      password: 'Password@123',
+      mobile: '+91 98765 43211',
       title: 'NHIPL Entity Administrator',
       roleId: 'role-entity-admin',
       roleAssignments: [
@@ -1845,6 +1849,8 @@ const SEED_DATA = {
       id: 'user-hr-team',
       name: 'Deepa Nair',
       email: 'deepa.hr@noorahealth.org',
+      password: 'Password@123',
+      mobile: '+91 98765 43212',
       title: 'HR Manager — India',
       roleId: 'role-hr-team',
       roleAssignments: [
@@ -1866,6 +1872,8 @@ const SEED_DATA = {
       id: 'user-lead-hcomm',
       name: 'Rajesh Varma',
       email: 'rajesh.hcomm@noorahealth.org',
+      password: 'Password@123',
+      mobile: '+91 98765 43213',
       title: 'Lead — Healthcare Communications',
       roleId: 'role-dept-lead',
       roleAssignments: [
@@ -1887,6 +1895,8 @@ const SEED_DATA = {
       id: 'user-lead-pdel',
       name: 'Amitabh Sen',
       email: 'amitabh.pdel@noorahealth.org',
+      password: 'Password@123',
+      mobile: '+91 98765 43214',
       title: 'Program Director — Implementation',
       roleId: 'role-dept-lead',
       roleAssignments: [
@@ -1908,6 +1918,8 @@ const SEED_DATA = {
       id: 'user-pooja-hcomm',
       name: 'Pooja Sharma',
       email: 'pooja.sharma@noorahealth.org',
+      password: 'Password@123',
+      mobile: '+91 98765 43215',
       title: 'HCOMM Operations Associate',
       roleId: 'role-data-entry',
       roleAssignments: [
@@ -1938,6 +1950,8 @@ const SEED_DATA = {
       id: 'user-country-director',
       name: 'Dr. Kavitha Menon',
       email: 'kavitha.cd@noorahealth.org',
+      password: 'Password@123',
+      mobile: '+91 98765 43216',
       title: 'Country Director — India',
       roleId: 'role-country-director',
       roleAssignments: [
@@ -1959,6 +1973,8 @@ const SEED_DATA = {
       id: 'user-fin-mgr',
       name: 'Sneha Rao',
       email: 'sneha.finance@noorahealth.org',
+      password: 'Password@123',
+      mobile: '+91 98765 43217',
       title: 'Finance Controller — India',
       roleId: 'role-finance-mgr',
       roleAssignments: [
@@ -1980,6 +1996,8 @@ const SEED_DATA = {
       id: 'user-finalizer',
       name: 'Suresh Babu',
       email: 'suresh.cfo@noorahealth.org',
+      password: 'Password@123',
+      mobile: '+91 98765 43218',
       title: 'Chief Financial Officer (CFO)',
       roleId: 'role-finalizer',
       roleAssignments: [
@@ -2001,6 +2019,8 @@ const SEED_DATA = {
       id: 'user-auditor',
       name: 'Vikram Mehta',
       email: 'vikram.audit@external.org',
+      password: 'Password@123',
+      mobile: '+91 98765 43219',
       title: 'External Financial Auditor',
       roleId: 'role-auditor',
       roleAssignments: [

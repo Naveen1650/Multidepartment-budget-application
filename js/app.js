@@ -20,6 +20,24 @@ const App = {
       await Auth.init();
     }
 
+    // Check Authentication state
+    const authContainer = Utils.$('#authContainer');
+    const appLayout = Utils.$('#appLayout');
+
+    if (typeof Auth !== 'undefined' && !Auth.isAuthenticated()) {
+      if (appLayout) appLayout.style.display = 'none';
+      if (authContainer) {
+        authContainer.style.display = 'flex';
+        Auth.renderLoginPage(authContainer);
+      }
+      console.log('App in unauthenticated mode. Sign-In page active.');
+      return;
+    }
+
+    // Authenticated state: reveal main application layout
+    if (authContainer) authContainer.style.display = 'none';
+    if (appLayout) appLayout.style.display = 'flex';
+
     // Initialize Cloud Sync & Status Badge
     if (typeof CloudSyncModule !== 'undefined') {
       CloudSyncModule.init();
@@ -41,7 +59,7 @@ const App = {
     const hash = window.location.hash.slice(1) || 'dashboard';
     this.navigateTo(hash);
 
-    console.log('App initialized!');
+    console.log('App initialized and authenticated!');
   },
 
   setupNavigation() {

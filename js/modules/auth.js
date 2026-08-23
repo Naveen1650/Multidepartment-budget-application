@@ -74,13 +74,200 @@ const Auth = {
     this._roles = await db.getRoles();
     await this.refreshAllLockStatuses();
 
-    const storedUserId = typeof localStorage !== 'undefined'
-      ? (localStorage.getItem('noora_active_user_id') || 'user-admin')
-      : 'user-admin';
+    let sessionUserId = null;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const sessionStr = localStorage.getItem('noora_auth_session');
+        if (sessionStr) {
+          const session = JSON.parse(sessionStr);
+          sessionUserId = session?.userId;
+        } else {
+          sessionUserId = localStorage.getItem('noora_active_user_id');
+        }
+      }
+    } catch (e) {}
 
-    this._currentUser = this._users.find(u => u.id === storedUserId) || this._users[0];
+    if (sessionUserId) {
+      this._currentUser = this._users.find(u => u.id === sessionUserId);
+      if (this._currentUser) {
+        this._isAuthenticated = true;
+        this._enrichCurrentUser();
+      } else {
+        this._isAuthenticated = false;
+        this._currentUser = null;
+      }
+    } else {
+      this._isAuthenticated = false;
+      this._currentUser = null;
+    }
+
+    console.log('[Auth] Initialized. Authenticated:', this._isAuthenticated, 'User:', this._currentUser ? this._currentUser.name : 'None');
+  },
+
+  isAuthenticated() {
+    return !!(this._isAuthenticated && this._currentUser);
+  },
+
+  async login(email, password) {
+    await db.ready;
+    this._users = await db.getUsers();
+    this._roles = await db.getRoles();
+
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const user = this._users.find(u => u.email && u.email.trim().toLowerCase() === normalizedEmail);
+
+    if (!user) {
+      return { success: false, message: 'No user account found with this email address.' };
+    }
+
+    if (user.status === 'inactive') {
+      return { success: false, message: 'This user account has been deactivated. Please contact your System Administrator.' };
+    }
+
+    const expectedPassword = user.password || 'Password@123';
+    if (password !== expectedPassword) {
+      return { success: false, message: 'Incorrect password. (Default trial password is Password@123)' };
+    }
+
+    this._currentUser = user;
+    this._isAuthenticated = true;
     this._enrichCurrentUser();
-    console.log('[Auth] Initialized as ' + (this._currentUser ? this._currentUser.name : 'Unknown') + ' (' + (this._currentUser ? this._currentUser.roleName : 'None') + ')');
+
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('noora_auth_session', JSON.stringify({
+          userId: user.id,
+          email: user.email,
+          loggedInAt: new Date().toISOString()
+        }));
+        localStorage.setItem('noora_active_user_id', user.id);
+      }
+    } catch (e) {}
+
+    try {
+      await db.logAudit({
+        category: 'auth',
+        action: 'LOGIN',
+        recordId: user.id,
+        description: `User "${user.name}" (${user.email}) logged in successfully`
+      });
+    } catch (e) {}
+
+    return { success: true, user };
+  },
+
+  async loginAs(userId) {
+    await db.ready;
+    this._users = await db.getUsers();
+    this._roles = await db.getRoles();
+
+    const user = this._users.find(u => u.id === userId);
+    if (!user) return { success: false, message: 'User not found' };
+
+    this._currentUser = user;
+    this._isAuthenticated = true;
+    this._enrichCurrentUser();
+
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('noora_auth_session', JSON.stringify({
+          userId: user.id,
+          email: user.email,
+          loggedInAt: new Date().toISOString()
+        }));
+        localStorage.setItem('noora_active_user_id', user.id);
+      }
+    } catch (e) {}
+
+    return { success: true, user };
+  },
+
+  async logout() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('noora_auth_session');
+        localStorage.removeItem('noora_active_user_id');
+      }
+    } catch (e) {}
+
+    this._isAuthenticated = false;
+    this._currentUser = null;
+
+    if (typeof App !== 'undefined' && App.init) {
+      await App.init();
+    }
+  },
+
+  // ─── Mobile OTP Forgot Password Flow ───
+  async requestPasswordResetOTP(identifier) {
+    await db.ready;
+    this._users = await db.getUsers();
+    const cleanId = String(identifier || '').trim().toLowerCase();
+    const cleanPhone = cleanId.replace(/\D/g, '');
+
+    const user = this._users.find(u => {
+      const uEmail = (u.email || '').toLowerCase();
+      const uPhone = (u.mobile || '').replace(/\D/g, '');
+      return (uEmail && uEmail === cleanId) || (cleanPhone.length >= 7 && uPhone && uPhone.includes(cleanPhone));
+    });
+
+    if (!user) {
+      return { success: false, message: 'No registered account found matching that email or mobile number.' };
+    }
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    this._pendingOTP = {
+      userId: user.id,
+      otp: otp,
+      expiresAt: Date.now() + (5 * 60 * 1000) // 5 mins
+    };
+
+    const maskedPhone = user.mobile
+      ? user.mobile.replace(/(\+?\d{2,3}\s*\d{2})\d{4,5}(\d{2})/, '$1-XXXXX-$2')
+      : 'Registered Mobile';
+
+    return {
+      success: true,
+      user,
+      otp,
+      maskedPhone
+    };
+  },
+
+  verifyResetOTP(enteredOtp) {
+    if (!this._pendingOTP) {
+      return { success: false, message: 'No active OTP verification request found. Please request a new code.' };
+    }
+    if (Date.now() > this._pendingOTP.expiresAt) {
+      this._pendingOTP = null;
+      return { success: false, message: 'OTP code has expired. Please request a new code.' };
+    }
+    if (String(enteredOtp).trim() !== this._pendingOTP.otp) {
+      return { success: false, message: 'Invalid 6-digit verification code. Please try again.' };
+    }
+    return { success: true, userId: this._pendingOTP.userId };
+  },
+
+  async resetPassword(userId, newPassword) {
+    await db.ready;
+    this._users = await db.getUsers();
+    const user = this._users.find(u => u.id === userId);
+    if (!user) return { success: false, message: 'User record not found.' };
+
+    user.password = newPassword;
+    await db.saveUser(user);
+    this._pendingOTP = null;
+
+    try {
+      await db.logAudit({
+        category: 'auth',
+        action: 'PASSWORD_RESET',
+        recordId: user.id,
+        description: `Password reset via mobile verification for user "${user.name}"`
+      });
+    } catch (e) {}
+
+    return { success: true, message: 'Password updated successfully! You can now sign in with your new password.' };
   },
 
   _enrichCurrentUser() {
@@ -613,9 +800,379 @@ const Auth = {
         b.style.display = 'none';
       });
     }
+  },
+
+  // ─── Sign-In Page & UI Components ───
+  renderLoginPage(container) {
+    if (!container) return;
+
+    container.innerHTML = `
+      <div class="login-wrapper">
+        <div class="login-card">
+          <div class="login-header">
+            <div class="login-logo-circle">N</div>
+            <h1 class="login-brand-title">Noora Health</h1>
+            <p class="login-brand-subtitle">Multi-Department Budgeting & Governance System</p>
+          </div>
+
+          <div class="login-body">
+            <form id="loginForm" onsubmit="event.preventDefault();">
+              <div class="form-group mb-md">
+                <label class="form-label" for="loginEmail">Work Email Address</label>
+                <div class="input-with-icon">
+                  <span class="input-icon">✉️</span>
+                  <input type="email" class="form-input" id="loginEmail" placeholder="e.g. arun.admin@noorahealth.org" required autofocus autocomplete="username">
+                </div>
+              </div>
+
+              <div class="form-group mb-md">
+                <div class="flex items-center justify-between mb-xs">
+                  <label class="form-label mb-none" for="loginPassword">Password</label>
+                  <a href="javascript:void(0)" class="forgot-password-link" onclick="Auth.showForgotPasswordModal()">Forgot Password?</a>
+                </div>
+                <div class="input-with-icon">
+                  <span class="input-icon">🔒</span>
+                  <input type="password" class="form-input" id="loginPassword" placeholder="Enter your password" required autocomplete="current-password">
+                  <button type="button" class="btn-toggle-password" id="togglePasswordBtn" title="Show / Hide Password">👁️</button>
+                </div>
+                <small class="text-tertiary" style="font-size: 0.78rem; display: block; margin-top: 4px;">
+                  Default password for trial accounts: <code>Password@123</code>
+                </small>
+              </div>
+
+              <div class="flex items-center justify-between mb-lg">
+                <label class="flex items-center gap-xs" style="font-size: 0.85rem; cursor: pointer; color: var(--text-secondary);">
+                  <input type="checkbox" id="rememberMe" checked> Remember session
+                </label>
+              </div>
+
+              <div id="loginErrorNotice" class="login-error-notice" style="display: none;"></div>
+
+              <button type="submit" class="btn btn-primary btn-block btn-lg" id="submitLoginBtn">
+                <span>Sign In to Budget Portal</span>
+                <span>→</span>
+              </button>
+            </form>
+
+            <div class="login-divider">
+              <span>OR QUICK TRIAL DEMO LOGIN</span>
+            </div>
+
+            <div class="demo-login-section">
+              <p class="demo-section-label">Select a demo persona to test with 1-click:</p>
+              <div class="demo-persona-grid">
+                <button type="button" class="demo-persona-btn" onclick="Auth.handleDemoLogin('user-admin')">
+                  <span class="persona-avatar">👨‍💼</span>
+                  <div class="persona-meta">
+                    <span class="persona-name">Arun Kumar</span>
+                    <span class="persona-role badge badge-primary">Super Admin</span>
+                  </div>
+                </button>
+
+                <button type="button" class="demo-persona-btn" onclick="Auth.handleDemoLogin('user-entity-admin-nhipl')">
+                  <span class="persona-avatar">👩‍💼</span>
+                  <div class="persona-meta">
+                    <span class="persona-name">Priya Iyer</span>
+                    <span class="persona-role badge badge-cyan">Entity Admin (NHIPL)</span>
+                  </div>
+                </button>
+
+                <button type="button" class="demo-persona-btn" onclick="Auth.handleDemoLogin('user-hr-team')">
+                  <span class="persona-avatar">👩‍🏫</span>
+                  <div class="persona-meta">
+                    <span class="persona-name">Deepa Nair</span>
+                    <span class="persona-role badge badge-purple">HR Manager</span>
+                  </div>
+                </button>
+
+                <button type="button" class="demo-persona-btn" onclick="Auth.handleDemoLogin('user-lead-hcomm')">
+                  <span class="persona-avatar">👨‍⚕️</span>
+                  <div class="persona-meta">
+                    <span class="persona-name">Rajesh Varma</span>
+                    <span class="persona-role badge badge-amber">Lead - Health Comms</span>
+                  </div>
+                </button>
+
+                <button type="button" class="demo-persona-btn" onclick="Auth.handleDemoLogin('user-lead-pdel')">
+                  <span class="persona-avatar">👨‍🏫</span>
+                  <div class="persona-meta">
+                    <span class="persona-name">Amitabh Sen</span>
+                    <span class="persona-role badge badge-amber">Lead - Program Delivery</span>
+                  </div>
+                </button>
+
+                <button type="button" class="demo-persona-btn" onclick="Auth.handleDemoLogin('user-fin-mgr')">
+                  <span class="persona-avatar">👩‍💼</span>
+                  <div class="persona-meta">
+                    <span class="persona-name">Sneha Rao</span>
+                    <span class="persona-role badge badge-emerald">Finance Controller</span>
+                  </div>
+                </button>
+
+                <button type="button" class="demo-persona-btn" onclick="Auth.handleDemoLogin('user-finalizer')">
+                  <span class="persona-avatar">🏦</span>
+                  <div class="persona-meta">
+                    <span class="persona-name">Suresh Babu</span>
+                    <span class="persona-role badge badge-rose">Budget Finalizer (CFO)</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="login-footer">
+            <span>🔒 Protected Enterprise Financial Application • Noora Health</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Setup password toggle
+    const toggleBtn = Utils.$('#togglePasswordBtn');
+    const passInput = Utils.$('#loginPassword');
+    if (toggleBtn && passInput) {
+      toggleBtn.onclick = () => {
+        const isPass = passInput.type === 'password';
+        passInput.type = isPass ? 'text' : 'password';
+        toggleBtn.textContent = isPass ? '🙈' : '👁️';
+      };
+    }
+
+    // Setup login form submit
+    const loginForm = Utils.$('#loginForm');
+    const submitBtn = Utils.$('#submitLoginBtn');
+    const errorNotice = Utils.$('#loginErrorNotice');
+
+    if (loginForm) {
+      loginForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const email = Utils.$('#loginEmail').value.trim();
+        const password = Utils.$('#loginPassword').value;
+
+        if (!email || !password) return;
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span>Verifying...</span>';
+        if (errorNotice) errorNotice.style.display = 'none';
+
+        const res = await Auth.login(email, password);
+        if (res.success) {
+          Utils.showToast(`Welcome back, ${res.user.name}!`, 'success');
+          if (typeof App !== 'undefined' && App.init) {
+            await App.init();
+          }
+        } else {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<span>Sign In to Budget Portal</span> <span>→</span>';
+          if (errorNotice) {
+            errorNotice.textContent = res.message;
+            errorNotice.style.display = 'block';
+          }
+        }
+      };
+    }
+  },
+
+  async handleDemoLogin(userId) {
+    const res = await this.loginAs(userId);
+    if (res.success) {
+      Utils.showToast(`Logged in as ${res.user.name} (${res.user.roleName})`, 'success');
+      if (typeof App !== 'undefined' && App.init) {
+        await App.init();
+      }
+    }
+  },
+
+  // ─── Forgot Password Interactive Modal ───
+  showForgotPasswordModal() {
+    let currentStep = 1;
+    let targetUserId = null;
+    let generatedOTP = null;
+
+    const modalContent = `
+      <div id="forgotPassContainer" style="padding: 10px 0;">
+        <!-- Step 1: Identifier Input -->
+        <div id="forgotStep1">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 2.5rem; margin-bottom: 8px;">📱</div>
+            <h3 style="margin-bottom: 4px;">Reset Your Password</h3>
+            <p class="text-secondary" style="font-size: 0.88rem;">Enter your registered mobile phone number or work email to receive a 6-digit verification code.</p>
+          </div>
+
+          <form id="forgotReqForm" onsubmit="event.preventDefault();">
+            <div class="form-group mb-lg">
+              <label class="form-label">Work Email or Mobile Number</label>
+              <input type="text" class="form-input" id="forgotIdentifier" placeholder="e.g. +91 98765 43210 or email" required autofocus>
+              <small class="text-tertiary" style="font-size: 0.78rem; display: block; margin-top: 4px;">
+                Example trial accounts: <code>+91 98765 43210</code> (Arun Kumar) or <code>arun.admin@noorahealth.org</code>
+              </small>
+            </div>
+
+            <div id="forgotStep1Error" class="login-error-notice" style="display: none; margin-bottom: 15px;"></div>
+
+            <button type="submit" class="btn btn-primary btn-block btn-lg" id="sendOtpBtn">
+              Send 6-Digit OTP Code
+            </button>
+          </form>
+        </div>
+
+        <!-- Step 2: OTP Verification -->
+        <div id="forgotStep2" style="display: none;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 2.5rem; margin-bottom: 8px;">🔐</div>
+            <h3 style="margin-bottom: 4px;">Verify Authentication Code</h3>
+            <p class="text-secondary" style="font-size: 0.88rem;">We sent a 6-digit OTP code to <strong id="maskedPhoneDisplay"></strong></p>
+          </div>
+
+          <form id="verifyOtpForm" onsubmit="event.preventDefault();">
+            <div class="form-group mb-lg text-center">
+              <input type="text" class="form-input" id="enteredOtp" maxlength="6" placeholder="• • • • • •" 
+                style="font-size: 1.8rem; letter-spacing: 12px; text-align: center; font-weight: 700; font-family: var(--font-mono); width: 240px; margin: 0 auto;" required>
+            </div>
+
+            <div id="forgotStep2Error" class="login-error-notice" style="display: none; margin-bottom: 15px;"></div>
+
+            <button type="submit" class="btn btn-primary btn-block btn-lg" id="verifyOtpBtn">
+              Verify & Proceed
+            </button>
+
+            <div class="text-center mt-md">
+              <button type="button" class="btn btn-ghost btn-sm" id="resendOtpBtn">Resend Code</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Step 3: Set New Password -->
+        <div id="forgotStep3" style="display: none;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 2.5rem; margin-bottom: 8px;">🔑</div>
+            <h3 style="margin-bottom: 4px;">Create New Password</h3>
+            <p class="text-secondary" style="font-size: 0.88rem;">Your identity has been verified. Choose a strong new password.</p>
+          </div>
+
+          <form id="setNewPassForm" onsubmit="event.preventDefault();">
+            <div class="form-group mb-md">
+              <label class="form-label">New Password</label>
+              <input type="password" class="form-input" id="newPassword" placeholder="Minimum 6 characters" minlength="6" required>
+            </div>
+
+            <div class="form-group mb-lg">
+              <label class="form-label">Confirm New Password</label>
+              <input type="password" class="form-input" id="confirmNewPassword" placeholder="Re-enter password" minlength="6" required>
+            </div>
+
+            <div id="forgotStep3Error" class="login-error-notice" style="display: none; margin-bottom: 15px;"></div>
+
+            <button type="submit" class="btn btn-primary btn-block btn-lg" id="saveNewPassBtn">
+              Save New Password & Sign In
+            </button>
+          </form>
+        </div>
+      </div>
+    `;
+
+    Utils.showModal('Mobile Password Recovery', modalContent, [], 'max-w-md');
+
+    // Step 1: Send OTP
+    const reqForm = Utils.$('#forgotReqForm');
+    const step1 = Utils.$('#forgotStep1');
+    const step2 = Utils.$('#forgotStep2');
+    const step3 = Utils.$('#forgotStep3');
+    const step1Err = Utils.$('#forgotStep1Error');
+    const step2Err = Utils.$('#forgotStep2Error');
+    const step3Err = Utils.$('#forgotStep3Error');
+
+    if (reqForm) {
+      reqForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const idVal = Utils.$('#forgotIdentifier').value.trim();
+        if (!idVal) return;
+
+        const res = await Auth.requestPasswordResetOTP(idVal);
+        if (res.success) {
+          targetUserId = res.user.id;
+          generatedOTP = res.otp;
+          Utils.$('#maskedPhoneDisplay').textContent = res.maskedPhone;
+
+          // Display visual demo notification with the OTP code
+          Utils.showToast(`[SMS Simulation] Verification Code: ${res.otp}`, 'info', 8000);
+
+          step1.style.display = 'none';
+          step2.style.display = 'block';
+          setTimeout(() => {
+            const el = Utils.$('#enteredOtp');
+            if (el) el.focus();
+          }, 100);
+        } else {
+          step1Err.textContent = res.message;
+          step1Err.style.display = 'block';
+        }
+      };
+    }
+
+    // Step 2: Verify OTP
+    const verifyForm = Utils.$('#verifyOtpForm');
+    if (verifyForm) {
+      verifyForm.onsubmit = (e) => {
+        e.preventDefault();
+        const code = Utils.$('#enteredOtp').value.trim();
+        const res = Auth.verifyResetOTP(code);
+        if (res.success) {
+          step2.style.display = 'none';
+          step3.style.display = 'block';
+          setTimeout(() => {
+            const el = Utils.$('#newPassword');
+            if (el) el.focus();
+          }, 100);
+        } else {
+          step2Err.textContent = res.message;
+          step2Err.style.display = 'block';
+        }
+      };
+    }
+
+    // Resend OTP
+    const resendBtn = Utils.$('#resendOtpBtn');
+    if (resendBtn) {
+      resendBtn.onclick = async () => {
+        const idVal = Utils.$('#forgotIdentifier').value.trim();
+        const res = await Auth.requestPasswordResetOTP(idVal);
+        if (res.success) {
+          Utils.showToast(`[SMS Simulation] New Verification Code: ${res.otp}`, 'info', 8000);
+        }
+      };
+    }
+
+    // Step 3: Save Password
+    const setPassForm = Utils.$('#setNewPassForm');
+    if (setPassForm) {
+      setPassForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const newP = Utils.$('#newPassword').value;
+        const confP = Utils.$('#confirmNewPassword').value;
+
+        if (newP !== confP) {
+          step3Err.textContent = 'Passwords do not match. Please re-enter.';
+          step3Err.style.display = 'block';
+          return;
+        }
+
+        const res = await Auth.resetPassword(targetUserId, newP);
+        if (res.success) {
+          Utils.closeModal();
+          Utils.showToast(res.message, 'success');
+          // Auto login with new password
+          await Auth.loginAs(targetUserId);
+        } else {
+          step3Err.textContent = res.message;
+          step3Err.style.display = 'block';
+        }
+      };
+    }
   }
 };
 
 if (typeof window !== 'undefined') {
   window.Auth = Auth;
 }
+
