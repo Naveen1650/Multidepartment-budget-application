@@ -7297,6 +7297,254 @@ const ConfigModule = {
     };
 
     renderGrid();
+  },
+
+  // ─── 13. Cloud Sync & Work Cloud Settings ───
+  async renderCloudSync(container) {
+    const config = (typeof CloudSyncModule !== 'undefined') ? CloudSyncModule._config : { enabled: false, url: '', anonKey: '' };
+    const status = (typeof CloudSyncModule !== 'undefined') ? CloudSyncModule._status : 'local';
+
+    let bannerClass = 'local';
+    let bannerIcon = '☁️';
+    let bannerTitle = 'Trial / Local Storage Mode';
+    let bannerDesc = 'Application is currently storing data in your browser (IndexedDB). You can share this app via GitHub Pages / Vercel for testing, and connect a cloud database below for real-time multi-user synchronization.';
+
+    if (status === 'connected') {
+      bannerClass = 'connected';
+      bannerIcon = '🟢';
+      bannerTitle = 'Connected to Cloud Backend';
+      bannerDesc = `Active connection established to ${config.url}. Real-time multi-user updates and automated data persistence are active.`;
+    } else if (status === 'error') {
+      bannerClass = 'error';
+      bannerIcon = '⚠️';
+      bannerTitle = 'Cloud Disconnected';
+      bannerDesc = `Could not reach cloud database (${CloudSyncModule._lastError || 'Connection error'}). Working safely in local offline trial mode.`;
+    }
+
+    container.innerHTML = `
+      <div class="page-header">
+        <h2>Cloud Sync & Work Cloud Settings</h2>
+        <p>Manage cloud database synchronization for multi-user trials and future enterprise deployment</p>
+      </div>
+
+      <div class="cloud-status-banner ${bannerClass}">
+        <div>
+          <div style="font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+            <span>${bannerIcon}</span> <span>${bannerTitle}</span>
+          </div>
+          <div style="font-size: 0.88rem; margin-top: 4px; opacity: 0.9;">
+            ${bannerDesc}
+          </div>
+        </div>
+        ${config.lastSyncTimestamp ? `<div style="font-size: 0.8rem; font-family: var(--font-mono); opacity: 0.8;">Last Synced: ${new Date(config.lastSyncTimestamp).toLocaleTimeString()}</div>` : ''}
+      </div>
+
+      <div class="grid grid-cols-2 gap-lg mb-lg">
+        <!-- Cloud Connection Configuration -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Cloud Database Configuration</div>
+              <div class="card-subtitle">Connect a PostgreSQL / Supabase cloud instance for multi-user sync</div>
+            </div>
+            <span class="badge ${status === 'connected' ? 'badge-emerald' : 'badge-amber'}">${status.toUpperCase()}</span>
+          </div>
+          <div class="card-body">
+            <form id="cloudConfigForm" onsubmit="event.preventDefault();">
+              <div class="form-group mb-md">
+                <label class="form-label">Backend Provider</label>
+                <select class="form-select" id="cloudProvider">
+                  <option value="supabase" ${config.provider === 'supabase' ? 'selected' : ''}>Supabase (PostgreSQL + Real-Time Engine)</option>
+                  <option value="work-cloud" ${config.provider === 'work-cloud' ? 'selected' : ''}>Work Cloud / Internal REST PostgreSQL</option>
+                </select>
+              </div>
+
+              <div class="form-group mb-md">
+                <label class="form-label">Cloud Project URL</label>
+                <input type="url" class="form-input" id="cloudUrl" placeholder="https://your-project.supabase.co" value="${config.url || ''}">
+                <small class="text-secondary" style="font-size: 0.78rem;">Your Supabase Project URL or official work cloud API endpoint.</small>
+              </div>
+
+              <div class="form-group mb-md">
+                <label class="form-label">API Key / Anon Public Key</label>
+                <input type="password" class="form-input" id="cloudAnonKey" placeholder="eyJhbGciOi..." value="${config.anonKey || ''}">
+                <small class="text-secondary" style="font-size: 0.78rem;">Public Anonymous Client Key for database REST API.</small>
+              </div>
+
+              <div class="flex items-center justify-between mt-lg pt-md" style="border-top: 1px solid var(--border-color);">
+                <button type="button" class="btn btn-secondary" id="testCloudBtn">🔌 Test Connection</button>
+                <div class="flex gap-sm">
+                  <button type="button" class="btn btn-ghost text-danger" id="disconnectCloudBtn" ${!config.url ? 'style="display:none;"' : ''}>Disconnect</button>
+                  <button type="button" class="btn btn-primary" id="saveCloudBtn">Save & Connect</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Two-Way Data Synchronization Actions -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Data Migration & Sync Tools</div>
+              <div class="card-subtitle">Push local trial data to cloud or restore cloud database to local</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="flex flex-col gap-md">
+              <div style="background: var(--bg-tertiary); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 4px;">⬆️ Push Local Data to Cloud Database</div>
+                <p class="text-secondary" style="font-size: 0.82rem; margin-bottom: 12px;">Uploads all local master data, budget lines, employees, and settings into your cloud tables.</p>
+                <button type="button" class="btn btn-primary btn-sm" id="uploadCloudBtn" ${status !== 'connected' ? 'disabled' : ''}>
+                  Upload All to Cloud Database
+                </button>
+              </div>
+
+              <div style="background: var(--bg-tertiary); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 4px;">⬇️ Pull Cloud Data to Local Cache</div>
+                <p class="text-secondary" style="font-size: 0.82rem; margin-bottom: 12px;">Refreshes your local browser database with the latest state from the cloud database.</p>
+                <button type="button" class="btn btn-secondary btn-sm" id="downloadCloudBtn" ${status !== 'connected' ? 'disabled' : ''}>
+                  Download from Cloud Database
+                </button>
+              </div>
+
+              <div id="syncProgressNotice" style="display: none; padding: 10px 14px; border-radius: var(--radius-md); background: rgba(59, 130, 246, 0.1); color: #2563eb; font-size: 0.85rem; font-weight: 600;">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cloud Deployment & Work Cloud Guide -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🚀 Deployment Lifecycle: Trial → Work Cloud</div>
+        </div>
+        <div class="card-body">
+          <div class="grid grid-cols-3 gap-md">
+            <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md);">
+              <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; color: var(--accent-primary);">1. Trial Web App</div>
+              <p class="text-secondary" style="font-size: 0.82rem; line-height: 1.5;">
+                Your repository has GitHub Pages and Vercel configs ready. Once pushed to GitHub, stakeholders can open the live link and test instantly on any device.
+              </p>
+            </div>
+            <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md);">
+              <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; color: var(--accent-primary);">2. Trial Cloud Database</div>
+              <p class="text-secondary" style="font-size: 0.82rem; line-height: 1.5;">
+                Create a free Supabase project, execute the SQL schema from <code>cloud/schema.sql</code>, enter the URL and Anon Key above, and click <strong>Upload All to Cloud</strong>.
+              </p>
+            </div>
+            <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md);">
+              <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; color: var(--accent-primary);">3. Official Work Cloud</div>
+              <p class="text-secondary" style="font-size: 0.82rem; line-height: 1.5;">
+                When ready for enterprise deployment on your company cloud (AWS / Azure / GCP), execute <code>cloud/schema.sql</code> on your internal PostgreSQL instance and switch the URL.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Event listeners
+    const testBtn = Utils.$('#testCloudBtn');
+    const saveBtn = Utils.$('#saveCloudBtn');
+    const disconnectBtn = Utils.$('#disconnectCloudBtn');
+    const uploadBtn = Utils.$('#uploadCloudBtn');
+    const downloadBtn = Utils.$('#downloadCloudBtn');
+    const progressNotice = Utils.$('#syncProgressNotice');
+
+    if (testBtn) {
+      testBtn.onclick = async () => {
+        const url = Utils.$('#cloudUrl').value.trim();
+        const anonKey = Utils.$('#cloudAnonKey').value.trim();
+        if (!url || !anonKey) {
+          Utils.showToast('Please enter both Project URL and Public API Key', 'warning');
+          return;
+        }
+        testBtn.disabled = true;
+        testBtn.textContent = 'Testing...';
+        const res = await CloudSyncModule.testConnection(url, anonKey);
+        testBtn.disabled = false;
+        testBtn.textContent = '🔌 Test Connection';
+        if (res.success) {
+          Utils.showToast('✓ Cloud connection successful!', 'success');
+        } else {
+          Utils.showToast(`Connection failed: ${res.message}`, 'danger');
+        }
+      };
+    }
+
+    if (saveBtn) {
+      saveBtn.onclick = async () => {
+        const url = Utils.$('#cloudUrl').value.trim();
+        const anonKey = Utils.$('#cloudAnonKey').value.trim();
+        const provider = Utils.$('#cloudProvider').value;
+        if (!url || !anonKey) {
+          Utils.showToast('Please enter both Project URL and API Key', 'warning');
+          return;
+        }
+        CloudSyncModule.saveConfig({ enabled: true, url, anonKey, provider });
+        Utils.showToast('Cloud configuration saved & connecting...', 'success');
+        setTimeout(() => this.renderCloudSync(container), 800);
+      };
+    }
+
+    if (disconnectBtn) {
+      disconnectBtn.onclick = () => {
+        CloudSyncModule.saveConfig({ enabled: false, url: '', anonKey: '' });
+        Utils.showToast('Disconnected from cloud backend. Switched to local trial mode.', 'info');
+        this.renderCloudSync(container);
+      };
+    }
+
+    if (uploadBtn) {
+      uploadBtn.onclick = async () => {
+        if (!confirm('This will upload all local master data and budget line items to the connected cloud database. Continue?')) return;
+        uploadBtn.disabled = true;
+        progressNotice.style.display = 'block';
+        try {
+          await CloudSyncModule.uploadAllToCloud((msg) => {
+            progressNotice.textContent = msg;
+          });
+          Utils.showToast('✓ All local data successfully uploaded to cloud!', 'success');
+        } catch (err) {
+          Utils.showToast(`Upload failed: ${err.message}`, 'danger');
+        } finally {
+          uploadBtn.disabled = false;
+          setTimeout(() => { progressNotice.style.display = 'none'; }, 4000);
+        }
+      };
+    }
+
+    if (downloadBtn) {
+      downloadBtn.onclick = async () => {
+        if (!confirm('This will download all data from the cloud database and overwrite local cache. Continue?')) return;
+        downloadBtn.disabled = true;
+        progressNotice.style.display = 'block';
+        try {
+          await CloudSyncModule.downloadAllFromCloud((msg) => {
+            progressNotice.textContent = msg;
+          });
+          Utils.showToast('✓ All data successfully synced from cloud database!', 'success');
+          if (typeof App !== 'undefined' && App.renderActiveModule) {
+            App.renderActiveModule();
+          }
+        } catch (err) {
+          Utils.showToast(`Download failed: ${err.message}`, 'danger');
+        } finally {
+          downloadBtn.disabled = false;
+          setTimeout(() => { progressNotice.style.display = 'none'; }, 4000);
+        }
+      };
+    }
+  },
+
+  openSettingsModal(tab = 'cloud-sync') {
+    if (tab === 'cloud-sync') {
+      if (typeof App !== 'undefined' && App.navigateTo) {
+        App.navigateTo('config-cloud-sync');
+      }
+    }
   }
 };
 

@@ -96,6 +96,10 @@
             <span class="nav-icon">📜</span>
             <span class="nav-label">Audit Trail & Logs</span>
           </div>
+          <div class="nav-item" data-page="config-cloud-sync">
+            <span class="nav-icon">☁️</span>
+            <span class="nav-label">Cloud Sync & Work Cloud</span>
+          </div>
         </div>
 
         <div class="nav-section">
@@ -124,6 +128,7 @@
           </div>
         </div>
         <div class="topbar-right flex items-center gap-sm">
+          <div id="cloud-sync-badge-container" class="cloud-sync-badge-container"></div>
           <select class="form-select" id="globalUserSelect" style="width: auto; min-width: 220px; font-weight: 600; border-color: rgba(59, 130, 246, 0.4);" title="Switch active operating user / role">
             <!-- Populated dynamically by Auth -->
           </select>
@@ -147,10 +152,14 @@
     </main>
   </div>
 
+  <!-- Supabase CDN Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <!-- Scripts -->
   <script src="data/seed-data.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/db.js"></script>
+  <script src="js/modules/cloud-sync.js"></script>
   <script src="js/modules/auth.js"></script>
   <script src="js/modules/config.js"></script>
   <script src="js/modules/dashboard.js"></script>

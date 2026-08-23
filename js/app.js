@@ -20,6 +20,11 @@ const App = {
       await Auth.init();
     }
 
+    // Initialize Cloud Sync & Status Badge
+    if (typeof CloudSyncModule !== 'undefined') {
+      CloudSyncModule.init();
+    }
+
     // Refresh budget lock status cache for selected year
     if (typeof Auth !== 'undefined' && this.selectedYear) {
       await Auth.refreshLockStatus(this.selectedYear);
@@ -204,6 +209,7 @@ const App = {
       'config-line-permissions': 'Permissions & Access Matrix Governance',
       'config-users': 'Users & Access Management',
       'config-audit': 'Audit Trail & Alteration History',
+      'config-cloud-sync': 'Cloud Sync & Work Cloud Settings',
       'excel-import': 'Import / Export'
     };
 
@@ -303,6 +309,9 @@ const App = {
         break;
       case 'config-audit':
         await ConfigModule.renderAuditLogs(content);
+        break;
+      case 'config-cloud-sync':
+        await ConfigModule.renderCloudSync(content);
         break;
       case 'excel-import':
         await ExcelIOModule.render(content);
