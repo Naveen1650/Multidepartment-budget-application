@@ -5916,23 +5916,23 @@ const ConfigModule = {
                       const effectivePerms = getEffectivePerms(item.key);
                       return `
                         <tr data-cat="${item.key}" data-group="parents">
-                          <td style="padding: 8px 12px;">
+                          <td style="padding: 4px 8px;">
                             <div class="flex items-center gap-xs">
-                              <span style="font-size: 1.1rem;">${item.icon}</span>
+                              <span style="font-size: 1rem;">${item.icon}</span>
                               <div>
-                                <strong style="color: var(--text-primary); font-size: 12.5px;">${item.label}</strong>
-                                <div class="text-tertiary" style="font-size: 11px; margin-top: 1px;">${item.desc}</div>
+                                <strong style="color: var(--text-primary); font-size: 12px;">${item.label}</strong>
+                                <div class="text-tertiary" style="font-size: 10.5px; margin-top: 1px;">${item.desc}</div>
                               </div>
                             </div>
                           </td>
-                          <td><span class="badge badge-subtle font-bold" style="font-size: 10.5px;">${item.group}</span></td>
+                          <td style="padding: 4px 6px;"><span class="badge badge-subtle font-bold" style="font-size: 10px;">${item.group}</span></td>
                           ${Auth.OPERATIONS.map(op => `
-                            <td style="text-align: center; vertical-align: middle;">
-                              <input type="checkbox" class="unified-perm-cb" data-group="parents" data-cat="${item.key}" data-op="${op.key}" ${effectivePerms[op.key] ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px;">
+                            <td style="text-align: center; vertical-align: middle; padding: 3px;">
+                              <input type="checkbox" class="unified-perm-cb" data-group="parents" data-cat="${item.key}" data-op="${op.key}" ${effectivePerms[op.key] ? 'checked' : ''} style="cursor: pointer; width: 15px; height: 15px;">
                             </td>
                           `).join('')}
-                          <td style="text-align: center; vertical-align: middle;">
-                            <button type="button" class="btn btn-ghost btn-xs unified-row-toggle" data-cat="${item.key}" style="padding: 2px 6px; font-size: 10px;">Row</button>
+                          <td style="text-align: center; vertical-align: middle; padding: 3px;">
+                            <button type="button" class="btn btn-ghost btn-xs unified-row-toggle" data-cat="${item.key}" style="padding: 1px 5px; font-size: 10px;">Row</button>
                           </td>
                         </tr>
                       `;
@@ -5942,46 +5942,46 @@ const ConfigModule = {
                   <!-- ─── SECTION 2: SYSTEM & GOVERNANCE MODULES ─── -->
                   ${filteredModules.length > 0 ? `
                     <tr class="section-header-row" data-group="modules" style="background: #e2e8f0; border-top: 2px solid #cbd5e1; border-bottom: 1.5px solid #cbd5e1;">
-                      <td colspan="2" style="padding: 7px 10px;">
+                      <td colspan="2" style="padding: 5px 8px;">
                         <div class="flex justify-between items-center">
                           <div class="flex items-center gap-xs">
-                            <span style="font-size: 1.15rem;">⚙️</span>
-                            <strong style="color: var(--text-primary); font-size: 12.5px;">System Governance, Reports & Historical Modules</strong>
-                            <span class="text-tertiary" style="font-size: 11px; margin-left: 6px;">(${filteredModules.length} modules)</span>
+                            <span style="font-size: 1.05rem;">⚙️</span>
+                            <strong style="color: var(--text-primary); font-size: 12px;">System Governance, Reports & Historical Modules</strong>
+                            <span class="text-tertiary" style="font-size: 10.5px; margin-left: 6px;">(${filteredModules.length} modules)</span>
                           </div>
                           <button type="button" class="btn btn-ghost btn-xs matrix-group-toggle" data-group="modules" style="padding: 1px 6px; font-size: 10px; font-weight: 700; background: rgba(255,255,255,0.75);">Toggle Group</button>
                         </div>
                       </td>
                       ${Auth.OPERATIONS.map(op => `
-                        <td style="text-align: center; background: #e2e8f0; padding: 4px;">
+                        <td style="text-align: center; background: #e2e8f0; padding: 3px;">
                           <input type="checkbox" class="group-op-cb" data-group="modules" data-op="${op.key}" title="Toggle ${op.label} for all System Modules" style="cursor: pointer; width: 14px; height: 14px;">
                         </td>
                       `).join('')}
-                      <td style="text-align: center; background: #e2e8f0;">
-                        <button type="button" class="btn btn-ghost btn-xs matrix-group-all-toggle" data-group="modules" style="padding: 2px 5px; font-size: 10px;">All</button>
+                      <td style="text-align: center; background: #e2e8f0; padding: 3px;">
+                        <button type="button" class="btn btn-ghost btn-xs matrix-group-all-toggle" data-group="modules" style="padding: 1px 5px; font-size: 10px;">All</button>
                       </td>
                     </tr>
                     ${filteredModules.map(item => {
                       const effectivePerms = getEffectivePerms(item.key);
                       return `
                         <tr data-cat="${item.key}" data-group="modules">
-                          <td style="padding: 8px 12px;">
+                          <td style="padding: 4px 8px;">
                             <div class="flex items-center gap-xs">
-                              <span style="font-size: 1.1rem;">${item.icon}</span>
+                              <span style="font-size: 1rem;">${item.icon}</span>
                               <div>
-                                <strong style="color: var(--text-primary); font-size: 12.5px;">${item.label}</strong>
-                                <div class="text-tertiary" style="font-size: 11px; margin-top: 1px;">${item.desc}</div>
+                                <strong style="color: var(--text-primary); font-size: 12px;">${item.label}</strong>
+                                <div class="text-tertiary" style="font-size: 10.5px; margin-top: 1px;">${item.desc}</div>
                               </div>
                             </div>
                           </td>
-                          <td><span class="badge badge-cyan font-bold" style="font-size: 10.5px;">${item.group}</span></td>
+                          <td style="padding: 4px 6px;"><span class="badge badge-subtle font-bold" style="font-size: 10px;">${item.group}</span></td>
                           ${Auth.OPERATIONS.map(op => `
-                            <td style="text-align: center; vertical-align: middle;">
-                              <input type="checkbox" class="unified-perm-cb" data-group="modules" data-cat="${item.key}" data-op="${op.key}" ${effectivePerms[op.key] ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px;">
+                            <td style="text-align: center; vertical-align: middle; padding: 3px;">
+                              <input type="checkbox" class="unified-perm-cb" data-group="modules" data-cat="${item.key}" data-op="${op.key}" ${effectivePerms[op.key] ? 'checked' : ''} style="cursor: pointer; width: 15px; height: 15px;">
                             </td>
                           `).join('')}
-                          <td style="text-align: center; vertical-align: middle;">
-                            <button type="button" class="btn btn-ghost btn-xs unified-row-toggle" data-cat="${item.key}" style="padding: 2px 6px; font-size: 10px;">Row</button>
+                          <td style="text-align: center; vertical-align: middle; padding: 3px;">
+                            <button type="button" class="btn btn-ghost btn-xs unified-row-toggle" data-cat="${item.key}" style="padding: 1px 5px; font-size: 10px;">Row</button>
                           </td>
                         </tr>
                       `;
