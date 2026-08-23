@@ -188,31 +188,33 @@ a:hover { color: var(--accent-primary-hover); }
 .sidebar.collapsed { width: var(--sidebar-collapsed); }
 
 .sidebar-header {
-  padding: 14px 18px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  min-height: 64px;
+  min-height: 52px;
+  max-height: 52px;
   background: #ffffff;
 }
 
 .sidebar-logo-img {
-  height: 34px;
+  height: 24px;
+  max-height: 24px;
   width: auto;
-  max-width: 175px;
+  max-width: 135px;
   object-fit: contain;
-  transition: all var(--transition-base);
+  display: block;
 }
 
 .sidebar.collapsed .sidebar-header {
-  padding: 12px 6px;
+  padding: 10px 6px;
   justify-content: center;
 }
 
 .sidebar.collapsed .sidebar-logo-img {
-  height: 28px;
-  max-width: 32px;
+  height: 22px;
+  max-width: 26px;
   object-fit: cover;
   object-position: left;
 }
@@ -449,11 +451,11 @@ a:hover { color: var(--accent-primary-hover); }
   top: 50%;
   left: calc(50% + var(--sidebar-width) / 2);
   transform: translate(-50%, -50%);
-  width: 520px;
-  height: 220px;
+  width: 380px;
+  height: 140px;
   background: url('assets/noora-health-logo.png') no-repeat center center;
   background-size: contain;
-  opacity: 0.035;
+  opacity: 0.025;
   pointer-events: none;
   z-index: 0;
   transition: left var(--transition-base);
@@ -2411,18 +2413,18 @@ tr.exp-breakdown-row td {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 650px;
-  height: 280px;
+  width: 440px;
+  height: 160px;
   background: url('assets/noora-health-logo.png') no-repeat center center;
   background-size: contain;
-  opacity: 0.045;
+  opacity: 0.03;
   pointer-events: none;
   z-index: 0;
 }
 
 .login-card {
   width: 100%;
-  max-width: 520px;
+  max-width: 480px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-xl);
@@ -2434,18 +2436,18 @@ tr.exp-breakdown-row td {
 }
 
 .login-header {
-  padding: 32px 32px 20px;
+  padding: 24px 24px 16px;
   text-align: center;
   border-bottom: 1px solid var(--border-color);
   background: linear-gradient(180deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
 }
 
 .login-brand-logo-img {
-  height: 48px;
+  height: 32px;
   width: auto;
-  max-width: 240px;
+  max-width: 160px;
   object-fit: contain;
-  margin: 0 auto 12px;
+  margin: 0 auto 8px;
   display: block;
 }
 
