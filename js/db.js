@@ -412,13 +412,17 @@ class BudgetDB {
       const store = tx.objectStore(storeName);
       items.forEach(item => {
         try {
-          if (item.id !== undefined) {
-            store.put(item);
+          const copy = { ...item };
+          if (copy.id !== undefined && copy.id !== null && copy.id !== '') {
+            store.put(copy);
           } else {
-            store.add(item);
+            delete copy.id;
+            store.add(copy);
           }
         } catch {
-          store.put(item);
+          const copy = { ...item };
+          delete copy.id;
+          store.put(copy);
         }
       });
       tx.oncomplete = () => resolve();
@@ -572,11 +576,12 @@ class BudgetDB {
       }
 
       if (!list || list.length === 0) {
-        const defaults = (SEED_DATA.sampleEmployeesMaster || []).filter(e => !entityId || e.entityId === entityId);
+        const defaults = (SEED_DATA.sampleEmployeesMaster || []);
         if (defaults.length > 0) {
           await this.putMany(STORES.employeesMaster, defaults);
           const reloaded = await this.getAll(STORES.employeesMaster);
-          return reloaded && reloaded.length > 0 ? reloaded : defaults;
+          const result = entityId ? (reloaded || defaults).filter(e => e.entityId === entityId) : (reloaded || defaults);
+          return result;
         }
       }
       return list || [];
