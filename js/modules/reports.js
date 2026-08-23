@@ -143,6 +143,10 @@ const ReportsModule = {
     } else if (this.activeTab === 'dimensions') {
       await this.renderDimensionReport(container, yearId, yearObj, entities, departments);
     }
+
+    if (typeof Utils !== 'undefined' && Utils.TableResizer) {
+      Utils.TableResizer.init(container);
+    }
   },
 
   // ─── Reusable Helper: Build Consolidated Line Items across entities & departments ───

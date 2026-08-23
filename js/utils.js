@@ -1052,6 +1052,147 @@ const Utils = {
         }
       });
     }
+  },
+
+  // ─── Direct Drag-to-Resize Table Headers (Excel / Google Sheets Style) ───
+  TableResizer: {
+    guideEl: null,
+
+    getGuide() {
+      if (!this.guideEl && typeof document !== 'undefined') {
+        this.guideEl = document.getElementById('table-resize-guide');
+        if (!this.guideEl) {
+          this.guideEl = document.createElement('div');
+          this.guideEl.id = 'table-resize-guide';
+          this.guideEl.className = 'table-resize-guide';
+          document.body.appendChild(this.guideEl);
+        }
+      }
+      return this.guideEl;
+    },
+
+    init(root = document) {
+      if (typeof document === 'undefined' || !root) return;
+      try {
+        const tables = root.matches && root.matches('.data-table') ? [root] : (root.querySelectorAll ? root.querySelectorAll('.data-table') : []);
+        tables.forEach(t => this.bindTable(t));
+      } catch (e) {
+        console.warn('TableResizer init error:', e);
+      }
+    },
+
+    bindTable(table) {
+      if (!table) return;
+      const ths = table.querySelectorAll('thead th');
+      ths.forEach((th, idx) => {
+        const text = (th.textContent || '').trim().toLowerCase();
+        if (text === 'actions') return;
+
+        let grip = th.querySelector('.col-resizer-grip');
+        if (!grip) {
+          grip = document.createElement('div');
+          grip.className = 'col-resizer-grip';
+          grip.title = '↔ Drag to resize column (Double-click to reset)';
+          th.appendChild(grip);
+        }
+
+        if (!grip._bound) {
+          grip._bound = true;
+          grip.addEventListener('mousedown', (e) => this.onMouseDown(e, th, table, idx));
+          grip.addEventListener('dblclick', (e) => this.onDoubleClick(e, th, table, idx));
+        }
+      });
+    },
+
+    getColKey(th) {
+      const cls = th.className || '';
+      const text = (th.textContent || '').toLowerCase();
+      if (cls.includes('sticky-col-status') || text.includes('status')) return 'stickyStatus';
+      if (cls.includes('sticky-col-emp') || text.includes('employee name') || text.includes('staff member')) return 'stickyEmp';
+      if (cls.includes('sticky-col-1') || cls.includes('sticky-col') || text.includes('parent account') || text.includes('consultant name')) return 'stickyCol1';
+      if (cls.includes('sticky-col-2') || text.includes('gl line') || text.includes('gl account') || text.includes('role / scope') || text.includes('asset type')) return 'stickyCol2';
+      if (cls.includes('month-group') && !cls.includes('total-toggle-th')) return 'monthCol';
+      if (cls.includes('total-toggle-th') || text.includes('total cy') || text.includes('total (usd)')) return 'totalCol';
+      if (text.includes('remark')) return 'remarksCol';
+      if (text.includes('basis')) return 'basisCol';
+      if (text.includes('location') || text.includes('donor') || text.includes('activity') || text.includes('condition')) return 'tagCol';
+      return null;
+    },
+
+    onMouseDown(e, th, table, colIdx) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const startX = e.clientX;
+      const startWidth = th.getBoundingClientRect().width || th.offsetWidth;
+      const colKey = this.getColKey(th);
+      const grip = th.querySelector('.col-resizer-grip');
+      if (grip) grip.classList.add('is-resizing');
+
+      const guide = this.getGuide();
+      if (guide) {
+        guide.style.display = 'block';
+        guide.style.left = `${e.clientX}px`;
+      }
+
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+
+      let currentNewWidth = startWidth;
+
+      const onMouseMove = (moveEvent) => {
+        const deltaX = moveEvent.clientX - startX;
+        currentNewWidth = Math.max(50, Math.round(startWidth + deltaX));
+        if (guide) guide.style.left = `${moveEvent.clientX}px`;
+
+        if (colKey) {
+          const w = Utils.ColumnWidths.getWidths();
+          Utils.ColumnWidths.applyStyles({ ...w, [colKey]: currentNewWidth });
+        } else {
+          th.style.width = `${currentNewWidth}px`;
+          th.style.minWidth = `${currentNewWidth}px`;
+          th.style.maxWidth = `${currentNewWidth}px`;
+          const rows = table.querySelectorAll('tbody tr');
+          rows.forEach(r => {
+            const cell = r.children[colIdx];
+            if (cell) {
+              cell.style.width = `${currentNewWidth}px`;
+              cell.style.minWidth = `${currentNewWidth}px`;
+              cell.style.maxWidth = `${currentNewWidth}px`;
+            }
+          });
+        }
+      };
+
+      const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+
+        if (grip) grip.classList.remove('is-resizing');
+        if (guide) guide.style.display = 'none';
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+
+        if (colKey) {
+          Utils.ColumnWidths.setWidths({ [colKey]: currentNewWidth });
+          Utils.showToast(`✓ Column width updated to ${currentNewWidth}px and saved!`, 'info');
+        }
+      };
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    },
+
+    onDoubleClick(e, th, table, colIdx) {
+      e.preventDefault();
+      e.stopPropagation();
+      const colKey = this.getColKey(th);
+      if (colKey && Utils.ColumnWidths.DEFAULT_WIDTHS[colKey]) {
+        const def = Utils.ColumnWidths.DEFAULT_WIDTHS[colKey];
+        Utils.ColumnWidths.setWidths({ [colKey]: def });
+        Utils.showToast(`Reset column width to default (${def}px)`, 'info');
+      }
+    }
   }
 };
 
@@ -1059,6 +1200,9 @@ const Utils = {
 if (typeof document !== 'undefined') {
   try {
     Utils.ColumnWidths.applyStyles();
+    document.addEventListener('DOMContentLoaded', () => {
+      Utils.TableResizer.init();
+    });
   } catch (e) {}
 }
 

@@ -443,6 +443,11 @@ const BudgetEntryModule = {
         }
       });
     }
+
+    // Initialize drag-to-resize column handles
+    if (typeof Utils !== 'undefined' && Utils.TableResizer) {
+      Utils.TableResizer.init(grid);
+    }
   },
 
   // ─── Personnel Grid (Subtabs: Salaries & Wages, Other Staff Expenses, Gratuity & Bonus) ───

@@ -905,9 +905,44 @@ a:hover { color: var(--accent-primary-hover); }
   border-bottom: 2px solid #cbd5e1;
   white-space: nowrap;
   text-align: left;
-  user-select: none;
-  z-index: 20;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  position: relative;
+}
+
+/* Drag-to-Resize Column Grips */
+.data-table th .col-resizer-grip {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  user-select: none;
+  z-index: 50;
+  transition: background 0.15s ease, opacity 0.15s ease;
+  background: transparent;
+}
+
+.data-table th:hover .col-resizer-grip {
+  background: rgba(148, 163, 184, 0.3);
+}
+
+.data-table th .col-resizer-grip:hover,
+.data-table th .col-resizer-grip.is-resizing {
+  background: var(--accent-primary, #06b6d4) !important;
+  box-shadow: 0 0 6px rgba(6, 182, 212, 0.8) !important;
+}
+
+.table-resize-guide {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent-primary, #06b6d4);
+  z-index: 99999;
+  pointer-events: none;
+  display: none;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.9);
 }
 
 .data-table th.sticky-col,

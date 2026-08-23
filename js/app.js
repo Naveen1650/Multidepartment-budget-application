@@ -349,6 +349,11 @@ const App = {
         `;
     }
 
+    // Initialize drag-to-resize column handles on all tables
+    if (typeof Utils !== 'undefined' && Utils.TableResizer) {
+      Utils.TableResizer.init(content);
+    }
+
     // Refresh notification badge on every page render
     await this.updateNotificationBadge();
   },
