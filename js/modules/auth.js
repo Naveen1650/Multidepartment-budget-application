@@ -810,8 +810,7 @@ const Auth = {
       <div class="login-wrapper">
         <div class="login-card">
           <div class="login-header">
-            <div class="login-logo-circle">N</div>
-            <h1 class="login-brand-title">Noora Health</h1>
+            <img src="assets/noora-health-logo.png" alt="Noora Health" class="login-brand-logo-img">
             <p class="login-brand-subtitle">Multi-Department Budgeting & Governance System</p>
           </div>
 

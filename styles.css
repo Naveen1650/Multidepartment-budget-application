@@ -188,48 +188,34 @@ a:hover { color: var(--accent-primary-hover); }
 .sidebar.collapsed { width: var(--sidebar-collapsed); }
 
 .sidebar-header {
-  padding: var(--space-lg);
+  padding: 14px 18px;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
-  gap: var(--space-md);
-  min-height: 72px;
+  justify-content: flex-start;
+  min-height: 64px;
+  background: #ffffff;
 }
 
-.sidebar-logo {
-  width: 36px;
-  height: 36px;
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
+.sidebar-logo-img {
+  height: 34px;
+  width: auto;
+  max-width: 175px;
+  object-fit: contain;
+  transition: all var(--transition-base);
+}
+
+.sidebar.collapsed .sidebar-header {
+  padding: 12px 6px;
   justify-content: center;
-  font-weight: 800;
-  font-size: var(--font-size-lg);
-  color: white;
-  flex-shrink: 0;
 }
 
-.sidebar-brand {
-  overflow: hidden;
-  white-space: nowrap;
+.sidebar.collapsed .sidebar-logo-img {
+  height: 28px;
+  max-width: 32px;
+  object-fit: cover;
+  object-position: left;
 }
-
-.sidebar-brand h1 {
-  font-size: var(--font-size-md);
-  font-weight: 700;
-  color: var(--text-primary);
-  letter-spacing: -0.02em;
-}
-
-.sidebar-brand span {
-  font-size: var(--font-size-xs);
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.sidebar.collapsed .sidebar-brand { display: none; }
 
 .sidebar-nav {
   flex: 1;
@@ -449,11 +435,32 @@ a:hover { color: var(--accent-primary-hover); }
   background: rgba(16, 185, 129, 0.02);
 }
 
-/* ─── Content Page ─── */
+/* ─── Content Page & Center Watermark ─── */
 .page-content {
   flex: 1;
   overflow-y: auto;
   padding: var(--space-xl);
+  position: relative;
+}
+
+.page-content::before {
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: calc(50% + var(--sidebar-width) / 2);
+  transform: translate(-50%, -50%);
+  width: 520px;
+  height: 220px;
+  background: url('assets/noora-health-logo.png') no-repeat center center;
+  background-size: contain;
+  opacity: 0.035;
+  pointer-events: none;
+  z-index: 0;
+  transition: left var(--transition-base);
+}
+
+.sidebar.collapsed ~ .main-content .page-content::before {
+  left: calc(50% + var(--sidebar-collapsed) / 2);
 }
 
 .page-header {
@@ -2391,9 +2398,26 @@ tr.exp-breakdown-row td {
   align-items: center;
   justify-content: center;
   padding: 24px;
+  position: relative;
   background: radial-gradient(circle at 10% 20%, rgba(30, 58, 138, 0.15) 0%, transparent 40%),
               radial-gradient(circle at 90% 80%, rgba(14, 165, 233, 0.12) 0%, transparent 40%),
               var(--bg-primary);
+  overflow: hidden;
+}
+
+.login-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 650px;
+  height: 280px;
+  background: url('assets/noora-health-logo.png') no-repeat center center;
+  background-size: contain;
+  opacity: 0.045;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .login-card {
@@ -2404,6 +2428,8 @@ tr.exp-breakdown-row td {
   border-radius: var(--radius-xl);
   box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25);
   overflow: hidden;
+  position: relative;
+  z-index: 1;
   animation: modalFadeIn 0.3s ease-out;
 }
 
@@ -2414,27 +2440,13 @@ tr.exp-breakdown-row td {
   background: linear-gradient(180deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
 }
 
-.login-logo-circle {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, var(--brand-primary), #0284c7);
-  color: #fff;
-  font-size: 26px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.login-brand-logo-img {
+  height: 48px;
+  width: auto;
+  max-width: 240px;
+  object-fit: contain;
   margin: 0 auto 12px;
-  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
-}
-
-.login-brand-title {
-  font-size: 1.4rem;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  color: var(--text-primary);
-  margin-bottom: 4px;
+  display: block;
 }
 
 .login-brand-subtitle {
