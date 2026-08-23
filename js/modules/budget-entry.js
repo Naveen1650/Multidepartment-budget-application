@@ -3849,10 +3849,10 @@ const BudgetEntryModule = {
     const matchedOtherCostIndices = new Set();
 
     const lines = coa.map(account => {
-      let linkedSource = '';
+      let linkedSource = 'Non-Payroll Cost';
       let sourceIcon = '📑';
+      let entryCount = 0;
       let rollup = { monthlyValues: Array(12).fill(0), totalCY: 0 };
-      let basis = '';
       let remarks = savedRemarksMap[account.ledgerCode] || savedRemarksMap[account.glDescription] || '';
 
       const accGlClean = cleanStr(account.glDescription);
@@ -3864,35 +3864,35 @@ const BudgetEntryModule = {
         linkedSource = 'Payroll — Salaries & Wages';
         sourceIcon = '👥';
         rollup = sumMonths(salariesRows);
-        basis = salariesRows.length > 0 ? `${salariesRows.length} Employee(s)` : '';
+        entryCount = salariesRows.length;
       }
       // 2. Staff Training, Learning (Other Staff Expenses)
       else if (accGlClean.includes('stafftraining') || accLedgerClean.startsWith('913') || accParentClean.includes('otherstaff')) {
         linkedSource = 'Payroll — Other Staff Expenses';
         sourceIcon = '👥';
         rollup = sumMonths(otherStaffRows);
-        basis = otherStaffRows.length > 0 ? `${otherStaffRows.length} Item(s)` : '';
+        entryCount = otherStaffRows.length;
       }
       // 3. Gratuity and Bonus
       else if (accGlClean.includes('gratuity') || accLedgerClean.startsWith('912') || accParentClean.includes('health') || accParentClean.includes('retirement')) {
         linkedSource = 'Payroll — Gratuity & Bonus';
         sourceIcon = '👥';
         rollup = sumMonths(gratuityRows);
-        basis = gratuityRows.length > 0 ? `${gratuityRows.length} Item(s)` : '';
+        entryCount = gratuityRows.length;
       }
       // 4. Program Resource Consultant (EHA)
       else if (accGlClean.includes('programresource') || accGlClean.includes('eha') || accLedgerClean.startsWith('921') || accParentClean.includes('resourceperson')) {
         linkedSource = 'Payroll — EHA Consultants';
         sourceIcon = '🤝';
         rollup = sumMonths(ehaRows);
-        basis = ehaRows.length > 0 ? `${ehaRows.length} Consultant(s)` : '';
+        entryCount = ehaRows.length;
       }
       // 5. Fixed Assets (Laptop/Printer)
       else if (accGlClean.includes('laptop') || accGlClean.includes('printer') || accLedgerClean.startsWith('113') || accParentClean.includes('fixedasset')) {
         linkedSource = 'Fixed Assets';
         sourceIcon = '💻';
         rollup = sumMonths(fixedAssetRows);
-        basis = fixedAssetRows.length > 0 ? `${fixedAssetRows.length} Asset(s)` : '';
+        entryCount = fixedAssetRows.length;
       }
       // 6. Other non-payroll expenses (Direct Costs & Indirect Costs)
       else {
@@ -3923,20 +3923,13 @@ const BudgetEntryModule = {
         });
 
         rollup = sumMonths(matchingOther);
-
-        const bases = matchingOther.map(o => o.basisOfExpense).filter(Boolean);
-        if (bases.length > 0) {
-          basis = bases.join('; ');
-        }
+        entryCount = matchingOther.length;
 
         if (!remarks) {
           const rems = matchingOther.map(o => o.remarks).filter(Boolean);
           if (rems.length > 0) remarks = rems.join('; ');
         }
       }
-
-      const savedBasis = savedBasisMap[account.ledgerCode] || savedBasisMap[account.glDescription];
-      if (savedBasis) basis = savedBasis;
 
       return {
         subGroup: account.subGroup,
@@ -3945,7 +3938,7 @@ const BudgetEntryModule = {
         ledgerCode: account.ledgerCode,
         linkedSource,
         sourceIcon,
-        basisOfExpense: basis,
+        entryCount,
         remarks,
         monthlyValues: rollup.monthlyValues,
         totalCY: rollup.totalCY
@@ -3983,7 +3976,7 @@ const BudgetEntryModule = {
           ledgerCode: o.ledgerCode || '93999',
           linkedSource: cMeta.label,
           sourceIcon: cMeta.icon,
-          basisOfExpense: o.basisOfExpense || '',
+          entryCount: 1,
           remarks: o.remarks || '',
           monthlyValues: months,
           totalCY: total
@@ -4040,6 +4033,7 @@ const BudgetEntryModule = {
 
     const totalCost = visibleLines.reduce((sum, r) => sum + r.totalCY, 0);
     const totalPriorCost = visibleLines.reduce((sum, r) => sum + (r.priorCost || 0), 0);
+    const totalEntriesCount = visibleLines.reduce((sum, r) => sum + (r.entryCount || 0), 0);
     const colMonthlySums = Array(12).fill(0);
     visibleLines.forEach(r => {
       if (r.monthlyValues) {
@@ -4056,7 +4050,7 @@ const BudgetEntryModule = {
         <div class="flex items-center gap-lg">
           <div>
             <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Total Dept Cost Lines</div>
-            <div id="bannerCount" style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary);">${visibleLines.length} Account Lines ${isPartialView ? `<span class="badge badge-subtle" style="font-size: 10px; vertical-align: middle;" title="Some cost lines are restricted from your role">🔒 ${lines.length - visibleLines.length} Restricted</span>` : ''}</div>
+            <div id="bannerCount" style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary);">${visibleLines.length} Account Lines &bull; ${totalEntriesCount} Total Entries ${isPartialView ? `<span class="badge badge-subtle" style="font-size: 10px; vertical-align: middle;" title="Some cost lines are restricted from your role">🔒 ${lines.length - visibleLines.length} Restricted</span>` : ''}</div>
           </div>
           <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
             <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Total Dept Cost Budget (${entity.currency})</div>
@@ -4086,7 +4080,7 @@ const BudgetEntryModule = {
               <th class="sticky-col-2">GL Line Item Description</th>
               <th>Ledger Code</th>
               <th>Linked Input Source</th>
-              <th style="width: 160px; max-width: 160px; min-width: 120px;">Basis of Expense</th>
+              <th style="width: 120px; min-width: 110px; text-align: center;">Number of Entries</th>
               <th class="num month-group budget-year total-toggle-th" data-toggle-months title="${this.isMonthsCollapsed() ? 'Click to expand monthly columns (Jan–Dec)' : 'Click to collapse monthly columns (Jan–Dec)'}">Total CY-${budgetYear} <span class="months-toggle-arrow">${this.isMonthsCollapsed() ? '&#9654;' : '&#9664;'}</span></th>
               ${SEED_DATA.months.map(m => `<th class="num month-group budget-year">${m}-${budgetYear}</th>`).join('')}
               <th class="num prior-cost-col" style="min-width: 140px; background: #e2e8f0; color: var(--accent-primary); font-weight: 700;">Prior Period Cost (${entity.currency})</th>
@@ -4118,8 +4112,14 @@ const BudgetEntryModule = {
                   <td class="sticky-col-2 font-medium">${r.glDescription || ''}</td>
                   <td><code>${r.ledgerCode || ''}</code></td>
                   <td><span class="badge ${r.linkedSource.includes('Travel') ? 'badge-cyan' : r.linkedSource.includes('Supplies') ? 'badge-primary' : r.linkedSource.includes('Communication') ? 'badge-info' : r.linkedSource.includes('Office') ? 'badge-warning' : r.linkedSource.includes('Professional') ? 'badge-emerald' : 'badge-subtle'}" style="font-size: 11px; white-space: nowrap;">${r.sourceIcon} ${r.linkedSource}</span></td>
-                  <td class="editable basis-cell" style="width: 160px; max-width: 160px; padding: 2px 6px;">
-                    <input type="text" class="field-basis" value="${Utils.escapeHtml(r.basisOfExpense || '')}" placeholder="Basis of calculation" title="${Utils.escapeHtml(r.basisOfExpense || '')}" style="width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; height: 26px; padding: 2px 6px; font-size: 11.5px;" ${lockAttr}>
+                  <td style="text-align: center; vertical-align: middle; padding: 4px 6px;">
+                    ${r.entryCount > 0 ? `
+                      <span class="badge badge-primary font-bold" style="font-size: 11px; padding: 3px 9px;" title="${r.entryCount} line item(s) populated in ${r.linkedSource}">
+                        ${r.entryCount} ${r.entryCount === 1 ? 'item' : 'items'}
+                      </span>
+                    ` : `
+                      <span class="text-tertiary font-mono" style="font-size: 11px;">0 items</span>
+                    `}
                   </td>
                   <td class="num font-bold field-total-cy" style="color: ${r.totalCY > 0 ? 'var(--accent-primary)' : 'inherit'};">${Utils.formatNumber(r.totalCY || 0)}</td>
                   ${SEED_DATA.months.map((m, idx) => `
@@ -4141,7 +4141,12 @@ const BudgetEntryModule = {
             <tr class="total-row">
               <td class="sticky-col-1 font-bold">TOTAL DEPT BUDGET:</td>
               <td class="sticky-col-2 font-bold text-right" style="padding-right: 16px;">(${entity.currency})</td>
-              <td colspan="3"></td>
+              <td colspan="2"></td>
+              <td style="text-align: center; vertical-align: middle;">
+                <span class="badge badge-emerald font-bold" style="font-size: 11px; padding: 3px 10px;" title="Total individual line item entries across all department input sheets">
+                  ${totalEntriesCount} Total ${totalEntriesCount === 1 ? 'Item' : 'Items'}
+                </span>
+              </td>
               <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(totalCost, entity.currency)}</td>
               ${SEED_DATA.months.map((m, idx) => `
                 <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
@@ -4158,7 +4163,7 @@ const BudgetEntryModule = {
     if (table) {
       table.addEventListener('change', (e) => {
         if (isLocked) return;
-        if (e.target.classList.contains('field-basis') || e.target.classList.contains('field-remarks')) {
+        if (e.target.classList.contains('field-remarks')) {
           const row = e.target.closest('tr');
           if (row) this.saveTotalCostRow(row, yearId, entity.id, dept.id);
         }
