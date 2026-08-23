@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS payroll_personnel (
     dept_id VARCHAR(50) REFERENCES departments(id) ON DELETE CASCADE,
     sub_category VARCHAR(100) NOT NULL, -- 'salaries-wages', 'other-staff-expenses', 'gratuity-bonus'
     employee_code VARCHAR(50),
+    department VARCHAR(255),
     name VARCHAR(255) NOT NULL,
     designation VARCHAR(255),
     employee_status VARCHAR(50),

@@ -544,11 +544,13 @@ const BudgetEntryModule = {
     let emptyColspan = 28;
 
     if (subTab === 'salaries-wages') {
-      emptyColspan = 29;
+      emptyColspan = 31;
       tableHeadersHtml = `
         <tr>
           <th class="sticky-col-status">Employee Status</th>
           <th class="sticky-col-emp">Employee Name <span class="required-star" title="Mandatory for Existing">*</span></th>
+          <th>Employee Code</th>
+          <th>Department</th>
           <th>Designation <span class="required-star" title="Mandatory for Existing">*</span></th>
           <th>Date of Joining <span class="required-star" title="Mandatory for Existing">*</span></th>
           <th>Banding <span class="required-star" title="Mandatory for Existing">*</span></th>
@@ -568,10 +570,12 @@ const BudgetEntryModule = {
         </tr>
       `;
     } else if (subTab === 'gratuity-bonus') {
-      emptyColspan = 20;
+      emptyColspan = 22;
       tableHeadersHtml = `
         <tr>
           <th class="sticky-col-1">Staff Member Name</th>
+          <th>Employee Code</th>
+          <th>Department</th>
           <th class="sticky-col-2">Designation / Role</th>
           <th>Date of Joining</th>
           <th class="num month-group budget-year total-toggle-th" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${budgetYear} <span class="months-toggle-arrow">&#9664;</span></th>
@@ -585,10 +589,12 @@ const BudgetEntryModule = {
         </tr>
       `;
     } else { // other-staff-expenses
-      emptyColspan = 19;
+      emptyColspan = 21;
       tableHeadersHtml = `
         <tr>
           <th class="sticky-col-1">Staff Member Name</th>
+          <th>Employee Code</th>
+          <th>Department</th>
           <th class="sticky-col-2">Expense Line / Designation</th>
           <th class="num month-group budget-year total-toggle-th" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${budgetYear} <span class="months-toggle-arrow">&#9664;</span></th>
           ${SEED_DATA.months.map(m => `<th class="num month-group budget-year">${m}-${budgetYear}</th>`).join('')}
@@ -615,7 +621,7 @@ const BudgetEntryModule = {
       <tr class="total-row">
         <td class="sticky-col-status font-bold">TOTAL:</td>
         <td class="sticky-col-emp font-bold">${records.length} Employees</td>
-        <td colspan="7"></td>
+        <td colspan="9"></td>
         <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalSalaryCost)}</td>
         ${SEED_DATA.months.map((m, idx) => `
           <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
@@ -626,7 +632,7 @@ const BudgetEntryModule = {
       <tr class="total-row">
         <td class="sticky-col-1 font-bold">TOTAL:</td>
         <td class="sticky-col-2 font-bold">${records.length} Items</td>
-        <td></td>
+        <td colspan="3"></td>
         <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalSalaryCost)}</td>
         ${SEED_DATA.months.map((m, idx) => `
           <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
@@ -637,6 +643,7 @@ const BudgetEntryModule = {
       <tr class="total-row">
         <td class="sticky-col-1 font-bold">TOTAL:</td>
         <td class="sticky-col-2 font-bold">${records.length} Items</td>
+        <td colspan="2"></td>
         <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalSalaryCost)}</td>
         ${SEED_DATA.months.map((m, idx) => `
           <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
@@ -698,6 +705,7 @@ const BudgetEntryModule = {
       return `<option value="${e.id}" 
         data-name="${Utils.escapeHtml(e.name || '')}" 
         data-code="${Utils.escapeHtml(e.employeeCode || '')}" 
+        data-dept="${Utils.escapeHtml(e.department || e.deptId || '')}" 
         data-designation="${Utils.escapeHtml(e.designation || '')}" 
         data-doj="${e.doj || ''}" 
         data-band="${e.band || 'NH3'}" 
@@ -706,9 +714,7 @@ const BudgetEntryModule = {
         data-location="${Utils.escapeHtml(e.location || '')}" 
         data-donor="${Utils.escapeHtml(e.donor || '')}" 
         data-activity="${Utils.escapeHtml(e.activity || '')}" 
-        data-condition="${Utils.escapeHtml(e.conditionArea || '')}"${isSel ? ' selected' : ''}>
-        ${e.name}${e.designation ? ' — ' + e.designation : ''} (${e.employeeCode || e.band || ''})
-      </option>`;
+        data-condition="${Utils.escapeHtml(e.conditionArea || '')}"${isSel ? ' selected' : ''}>${Utils.escapeHtml(e.name || '')}</option>`;
     };
 
     let optsHtml = '';
@@ -720,7 +726,7 @@ const BudgetEntryModule = {
         ${deptEmployees.map(renderEmpOption).join('')}
       </optgroup>`;
       if (otherEmployees.length > 0) {
-        optsHtml += `<optgroup label="🏢 Other Organization Employees (${otherEmployees.length})">
+        optsHtml += `<optgroup label="🏢 Other Employees (${otherEmployees.length})">
           ${otherEmployees.map(renderEmpOption).join('')}
         </optgroup>`;
       }
@@ -732,7 +738,7 @@ const BudgetEntryModule = {
     const lockManual = isLocked ? 'disabled readonly style="padding: 2px 4px; font-size: 11px; cursor: not-allowed; opacity: 0.85; background: var(--bg-tertiary);"' : 'style="padding: 2px 4px; font-size: 11px;"';
 
     return `
-      <div class="emp-name-cell" style="min-width: 190px; display: flex; flex-direction: column; gap: 3px;">
+      <div class="emp-name-cell" style="min-width: 170px; display: flex; flex-direction: column; gap: 3px;">
         <select class="form-select field-name ${cssClass}" ${lockStyle} ${extraAttrs}>
           <option value="">— Select Employee —</option>
           ${optsHtml}
@@ -809,6 +815,8 @@ const BudgetEntryModule = {
             </select>
           </td>
           ${nameCell}
+          <td class="editable"><input type="text" class="field-emp-code" value="${r.employeeCode || ''}" placeholder="EMP Code" ${lockAttr} style="min-width: 85px; font-family: monospace; font-size: 11px;"></td>
+          <td class="editable"><input type="text" class="field-dept" value="${r.department || deptName || ''}" placeholder="Department" ${lockAttr} style="min-width: 110px; font-size: 11px;"></td>
           <td class="editable"><input type="text" class="field-designation ${mandClass}" value="${r.designation || ''}" placeholder="Designation" ${req} ${lockAttr}></td>
           <td class="editable"><input type="date" class="field-doj ${mandClass}" value="${r.dateOfJoining || ''}" style="padding: 2px 4px; font-size: 11px;" ${req} ${lockAttr}></td>
           <td>
@@ -834,6 +842,8 @@ const BudgetEntryModule = {
       return `
         <tr data-id="${r.id}" data-sub-category="${r.subCategory || 'gratuity-bonus'}">
           <td class="sticky-col-1">${this.buildEmpNameCell(r, masterEmployees, deptEmployees, deptName, '', '', isLocked)}</td>
+          <td class="editable"><input type="text" class="field-emp-code" value="${r.employeeCode || ''}" placeholder="EMP Code" ${lockAttr} style="min-width: 85px; font-family: monospace; font-size: 11px;"></td>
+          <td class="editable"><input type="text" class="field-dept" value="${r.department || deptName || ''}" placeholder="Department" ${lockAttr} style="min-width: 110px; font-size: 11px;"></td>
           <td class="sticky-col-2 editable"><input type="text" class="field-designation" value="${r.designation || ''}" placeholder="Designation" ${lockAttr}></td>
           <td class="editable"><input type="date" class="field-doj" value="${r.dateOfJoining || ''}" style="padding: 2px 4px; font-size: 11px;" ${lockAttr}></td>
           <td class="num font-bold field-total-cy">${Utils.formatNumber(r.totalCY || 0)}</td>
@@ -845,7 +855,9 @@ const BudgetEntryModule = {
       return `
         <tr data-id="${r.id}" data-sub-category="${r.subCategory || 'other-staff-expenses'}">
           <td class="sticky-col-1">${this.buildEmpNameCell(r, masterEmployees, deptEmployees, deptName, '', '', isLocked)}</td>
-          <td class="sticky-col-2 editable"><input type="text" class="field-designation" value="${r.designation || ''}" placeholder="Designation" ${lockAttr}></td>
+          <td class="editable"><input type="text" class="field-emp-code" value="${r.employeeCode || ''}" placeholder="EMP Code" ${lockAttr} style="min-width: 85px; font-family: monospace; font-size: 11px;"></td>
+          <td class="editable"><input type="text" class="field-dept" value="${r.department || deptName || ''}" placeholder="Department" ${lockAttr} style="min-width: 110px; font-size: 11px;"></td>
+          <td class="sticky-col-2 editable"><input type="text" class="field-designation" value="${r.designation || ''}" placeholder="Expense Line / Designation" ${lockAttr}></td>
           <td class="num font-bold field-total-cy">${Utils.formatNumber(r.totalCY || 0)}</td>
           ${monthlyInputs}
           ${sharedEndCols(false)}
@@ -860,8 +872,8 @@ const BudgetEntryModule = {
       if (nameSelect.value === '__manual__') {
         return row.querySelector('.field-name-manual')?.value.trim() || '';
       }
-      const selOpt = nameSelect.options[nameSelect.selectedIndex];
-      return selOpt?.dataset?.name || (selOpt?.value ? selOpt.textContent.split(' — ')[0].trim() : '');
+      const selOpt = nameSelect.options ? nameSelect.options[nameSelect.selectedIndex] : null;
+      return selOpt?.dataset?.name || (selOpt?.value ? (selOpt.textContent || selOpt.text || '').split(' — ')[0].trim() : '');
     }
     const nameInput = row.querySelector('input.field-name');
     if (nameInput) {
@@ -903,6 +915,8 @@ const BudgetEntryModule = {
 
           if (selectedVal) {
             const selOpt = e.target.options[e.target.selectedIndex];
+            const empCode = selOpt?.dataset?.code || '';
+            const empDept = selOpt?.dataset?.dept || '';
             const desig = selOpt?.dataset?.designation || '';
             const doj = selOpt?.dataset?.doj || '';
             const band = selOpt?.dataset?.band || '';
@@ -912,6 +926,14 @@ const BudgetEntryModule = {
             const donor = selOpt?.dataset?.donor || '';
             const activity = selOpt?.dataset?.activity || '';
             const condition = selOpt?.dataset?.condition || '';
+
+            // Auto-fill Employee Code
+            const codeInput = row.querySelector('.field-emp-code');
+            if (codeInput && empCode) codeInput.value = empCode;
+
+            // Auto-fill Department
+            const deptInput = row.querySelector('.field-dept');
+            if (deptInput && (empDept || dept.name)) deptInput.value = empDept || dept.name;
 
             // Auto-fill Designation
             const desigInput = row.querySelector('.field-designation');
@@ -1193,6 +1215,8 @@ const BudgetEntryModule = {
       subCategory: row.dataset.subCategory || this.activePersonnelSubTab || 'salaries-wages',
       employeeStatus: row.querySelector('.field-status')?.value || 'Existing',
       name: empName,
+      employeeCode: row.querySelector('.field-emp-code')?.value || '',
+      department: row.querySelector('.field-dept')?.value || '',
       designation: row.querySelector('.field-designation')?.value || '',
       dateOfJoining: row.querySelector('.field-doj')?.value || '',
       banding: row.querySelector('.field-banding')?.value || '',
@@ -4769,6 +4793,7 @@ const BudgetEntryModule = {
         employeeStatus: 'Existing',
         name: emp.name,
         employeeCode: emp.employeeCode || '',
+        department: emp.department || emp.deptId || Utils.getDeptName(dept, entity.deptPrefix) || '',
         designation: emp.designation || '',
         dateOfJoining: emp.doj || '',
         banding: emp.band || 'NH3',
