@@ -695,16 +695,25 @@ const BudgetEntryModule = {
   },
 
   // ─── Helper: Build Employee Name Cell (smart dropdown linked to Employee Master) ───
-  buildEmpNameCell(r, masterEmployees, deptEmployees = [], deptName = '', cssClass = '', extraAttrs = '', isLocked = false) {
+  buildEmpNameCell(r, masterEmployees = [], deptEmployees = [], deptName = '', cssClass = '', extraAttrs = '', isLocked = false) {
+    const clean = s => String(s || '').trim().toLowerCase();
     const savedName = r.name || r.employeeName || '';
-    const matchedEmp = masterEmployees.find(e => e.name === savedName || (r.employeeCode && e.employeeCode === r.employeeCode));
-    const selectedVal = matchedEmp ? matchedEmp.id : (savedName ? '__manual__' : '');
-    const showManual = selectedVal === '__manual__';
+    const savedCode = r.employeeCode || '';
+    
+    // Find matching employee by code or by name (case-insensitive trim)
+    const matchedEmp = (masterEmployees || []).find(e => 
+      (savedCode && clean(e.employeeCode) === clean(savedCode)) ||
+      (savedName && clean(e.name) === clean(savedName)) ||
+      (r.employeeId && (e.id === r.employeeId || String(e.id) === String(r.employeeId)))
+    );
+
+    // Only set isManualMode to true if explicitly flagged manual and no master employee was matched
+    const isManualMode = (r.isManual === true || r.isManual === 'true') && !matchedEmp;
 
     const renderEmpOption = (e) => {
       const aCTC = Utils.parseNumber(e.annualCTC) || 0;
       const mCTC = Utils.parseNumber(e.monthlyCTC) || (aCTC > 0 ? Math.round(aCTC / 12) : 0);
-      const isSel = e.id === matchedEmp?.id;
+      const isSel = matchedEmp ? (e.id === matchedEmp.id || clean(e.name) === clean(savedName)) : false;
       return `<option value="${e.id}" 
         data-name="${Utils.escapeHtml(e.name || '')}" 
         data-code="${Utils.escapeHtml(e.employeeCode || '')}" 
@@ -742,14 +751,14 @@ const BudgetEntryModule = {
     const lockExtraCss = isLocked ? 'cursor: not-allowed; opacity: 0.85; background: var(--bg-tertiary);' : '';
 
     return `
-      <div class="emp-name-cell" style="min-width: 170px; display: flex; flex-direction: column; gap: 3px;">
+      <div class="emp-name-cell ${isManualMode ? 'is-manual-mode' : ''}" style="min-width: 170px;">
         <select class="form-select field-name ${cssClass}" ${lockSelectAttr} ${extraAttrs} style="padding: 2px 4px; font-size: 11px; font-weight: 600; width: 100%; ${lockExtraCss}">
           <option value="">— Select Employee —</option>
           ${optsHtml}
-          <option value="__manual__"${showManual ? ' selected' : ''}>✏️ Manual Entry…</option>
+          <option value="__manual__"${isManualMode ? ' selected' : ''}>✏️ Manual Entry…</option>
         </select>
-        <input type="text" class="field-name-manual" value="${showManual ? Utils.escapeHtml(savedName) : ''}" placeholder="Type name…"
-          ${lockManualAttr} style="padding: 2px 4px; font-size: 11px; width: 100%; ${lockExtraCss} ${showManual ? 'display: block;' : 'display: none;'}">
+        <input type="text" class="field-name-manual" value="${isManualMode ? Utils.escapeHtml(savedName) : ''}" placeholder="Type name…"
+          ${lockManualAttr} style="padding: 2px 4px; font-size: 11px; width: 100%; ${lockExtraCss}">
       </div>
     `;
   },
@@ -801,21 +810,21 @@ const BudgetEntryModule = {
     `;
 
     if (subTab === 'salaries-wages') {
-      const isNew = r.employeeStatus === 'New';
+      const isNew = r.employeeStatus === 'New' || (!r.name && !r.employeeCode && (r.employeeStatus === undefined || r.employeeStatus === 'New'));
       const req = !isNew ? 'required' : '';
       const mandClass = !isNew ? 'mandatory-field' : '';
 
       // New hires: free text. Existing: smart dropdown from master
       const nameCell = isNew
-        ? `<td class="sticky-col-emp editable"><input type="text" class="field-name" value="${r.name || ''}" placeholder="New Employee Name" ${lockAttr}></td>`
+        ? `<td class="sticky-col-emp editable"><input type="text" class="field-name" value="${Utils.escapeHtml(r.name || '')}" placeholder="Type new staff name…" ${lockAttr} style="padding: 4px 8px; font-size: 12px; width: 100%; font-weight: 600;"></td>`
         : `<td class="sticky-col-emp editable">${this.buildEmpNameCell(r, masterEmployees, deptEmployees, deptName, mandClass, req, isLocked)}</td>`;
 
       return `
         <tr data-id="${r.id}" data-sub-category="${r.subCategory || 'salaries-wages'}" class="${isNew ? 'row-status-new' : 'row-status-existing'}">
           <td class="sticky-col-status">
             <select class="form-select field-status" style="padding: 2px 4px; font-size: 11px; min-width: 85px; font-weight: 600;" ${lockSelectAttr}>
-              <option value="Existing" ${!isNew ? 'selected' : ''}>Existing</option>
               <option value="New" ${isNew ? 'selected' : ''}>New</option>
+              <option value="Existing" ${!isNew ? 'selected' : ''}>Existing</option>
             </select>
           </td>
           ${nameCell}
@@ -905,15 +914,16 @@ const BudgetEntryModule = {
       if (e.target.classList.contains('field-name') && e.target.tagName === 'SELECT') {
         const selectedVal = e.target.value;
         const manualInput = row.querySelector('.field-name-manual');
+        const cellContainer = row.querySelector('.emp-name-cell');
 
         if (selectedVal === '__manual__') {
+          if (cellContainer) cellContainer.classList.add('is-manual-mode');
           if (manualInput) {
-            manualInput.style.display = 'block';
             manualInput.focus();
           }
         } else {
+          if (cellContainer) cellContainer.classList.remove('is-manual-mode');
           if (manualInput) {
-            manualInput.style.display = 'none';
             manualInput.value = '';
           }
 
@@ -1228,13 +1238,18 @@ const BudgetEntryModule = {
     const totalCY = Utils.sumMonthlyValues(monthlyValues);
     const empName = this.getEmpNameFromRow(row);
 
+    const nameSelect = row.querySelector('select.field-name');
+    const isManual = nameSelect ? (nameSelect.value === '__manual__') : (row.querySelector('.field-status')?.value === 'New');
+    const statusVal = row.querySelector('.field-status')?.value || (isManual ? 'New' : 'Existing');
+
     const record = {
       id: id || undefined,
       yearId,
       entityId,
       deptId,
       subCategory: row.dataset.subCategory || this.activePersonnelSubTab || 'salaries-wages',
-      employeeStatus: row.querySelector('.field-status')?.value || 'Existing',
+      employeeStatus: statusVal,
+      isManual: isManual,
       name: empName,
       employeeCode: row.querySelector('.field-emp-code')?.value || '',
       department: row.querySelector('.field-dept')?.value || '',
