@@ -96,7 +96,14 @@ const BudgetEntryModule = {
     const canViewPersonnel = canViewSalaries || canViewOtherStaff || canViewGratuity;
     const canViewEha = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'eha', entityId: this.currentEntityId, deptId: this.currentDeptId });
     const canViewFA = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'fixed-assets', entityId: this.currentEntityId, deptId: this.currentDeptId });
-    const canViewOtherCosts = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'other-costs', entityId: this.currentEntityId, deptId: this.currentDeptId });
+    const canViewTravel = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'travel', entityId: this.currentEntityId, deptId: this.currentDeptId });
+    const canViewSupplies = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'supplies', entityId: this.currentEntityId, deptId: this.currentDeptId });
+    const canViewComm = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'communication', entityId: this.currentEntityId, deptId: this.currentDeptId });
+    const canViewOffice = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'office', entityId: this.currentEntityId, deptId: this.currentDeptId });
+    const canViewProf = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'professional', entityId: this.currentEntityId, deptId: this.currentDeptId });
+    const canViewOtherLines = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'other-costs', entityId: this.currentEntityId, deptId: this.currentDeptId });
+    const canViewTot = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'imp-tot-rates', entityId: this.currentEntityId, deptId: this.currentDeptId });
+    const canViewOtherCosts = canViewTravel || canViewSupplies || canViewComm || canViewOffice || canViewProf || canViewOtherLines || canViewTot;
 
     const tabAccessMap = {
       'total-costs': canViewTotal,
@@ -122,8 +129,24 @@ const BudgetEntryModule = {
       }
     }
 
-    const canEditYear = typeof Auth === 'undefined' || Auth.isYearEditable(yearId);
-    const yearStatusLabel = typeof Auth !== 'undefined' ? Auth.getYearStatusLabel(yearId) : 'Active';
+    if (this.activeTab === 'other-costs') {
+      const ocMap = {
+        'grid': canViewOtherCosts,
+        'tot': canViewTot,
+        'travel': canViewTravel,
+        'supplies': canViewSupplies,
+        'communication': canViewComm,
+        'office': canViewOffice,
+        'professional': canViewProf,
+        'other': canViewOtherLines
+      };
+      if (!ocMap[this.activeOtherCostSubTab]) {
+        this.activeOtherCostSubTab = Object.keys(ocMap).find(k => ocMap[k]) || 'grid';
+      }
+    }
+
+    const canEditYear = typeof Auth === 'undefined' || Auth.isYearEditable(yearId, this.currentEntityId);
+    const yearStatusLabel = typeof Auth !== 'undefined' ? Auth.getYearStatusLabel(yearId, this.currentEntityId) : 'Active';
 
     container.innerHTML = `
       <div class="page-header flex justify-between items-center">
@@ -142,10 +165,10 @@ const BudgetEntryModule = {
             <span style="font-size: 1.3rem;">🔒</span>
             <div>
               <div style="font-weight: 700; color: var(--text-primary); font-size: 13px;">
-                Budget Year CY-${budgetYear} is currently in <strong>"${yearStatusLabel}"</strong> mode (Locked / Read-Only)
+                ${selectedEntity.shortName} (${selectedEntity.currency}) is currently in <strong>"${yearStatusLabel}"</strong> mode (Locked / Read-Only)
               </div>
               <div class="text-secondary" style="font-size: 11.5px;">
-                Additions, row insertions, edits, and bulk uploads are disabled. Only budget cycles with <strong>Active (Open)</strong> or <strong>Draft</strong> status permit additions.
+                Additions, row insertions, edits, and bulk uploads are disabled for this entity in CY-${budgetYear}. Only entities with <strong>Active (Open)</strong> or <strong>Draft</strong> status permit changes.
               </div>
             </div>
           </div>
@@ -159,7 +182,12 @@ const BudgetEntryModule = {
           <div>
             <label class="form-label">Entity</label>
             <select class="form-select" id="entryEntitySelect">
-              ${entities.map(e => `<option value="${e.id}" ${e.id === this.currentEntityId ? 'selected' : ''}>${e.flag} ${e.shortName} (${e.currency})</option>`).join('')}
+              ${entities.map(e => {
+                const eStatus = typeof Auth !== 'undefined' ? Auth.getYearStatus(yearId, e.id) : 'active';
+                const isEEditable = eStatus === 'draft' || eStatus === 'active';
+                const eLabel = typeof Auth !== 'undefined' ? Auth.getYearStatusLabel(yearId, e.id).split(' ')[0] : 'Active';
+                return `<option value="${e.id}" ${e.id === this.currentEntityId ? 'selected' : ''}>${e.flag} ${e.shortName} (${e.currency}) — ${isEEditable ? '🟢' : '🔒'} ${eLabel}</option>`;
+              }).join('')}
             </select>
           </div>
 
@@ -198,15 +226,15 @@ const BudgetEntryModule = {
       <!-- Other Costs Sub-Tabs (Visible when activeTab === 'other-costs') -->
       <div class="sub-tabs" id="otherCostSubTabs" style="${this.activeTab === 'other-costs' ? '' : 'display: none;'}">
         <button class="sub-tab ${this.activeOtherCostSubTab === 'grid' || this.activeOtherCostSubTab === 'all' ? 'active' : ''}" data-subtab="grid">📊 All Accounts Overview</button>
-        ${(typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(selectedDept)) ? `
+        ${(canViewTot && typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(selectedDept)) ? `
           <button class="sub-tab ${this.activeOtherCostSubTab === 'tot' || this.activeOtherCostSubTab === 'imp-tot' ? 'active' : ''}" data-subtab="tot" style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(99, 102, 241, 0.15)); border: 1px solid rgba(6, 182, 212, 0.3); color: #0284c7; font-weight: 700;">🎯 ToT Program Budget (IMP)</button>
         ` : ''}
-        <button class="sub-tab ${this.activeOtherCostSubTab === 'travel' || this.activeOtherCostSubTab === 'travel-packages' ? 'active' : ''}" data-subtab="travel">✈️ Travel & Lodging</button>
-        <button class="sub-tab ${this.activeOtherCostSubTab === 'supplies' ? 'active' : ''}" data-subtab="supplies">🖨️ Supplies & Printing</button>
-        <button class="sub-tab ${this.activeOtherCostSubTab === 'communication' ? 'active' : ''}" data-subtab="communication">📡 Communication</button>
-        <button class="sub-tab ${this.activeOtherCostSubTab === 'office' ? 'active' : ''}" data-subtab="office">🏢 Office Expenses</button>
-        <button class="sub-tab ${this.activeOtherCostSubTab === 'professional' ? 'active' : ''}" data-subtab="professional">💼 Professional Charges</button>
-        <button class="sub-tab ${this.activeOtherCostSubTab === 'other' ? 'active' : ''}" data-subtab="other">📑 Other Expense Lines</button>
+        ${canViewTravel ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'travel' || this.activeOtherCostSubTab === 'travel-packages' ? 'active' : ''}" data-subtab="travel">✈️ Travel & Lodging</button>` : ''}
+        ${canViewSupplies ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'supplies' ? 'active' : ''}" data-subtab="supplies">🖨️ Supplies & Printing</button>` : ''}
+        ${canViewComm ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'communication' ? 'active' : ''}" data-subtab="communication">📡 Communication</button>` : ''}
+        ${canViewOffice ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'office' ? 'active' : ''}" data-subtab="office">🏢 Office Expenses</button>` : ''}
+        ${canViewProf ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'professional' ? 'active' : ''}" data-subtab="professional">💼 Professional Charges</button>` : ''}
+        ${canViewOtherLines ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'other' ? 'active' : ''}" data-subtab="other">📑 Other Expense Lines</button>` : ''}
       </div>
 
       <!-- Tab Content Area -->
@@ -284,6 +312,20 @@ const BudgetEntryModule = {
   updateToolbarActions() {
     const actionsContainer = Utils.$('#toolbarActionsContainer');
     if (!actionsContainer) return;
+
+    const yearId = this._yearId || App.selectedYear || '2026';
+    const entityId = this.currentEntityId || this._entity?.id;
+    const isLocked = typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entityId);
+
+    if (isLocked) {
+      const entityLabel = this._entity ? this._entity.shortName : 'Entity';
+      actionsContainer.innerHTML = `
+        <span class="badge badge-subtle font-bold" style="padding: 6px 14px; font-size: 12px; background: rgba(100, 116, 139, 0.1); border: 1px solid var(--border-default);">
+          🔒 ${entityLabel} is Read-Only (${typeof Auth !== 'undefined' ? Auth.getYearStatusLabel(yearId, entityId) : 'Locked'})
+        </span>
+      `;
+      return;
+    }
 
     if (this.activeTab === 'personnel') {
       if (this.activePersonnelSubTab === 'other-staff-expenses') {
@@ -456,13 +498,14 @@ const BudgetEntryModule = {
 
     const totalSalaryCost = records.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
     const totalStaffCount = records.length;
+    const isLocked = typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entity.id);
 
     const subTabConfig = {
       'salaries-wages': {
         title: 'Salaries and Wages',
         countLabel: 'Employees',
         costLabel: 'Total Annual Salary Cost',
-        emptyMsg: deptEmployees.length > 0 ? `
+        emptyMsg: deptEmployees.length > 0 && !isLocked ? `
           <div style="padding: 16px 20px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(99, 102, 241, 0.08)); border: 1px dashed rgba(6, 182, 212, 0.4); border-radius: 10px; margin: 12px auto; max-width: 620px;">
             <div style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">👥 Employee Master Match Found</div>
             <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.5;">
@@ -475,19 +518,19 @@ const BudgetEntryModule = {
               <button class="btn btn-secondary btn-sm" onclick="BudgetEntryModule.addRow()">+ Add Blank Staff Row</button>
             </div>
           </div>
-        ` : 'No salaries & wages rows added yet. Click <strong>"👥 Auto-Populate from Employee Master"</strong> or <strong>"+ Add Staff Row"</strong> to begin.'
+        ` : 'No salaries & wages rows added yet.'
       },
       'other-staff-expenses': {
         title: 'Other Staff Expenses',
         countLabel: 'Line Items',
         costLabel: 'Total Other Staff Expenses',
-        emptyMsg: 'No other staff expenses added yet. Click <strong>"📤 Bulk Upload Staff Expenses"</strong> above or <strong>"+ Add Staff Expense Row"</strong> to enter manually.'
+        emptyMsg: 'No other staff expenses added yet.'
       },
       'gratuity-bonus': {
         title: 'Gratuity and Bonus',
         countLabel: 'Line Items',
         costLabel: 'Total Gratuity & Bonus Budget',
-        emptyMsg: 'No gratuity & bonus entries added yet. Click <strong>"📤 Bulk Upload Gratuity & Bonus"</strong> above or <strong>"+ Add Gratuity/Bonus Row"</strong> to enter manually.'
+        emptyMsg: 'No gratuity & bonus entries added yet.'
       }
     }[subTab] || {
       title: 'Personnel Cost',
@@ -525,11 +568,11 @@ const BudgetEntryModule = {
         </tr>
       `;
     } else if (subTab === 'gratuity-bonus') {
-      emptyColspan = 22;
+      emptyColspan = 20;
       tableHeadersHtml = `
         <tr>
-          <th class="sticky-col-1">Employee Name</th>
-          <th class="sticky-col-2">Designation</th>
+          <th class="sticky-col-1">Staff Member Name</th>
+          <th class="sticky-col-2">Designation / Role</th>
           <th>Date of Joining</th>
           <th class="num month-group budget-year total-toggle-th" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${budgetYear} <span class="months-toggle-arrow">&#9664;</span></th>
           ${SEED_DATA.months.map(m => `<th class="num month-group budget-year">${m}-${budgetYear}</th>`).join('')}
@@ -542,11 +585,11 @@ const BudgetEntryModule = {
         </tr>
       `;
     } else { // other-staff-expenses
-      emptyColspan = 21;
+      emptyColspan = 19;
       tableHeadersHtml = `
         <tr>
-          <th class="sticky-col-1">Employee Name</th>
-          <th class="sticky-col-2">Designation</th>
+          <th class="sticky-col-1">Staff Member Name</th>
+          <th class="sticky-col-2">Expense Line / Designation</th>
           <th class="num month-group budget-year total-toggle-th" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${budgetYear} <span class="months-toggle-arrow">&#9664;</span></th>
           ${SEED_DATA.months.map(m => `<th class="num month-group budget-year">${m}-${budgetYear}</th>`).join('')}
           <th>Location</th>
@@ -572,7 +615,7 @@ const BudgetEntryModule = {
       <tr class="total-row">
         <td class="sticky-col-status font-bold">TOTAL:</td>
         <td class="sticky-col-emp font-bold">${records.length} Employees</td>
-        <td colspan="8" class="text-secondary font-bold text-right" style="padding-right: 12px; font-size: 11px;">(${entity.currency})</td>
+        <td colspan="7"></td>
         <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalSalaryCost)}</td>
         ${SEED_DATA.months.map((m, idx) => `
           <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
@@ -630,7 +673,7 @@ const BudgetEntryModule = {
             ${records.length === 0 ? `
               <tr><td colspan="${emptyColspan}" class="text-center p-lg text-muted">${subTabConfig.emptyMsg}</td></tr>
             ` : `
-              ${records.map(r => this.renderPersonnelRow(r, entity, locations, donors, activities, conditionAreas, subTab, masterEmployees, deptEmployees, deptDisplayName)).join('')}
+              ${records.map(r => this.renderPersonnelRow(r, entity, locations, donors, activities, conditionAreas, subTab, masterEmployees, deptEmployees, deptDisplayName, isLocked)).join('')}
               ${bottomTotalRowHtml}
             `}
           </tbody>
@@ -642,7 +685,7 @@ const BudgetEntryModule = {
   },
 
   // ─── Helper: Build Employee Name Cell (smart dropdown linked to Employee Master) ───
-  buildEmpNameCell(r, masterEmployees, deptEmployees = [], deptName = '', cssClass = '', extraAttrs = '') {
+  buildEmpNameCell(r, masterEmployees, deptEmployees = [], deptName = '', cssClass = '', extraAttrs = '', isLocked = false) {
     const savedName = r.name || r.employeeName || '';
     const matchedEmp = masterEmployees.find(e => e.name === savedName || (r.employeeCode && e.employeeCode === r.employeeCode));
     const selectedVal = matchedEmp ? matchedEmp.id : (savedName ? '__manual__' : '');
@@ -685,59 +728,65 @@ const BudgetEntryModule = {
       optsHtml = (masterEmployees || []).map(renderEmpOption).join('');
     }
 
+    const lockStyle = isLocked ? 'disabled style="padding: 2px 4px; font-size: 11px; font-weight: 600; cursor: not-allowed; opacity: 0.85; background: var(--bg-tertiary);"' : 'style="padding: 2px 4px; font-size: 11px; font-weight: 600;"';
+    const lockManual = isLocked ? 'disabled readonly style="padding: 2px 4px; font-size: 11px; cursor: not-allowed; opacity: 0.85; background: var(--bg-tertiary);"' : 'style="padding: 2px 4px; font-size: 11px;"';
+
     return `
       <div class="emp-name-cell" style="min-width: 190px; display: flex; flex-direction: column; gap: 3px;">
-        <select class="form-select field-name ${cssClass}" style="padding: 2px 4px; font-size: 11px; font-weight: 600;" ${extraAttrs}>
+        <select class="form-select field-name ${cssClass}" ${lockStyle} ${extraAttrs}>
           <option value="">— Select Employee —</option>
           ${optsHtml}
           <option value="__manual__"${showManual ? ' selected' : ''}>✏️ Manual Entry…</option>
         </select>
         <input type="text" class="field-name-manual" value="${showManual ? savedName : ''}" placeholder="Type name…"
-          style="padding: 2px 4px; font-size: 11px; ${showManual ? '' : 'display: none;'}">
+          ${lockManual} ${showManual ? '' : 'style="display: none;"'}>
       </div>
     `;
   },
 
-  renderPersonnelRow(r, entity, locations = [], donors = [], activities = [], conditionAreas = [], subTab = 'salaries-wages', masterEmployees = [], deptEmployees = [], deptName = '') {
+  renderPersonnelRow(r, entity, locations = [], donors = [], activities = [], conditionAreas = [], subTab = 'salaries-wages', masterEmployees = [], deptEmployees = [], deptName = '', isLocked = false) {
     locations = Array.isArray(locations) ? locations : [];
     donors = Array.isArray(donors) ? donors : [];
     activities = Array.isArray(activities) ? activities : [];
     conditionAreas = Array.isArray(conditionAreas) ? conditionAreas : [];
 
+    const lockAttr = isLocked ? 'disabled readonly style="cursor: not-allowed; opacity: 0.85; background: var(--bg-tertiary);"' : '';
+    const lockSelectAttr = isLocked ? 'disabled style="cursor: not-allowed; opacity: 0.85; background: var(--bg-tertiary);"' : '';
+
     const monthlyInputs = SEED_DATA.months.map((m, idx) => `
       <td class="editable num month-col">
-        <input type="number" class="month-input" data-month="${idx}" value="${r.monthlyValues?.[idx] || 0}">
+        <input type="number" class="month-input" data-month="${idx}" value="${r.monthlyValues?.[idx] || 0}" ${lockAttr}>
       </td>
     `).join('');
 
     const sharedEndCols = (isMandatoryLocation = false) => `
       <td>
-        <select class="form-select field-location ${isMandatoryLocation ? 'mandatory-field' : ''}" style="padding: 2px 4px; font-size: 11px;" ${isMandatoryLocation ? 'required' : ''}>
+        <select class="form-select field-location ${isMandatoryLocation ? 'mandatory-field' : ''}" style="padding: 2px 4px; font-size: 11px;" ${isMandatoryLocation ? 'required' : ''} ${lockSelectAttr}>
           <option value="">Select Location</option>
           ${locations.map(l => `<option value="${l.name}" ${r.location === l.name ? 'selected' : ''}>${l.name}</option>`).join('')}
         </select>
       </td>
       <td>
-        <select class="form-select field-donor" style="padding: 2px 4px; font-size: 11px;">
+        <select class="form-select field-donor" style="padding: 2px 4px; font-size: 11px;" ${lockSelectAttr}>
           <option value="">Select Donor</option>
           ${donors.map(d => `<option value="${d.name}" ${r.donor === d.name ? 'selected' : ''}>${d.name}</option>`).join('')}
         </select>
       </td>
       <td>
-        <select class="form-select field-activity" style="padding: 2px 4px; font-size: 11px;">
+        <select class="form-select field-activity" style="padding: 2px 4px; font-size: 11px;" ${lockSelectAttr}>
           <option value="">Select Activity</option>
           ${activities.map(a => `<option value="${a.name}" ${r.activity === a.name ? 'selected' : ''}>${a.name}</option>`).join('')}
         </select>
       </td>
       <td>
-        <select class="form-select field-condition" style="padding: 2px 4px; font-size: 11px;">
+        <select class="form-select field-condition" style="padding: 2px 4px; font-size: 11px;" ${lockSelectAttr}>
           <option value="">Select Area</option>
           ${conditionAreas.map(c => `<option value="${c.name}" ${r.conditionArea === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}
         </select>
       </td>
-      <td class="editable"><input type="text" class="field-remarks" value="${r.remarks || ''}" placeholder="Remarks"></td>
+      <td class="editable"><input type="text" class="field-remarks" value="${r.remarks || ''}" placeholder="Remarks" ${lockAttr}></td>
       <td>
-        <button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteRow('${STORES.payrollPersonnel}', ${r.id})">🗑️</button>
+        ${isLocked ? '' : `<button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteRow('${STORES.payrollPersonnel}', ${r.id})">🗑️</button>`}
       </td>
     `;
 
@@ -748,33 +797,33 @@ const BudgetEntryModule = {
 
       // New hires: free text. Existing: smart dropdown from master
       const nameCell = isNew
-        ? `<td class="sticky-col-emp editable"><input type="text" class="field-name" value="${r.name || ''}" placeholder="New Employee Name"></td>`
-        : `<td class="sticky-col-emp editable">${this.buildEmpNameCell(r, masterEmployees, deptEmployees, deptName, mandClass, req)}</td>`;
+        ? `<td class="sticky-col-emp editable"><input type="text" class="field-name" value="${r.name || ''}" placeholder="New Employee Name" ${lockAttr}></td>`
+        : `<td class="sticky-col-emp editable">${this.buildEmpNameCell(r, masterEmployees, deptEmployees, deptName, mandClass, req, isLocked)}</td>`;
 
       return `
         <tr data-id="${r.id}" data-sub-category="${r.subCategory || 'salaries-wages'}" class="${isNew ? 'row-status-new' : 'row-status-existing'}">
           <td class="sticky-col-status">
-            <select class="form-select field-status" style="padding: 2px 4px; font-size: 11px; min-width: 85px; font-weight: 600;">
+            <select class="form-select field-status" style="padding: 2px 4px; font-size: 11px; min-width: 85px; font-weight: 600;" ${lockSelectAttr}>
               <option value="Existing" ${!isNew ? 'selected' : ''}>Existing</option>
               <option value="New" ${isNew ? 'selected' : ''}>New</option>
             </select>
           </td>
           ${nameCell}
-          <td class="editable"><input type="text" class="field-designation ${mandClass}" value="${r.designation || ''}" placeholder="Designation" ${req}></td>
-          <td class="editable"><input type="date" class="field-doj ${mandClass}" value="${r.dateOfJoining || ''}" style="padding: 2px 4px; font-size: 11px;" ${req}></td>
+          <td class="editable"><input type="text" class="field-designation ${mandClass}" value="${r.designation || ''}" placeholder="Designation" ${req} ${lockAttr}></td>
+          <td class="editable"><input type="date" class="field-doj ${mandClass}" value="${r.dateOfJoining || ''}" style="padding: 2px 4px; font-size: 11px;" ${req} ${lockAttr}></td>
           <td>
-            <select class="form-select field-banding ${mandClass}" style="padding: 2px 4px; font-size: 11px;" ${req}>
+            <select class="form-select field-banding ${mandClass}" style="padding: 2px 4px; font-size: 11px;" ${req} ${lockSelectAttr}>
               ${SEED_DATA.bandings.map(b => `<option value="${b}" ${r.banding === b ? 'selected' : ''}>${b}</option>`).join('')}
             </select>
           </td>
           <td>
-            <select class="form-select field-level ${mandClass}" style="padding: 2px 4px; font-size: 11px;" ${req}>
+            <select class="form-select field-level ${mandClass}" style="padding: 2px 4px; font-size: 11px;" ${req} ${lockSelectAttr}>
               ${SEED_DATA.levels.map(l => `<option value="${l}" ${r.level === l ? 'selected' : ''}>${l}</option>`).join('')}
             </select>
           </td>
-          <td class="editable num"><input type="number" class="field-current-ctc ${mandClass}" value="${r.currentMonthlyCTC || 0}" ${isNew ? 'disabled style="background: var(--bg-tertiary); color: var(--text-tertiary);"' : req}></td>
-          <td class="editable num"><input type="number" class="field-new-ctc ${mandClass}" value="${r.newMonthlyCTC || 0}" ${req}></td>
-          <td class="editable num"><input type="number" class="field-inc-pct ${mandClass}" value="${r.incrementPct || 0}" ${isNew ? 'disabled style="background: var(--bg-tertiary); color: var(--text-tertiary);"' : req}></td>
+          <td class="editable num"><input type="number" class="field-current-ctc ${mandClass}" value="${r.currentMonthlyCTC || 0}" ${isNew ? 'disabled style="background: var(--bg-tertiary); color: var(--text-tertiary);"' : (isLocked ? lockAttr : req)}></td>
+          <td class="editable num"><input type="number" class="field-new-ctc ${mandClass}" value="${r.newMonthlyCTC || 0}" ${isLocked ? lockAttr : req}></td>
+          <td class="editable num"><input type="number" class="field-inc-pct ${mandClass}" value="${r.incrementPct || 0}" ${isNew ? 'disabled style="background: var(--bg-tertiary); color: var(--text-tertiary);"' : (isLocked ? lockAttr : req)}></td>
           <td class="num field-inc-val">${isNew ? '-' : Utils.formatNumber(r.incrementValue || 0)}</td>
           <td class="num font-bold field-total-cy">${Utils.formatNumber(r.totalCY || 0)}</td>
           ${monthlyInputs}
@@ -784,9 +833,9 @@ const BudgetEntryModule = {
     } else if (subTab === 'gratuity-bonus') {
       return `
         <tr data-id="${r.id}" data-sub-category="${r.subCategory || 'gratuity-bonus'}">
-          <td class="sticky-col-1">${this.buildEmpNameCell(r, masterEmployees, deptEmployees, deptName)}</td>
-          <td class="sticky-col-2 editable"><input type="text" class="field-designation" value="${r.designation || ''}" placeholder="Designation"></td>
-          <td class="editable"><input type="date" class="field-doj" value="${r.dateOfJoining || ''}" style="padding: 2px 4px; font-size: 11px;"></td>
+          <td class="sticky-col-1">${this.buildEmpNameCell(r, masterEmployees, deptEmployees, deptName, '', '', isLocked)}</td>
+          <td class="sticky-col-2 editable"><input type="text" class="field-designation" value="${r.designation || ''}" placeholder="Designation" ${lockAttr}></td>
+          <td class="editable"><input type="date" class="field-doj" value="${r.dateOfJoining || ''}" style="padding: 2px 4px; font-size: 11px;" ${lockAttr}></td>
           <td class="num font-bold field-total-cy">${Utils.formatNumber(r.totalCY || 0)}</td>
           ${monthlyInputs}
           ${sharedEndCols(false)}
@@ -795,8 +844,8 @@ const BudgetEntryModule = {
     } else { // other-staff-expenses
       return `
         <tr data-id="${r.id}" data-sub-category="${r.subCategory || 'other-staff-expenses'}">
-          <td class="sticky-col-1">${this.buildEmpNameCell(r, masterEmployees, deptEmployees, deptName)}</td>
-          <td class="sticky-col-2 editable"><input type="text" class="field-designation" value="${r.designation || ''}" placeholder="Designation"></td>
+          <td class="sticky-col-1">${this.buildEmpNameCell(r, masterEmployees, deptEmployees, deptName, '', '', isLocked)}</td>
+          <td class="sticky-col-2 editable"><input type="text" class="field-designation" value="${r.designation || ''}" placeholder="Designation" ${lockAttr}></td>
           <td class="num font-bold field-total-cy">${Utils.formatNumber(r.totalCY || 0)}</td>
           ${monthlyInputs}
           ${sharedEndCols(false)}
@@ -824,6 +873,9 @@ const BudgetEntryModule = {
   attachPersonnelEvents(container, yearId, entity, dept) {
     const table = container.querySelector('#personnelTable');
     if (!table) return;
+
+    const isLocked = typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId);
+    if (isLocked) return;
 
     const subTab = this.activePersonnelSubTab || 'salaries-wages';
     const countLabel = subTab === 'salaries-wages' ? 'Employees' : 'Line Items';
@@ -1119,6 +1171,11 @@ const BudgetEntryModule = {
   },
 
   async savePersonnelRow(row, yearId, entityId, deptId) {
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entityId)) {
+      console.warn(`[BudgetEntry] Blocked savePersonnelRow: Budget cycle CY-${yearId} (${entityId}) is locked.`);
+      return;
+    }
+
     const id = row.dataset.id ? parseInt(row.dataset.id) : null;
     const monthlyValues = {};
     row.querySelectorAll('.month-input').forEach((m, idx) => {
@@ -1167,6 +1224,11 @@ const BudgetEntryModule = {
   },
 
   async saveEhaRow(row, yearId, entityId, deptId) {
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entityId)) {
+      console.warn(`[BudgetEntry] Blocked saveEhaRow: Budget cycle CY-${yearId} (${entityId}) is locked.`);
+      return;
+    }
+
     const id = row.dataset.id ? parseInt(row.dataset.id) : null;
     const monthlyValues = {};
     row.querySelectorAll('.month-input').forEach((m, idx) => { monthlyValues[idx] = Utils.parseNumber(m.value); });
@@ -1199,6 +1261,11 @@ const BudgetEntryModule = {
   },
 
   async saveFaRow(row, yearId, entityId, deptId) {
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entityId)) {
+      console.warn(`[BudgetEntry] Blocked saveFaRow: Budget cycle CY-${yearId} (${entityId}) is locked.`);
+      return;
+    }
+
     const id = row.dataset.id ? parseInt(row.dataset.id) : null;
     const monthlyValues = {};
     row.querySelectorAll('.month-input').forEach((m, idx) => { monthlyValues[idx] = Utils.parseNumber(m.value); });
@@ -1233,6 +1300,11 @@ const BudgetEntryModule = {
   },
 
   async saveNonPayrollRow(row, yearId, entityId, deptId) {
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entityId)) {
+      console.warn(`[BudgetEntry] Blocked saveNonPayrollRow: Budget cycle CY-${yearId} (${entityId}) is locked.`);
+      return;
+    }
+
     const id = row.dataset.id ? parseInt(row.dataset.id) : null;
     const monthlyValues = {};
     row.querySelectorAll('.month-input').forEach((m, idx) => { monthlyValues[idx] = Utils.parseNumber(m.value); });
@@ -1278,6 +1350,11 @@ const BudgetEntryModule = {
   },
 
   async saveTotalCostRow(row, yearId, entityId, deptId) {
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
+      console.warn(`[BudgetEntry] Blocked saveTotalCostRow: Budget cycle CY-${yearId} is locked.`);
+      return;
+    }
+
     const ledgerCode = row.dataset.ledger || '';
     const glDescription = row.dataset.gldesc || '';
     const basisOfExpense = row.querySelector('.field-basis')?.value || '';
@@ -1371,6 +1448,10 @@ const BudgetEntryModule = {
     }
 
     const allRecords = await db.getBudgetData(STORES.payrollEHA, yearId, entity.id, dept.id);
+    const isLocked = typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId);
+    const lockAttr = isLocked ? 'disabled readonly style="cursor: not-allowed; opacity: 0.85; background: var(--bg-tertiary);"' : '';
+    const lockSelectAttr = isLocked ? 'disabled style="cursor: not-allowed; opacity: 0.85; background: var(--bg-tertiary);"' : '';
+
     const records = allRecords.filter(r => {
       if (typeof Auth === 'undefined') return true;
       return Auth.hasPermission('view', {
@@ -1448,44 +1529,44 @@ const BudgetEntryModule = {
           </thead>
           <tbody>
             ${records.length === 0 ? `
-              <tr><td colspan="21" class="text-center p-lg text-muted">No external consultants (EHA) added yet. Click <strong>"📤 Bulk Upload EHA File"</strong> above to upload, or click <strong>"+ Add Consultant Row"</strong>.</td></tr>
+              <tr><td colspan="21" class="text-center p-lg text-muted">No external consultants (EHA) added yet.</td></tr>
             ` : `
               ${records.map(r => `
                 <tr data-id="${r.id}">
                   <td class="sticky-col-1 editable">
-                    <input type="text" class="field-name" value="${r.name || ''}" placeholder="Consultant Name" list="ehaNameList" autocomplete="off">
+                    <input type="text" class="field-name" value="${r.name || ''}" placeholder="Consultant Name" list="ehaNameList" autocomplete="off" ${lockAttr}>
                   </td>
-                  <td class="sticky-col-2 editable"><input type="text" class="field-role" value="${r.role || ''}" placeholder="Role"></td>
+                  <td class="sticky-col-2 editable"><input type="text" class="field-role" value="${r.role || ''}" placeholder="Role" ${lockAttr}></td>
                   <td class="num font-bold field-total-cy">${Utils.formatNumber(r.totalCY || 0)}</td>
                   ${SEED_DATA.months.map((m, idx) => `
-                    <td class="editable num month-col"><input type="number" class="month-input" data-month="${idx}" value="${r.monthlyValues?.[idx] || 0}"></td>
+                    <td class="editable num month-col"><input type="number" class="month-input" data-month="${idx}" value="${r.monthlyValues?.[idx] || 0}" ${lockAttr}></td>
                   `).join('')}
                   <td>
-                    <select class="form-select field-location" style="padding: 2px 4px; font-size: 11px;">
+                    <select class="form-select field-location" style="padding: 2px 4px; font-size: 11px;" ${lockSelectAttr}>
                       <option value="">Select Location</option>
                       ${locations.map(l => `<option value="${l.name}" ${r.location === l.name ? 'selected' : ''}>${l.name}</option>`).join('')}
                     </select>
                   </td>
                   <td>
-                    <select class="form-select field-donor" style="padding: 2px 4px; font-size: 11px;">
+                    <select class="form-select field-donor" style="padding: 2px 4px; font-size: 11px;" ${lockSelectAttr}>
                       <option value="">Select Donor</option>
                       ${donors.map(d => `<option value="${d.name}" ${r.donor === d.name ? 'selected' : ''}>${d.name}</option>`).join('')}
                     </select>
                   </td>
                   <td>
-                    <select class="form-select field-activity" style="padding: 2px 4px; font-size: 11px;">
+                    <select class="form-select field-activity" style="padding: 2px 4px; font-size: 11px;" ${lockSelectAttr}>
                       <option value="">Select Activity</option>
                       ${activities.map(a => `<option value="${a.name}" ${r.activity === a.name ? 'selected' : ''}>${a.name}</option>`).join('')}
                     </select>
                   </td>
                   <td>
-                    <select class="form-select field-condition" style="padding: 2px 4px; font-size: 11px;">
+                    <select class="form-select field-condition" style="padding: 2px 4px; font-size: 11px;" ${lockSelectAttr}>
                       <option value="">Select Area</option>
                       ${conditionAreas.map(c => `<option value="${c.name}" ${r.conditionArea === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}
                     </select>
                   </td>
-                  <td class="editable"><input type="text" class="field-remarks" value="${r.remarks || ''}" placeholder="Remarks"></td>
-                  <td><button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteRow('${STORES.payrollEHA}', ${r.id})">🗑️</button></td>
+                  <td class="editable"><input type="text" class="field-remarks" value="${r.remarks || ''}" placeholder="Remarks" ${lockAttr}></td>
+                  <td>${isLocked ? '' : `<button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteRow('${STORES.payrollEHA}', ${r.id})">🗑️</button>`}</td>
                 </tr>
               `).join('')}
               ${bottomTotalRowHtml}
@@ -1501,6 +1582,7 @@ const BudgetEntryModule = {
     const table = container.querySelector('#ehaTable');
     if (table) {
       table.addEventListener('input', (e) => {
+        if (isLocked) return;
         const row = e.target.closest('tr');
         if (!row) return;
 
@@ -1544,6 +1626,10 @@ const BudgetEntryModule = {
     }
 
     const allRecords = await db.getBudgetData(STORES.payrollFixedAsset, yearId, entity.id, dept.id);
+    const isLocked = typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entity.id);
+    const lockAttr = isLocked ? 'disabled readonly style="cursor: not-allowed; opacity: 0.85; background: var(--bg-tertiary);"' : '';
+    const lockSelectAttr = isLocked ? 'disabled style="cursor: not-allowed; opacity: 0.85; background: var(--bg-tertiary);"' : '';
+
     const records = allRecords.filter(r => {
       if (typeof Auth === 'undefined') return true;
       return Auth.hasPermission('view', {
@@ -1623,43 +1709,43 @@ const BudgetEntryModule = {
           </thead>
           <tbody>
             ${records.length === 0 ? `
-              <tr><td colspan="22" class="text-center p-lg text-muted">No fixed asset requests added. Click <strong>"📤 Bulk Upload Assets File"</strong> above to upload, or click <strong>"+ Add Asset Row"</strong>.</td></tr>
+              <tr><td colspan="22" class="text-center p-lg text-muted">No fixed asset requests added.</td></tr>
             ` : `
               ${records.map(r => `
                 <tr data-id="${r.id}">
-                  <td class="sticky-col-1">${this.buildEmpNameCell({ name: r.employeeName || r.name || '' }, masterEmps)}</td>
-                  <td class="sticky-col-2 editable"><input type="text" class="field-asset" value="${r.assetType || ''}" placeholder="Laptop/Printer"></td>
-                  <td class="editable"><input type="text" class="field-model" value="${r.model || ''}" placeholder="Macbook Air/Pro/Lenovo"></td>
+                  <td class="sticky-col-1">${this.buildEmpNameCell({ name: r.employeeName || r.name || '' }, masterEmps, [], '', '', '', isLocked)}</td>
+                  <td class="sticky-col-2 editable"><input type="text" class="field-asset" value="${r.assetType || ''}" placeholder="Laptop/Printer" ${lockAttr}></td>
+                  <td class="editable"><input type="text" class="field-model" value="${r.model || ''}" placeholder="Macbook Air/Pro/Lenovo" ${lockAttr}></td>
                   <td class="num font-bold field-total-cy">${Utils.formatNumber(r.totalCY || 0)}</td>
                   ${SEED_DATA.months.map((m, idx) => `
-                    <td class="editable num month-col"><input type="number" class="month-input" data-month="${idx}" value="${r.monthlyValues?.[idx] || 0}"></td>
+                    <td class="editable num month-col"><input type="number" class="month-input" data-month="${idx}" value="${r.monthlyValues?.[idx] || 0}" ${lockAttr}></td>
                   `).join('')}
                   <td>
-                    <select class="form-select field-location" style="padding: 2px 4px; font-size: 11px;">
+                    <select class="form-select field-location" style="padding: 2px 4px; font-size: 11px;" ${lockSelectAttr}>
                       <option value="">Select Location</option>
                       ${locations.map(l => `<option value="${l.name}" ${r.location === l.name ? 'selected' : ''}>${l.name}</option>`).join('')}
                     </select>
                   </td>
                   <td>
-                    <select class="form-select field-donor" style="padding: 2px 4px; font-size: 11px;">
+                    <select class="form-select field-donor" style="padding: 2px 4px; font-size: 11px;" ${lockSelectAttr}>
                       <option value="">Select Donor</option>
                       ${donors.map(d => `<option value="${d.name}" ${r.donor === d.name ? 'selected' : ''}>${d.name}</option>`).join('')}
                     </select>
                   </td>
                   <td>
-                    <select class="form-select field-activity" style="padding: 2px 4px; font-size: 11px;">
+                    <select class="form-select field-activity" style="padding: 2px 4px; font-size: 11px;" ${lockSelectAttr}>
                       <option value="">Select Activity</option>
                       ${activities.map(a => `<option value="${a.name}" ${r.activity === a.name ? 'selected' : ''}>${a.name}</option>`).join('')}
                     </select>
                   </td>
                   <td>
-                    <select class="form-select field-condition" style="padding: 2px 4px; font-size: 11px;">
+                    <select class="form-select field-condition" style="padding: 2px 4px; font-size: 11px;" ${lockSelectAttr}>
                       <option value="">Select Area</option>
                       ${conditionAreas.map(c => `<option value="${c.name}" ${r.conditionArea === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}
                     </select>
                   </td>
-                  <td class="editable"><input type="text" class="field-remarks" value="${r.remarks || ''}" placeholder="Remarks"></td>
-                  <td><button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteRow('${STORES.payrollFixedAsset}', ${r.id})">🗑️</button></td>
+                  <td class="editable"><input type="text" class="field-remarks" value="${r.remarks || ''}" placeholder="Remarks" ${lockAttr}></td>
+                  <td>${isLocked ? '' : `<button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteRow('${STORES.payrollFixedAsset}', ${r.id})">🗑️</button>`}</td>
                 </tr>
               `).join('')}
               ${bottomTotalRowHtml}
@@ -1672,6 +1758,7 @@ const BudgetEntryModule = {
     const table = container.querySelector('#faTable');
     if (table) {
       table.addEventListener('change', (e) => {
+        if (isLocked) return;
         const row = e.target.closest('tr');
         if (!row) return;
 
@@ -1694,6 +1781,7 @@ const BudgetEntryModule = {
       });
 
       table.addEventListener('input', (e) => {
+        if (isLocked) return;
         const row = e.target.closest('tr');
         if (!row) return;
 
@@ -1819,6 +1907,7 @@ const BudgetEntryModule = {
     const rate = this._conversionRates?.[entity.currency] || 1.0;
     const currentSubTab = this.activeOtherCostSubTab || 'grid';
     const isImpDept = typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(dept);
+    const isLocked = typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entity.id);
 
     // If ToT Program Budget sub-tab is active, delegate directly to ImpTotModule
     if ((currentSubTab === 'tot' || currentSubTab === 'imp-tot') && isImpDept) {
@@ -1846,15 +1935,17 @@ const BudgetEntryModule = {
           </div>
         </div>
 
-        <div class="flex items-center gap-sm">
-          <button class="btn btn-primary" id="btnQuickNewExpense" style="background: linear-gradient(135deg, #0891b2, #4f46e5);">+ Add Expense Item</button>
-          <button class="btn btn-secondary" id="btnNewTravelPkg">✈️ + Travel Package</button>
-        </div>
+        ${isLocked ? '' : `
+          <div class="flex items-center gap-sm">
+            <button class="btn btn-primary" id="btnQuickNewExpense" style="background: linear-gradient(135deg, #0891b2, #4f46e5);">+ Add Expense Item</button>
+            <button class="btn btn-secondary" id="btnNewTravelPkg">✈️ + Travel Package</button>
+          </div>
+        `}
       </div>
 
       <!-- Tab Content Area -->
       <div id="otherCostTabContent">
-        ${this.renderOtherCostSubTabContent(currentSubTab, nonPayrollCoa, records, travelRecords, suppliesRecords, commRecords, officeRecords, profRecords, otherRecords, yearId, entity, dept, budgetYear, rate)}
+        ${this.renderOtherCostSubTabContent(currentSubTab, nonPayrollCoa, records, travelRecords, suppliesRecords, commRecords, officeRecords, profRecords, otherRecords, yearId, entity, dept, budgetYear, rate, isLocked)}
       </div>
     `;
 
@@ -1893,10 +1984,6 @@ const BudgetEntryModule = {
       this.showExpenseLauncherModal(yearId, entity, dept, locations, donors, activities, conditionAreas);
     };
 
-    const openTravelWizard = () => {
-      this.showTravelPackageWizard(yearId, entity, dept, locations, donors, activities, conditionAreas);
-    };
-
     const btnQuickNew = container.querySelector('#btnQuickNewExpense');
     if (btnQuickNew) btnQuickNew.addEventListener('click', openLauncher);
 
@@ -1910,7 +1997,7 @@ const BudgetEntryModule = {
     if (btnEmptyNewTrip) btnEmptyNewTrip.addEventListener('click', openTravelWizard);
   },
 
-  renderOtherCostSubTabContent(subTab, nonPayrollCoa, allRecords, travelRecords, suppliesRecords, commRecords, officeRecords, profRecords, otherRecords, yearId, entity, dept, budgetYear, rate) {
+  renderOtherCostSubTabContent(subTab, nonPayrollCoa, allRecords, travelRecords, suppliesRecords, commRecords, officeRecords, profRecords, otherRecords, yearId, entity, dept, budgetYear, rate, isLocked = false) {
     const cleanStr = (s) => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 
     // ─── 1. ALL ACCOUNTS OVERVIEW (Always Shows All COA Lines, Read-only Rollup) ───
@@ -1952,127 +2039,115 @@ const BudgetEntryModule = {
         const categoryKey = this.getOtherCostCategory(account);
 
         return {
-          parentAccount: account.parentAccount,
+          parentAccount: account.parentAccount || 'Other Expenses',
           glDescription: account.glDescription,
           ledgerCode: account.ledgerCode,
           categoryKey,
+          isTravel: categoryKey === 'travel',
           itemCount: matchingItems.length,
-          basisOfExpense: basisList.join('; ') || 'No items budgeted',
-          remarks: remarksList.join('; ') || '—',
+          basisOfExpense: basisList.join('; '),
+          remarks: remarksList.join('; '),
           monthlyValues: months,
-          totalCY
+          totalCY,
+          items: matchingItems
         };
       });
 
-      // Also append any custom added lines
-      allRecords.forEach(r => {
-        if (r.id && !matchedRecordIds.has(r.id) && !r.isTravelPackage) {
-          const months = Array(12).fill(0);
-          let totalCY = 0;
-          if (r.monthlyValues) {
-            Object.entries(r.monthlyValues).forEach(([mIdx, val]) => {
-              const num = Utils.parseNumber(val) || 0;
-              months[mIdx] += num;
-              totalCY += num;
-            });
-          }
-
-          coaRows.push({
-            parentAccount: r.parentAccount || 'Other Expenses',
-            glDescription: r.glDescription || 'Custom Line',
-            ledgerCode: r.ledgerCode || '93999',
-            categoryKey: this.getOtherCostCategory(r),
-            itemCount: 1,
-            basisOfExpense: r.basisOfExpense || '—',
-            remarks: r.remarks || '—',
-            monthlyValues: months,
-            totalCY
+      // Also append custom non-COA entries
+      const customItems = allRecords.filter(r => r.id && !matchedRecordIds.has(r.id));
+      customItems.forEach(item => {
+        const months = Array(12).fill(0);
+        let totalCY = 0;
+        if (item.monthlyValues) {
+          Object.entries(item.monthlyValues).forEach(([mIdx, val]) => {
+            const num = Utils.parseNumber(val) || 0;
+            months[mIdx] += num;
+            totalCY += num;
           });
         }
+        const categoryKey = this.getOtherCostCategory(item);
+        coaRows.push({
+          parentAccount: item.parentAccount || 'Custom Expenses',
+          glDescription: item.glDescription || item.itemName || 'Custom Item',
+          ledgerCode: item.ledgerCode || '93999',
+          categoryKey,
+          isTravel: categoryKey === 'travel',
+          itemCount: 1,
+          basisOfExpense: item.basisOfExpense || '',
+          remarks: item.remarks || '',
+          monthlyValues: months,
+          totalCY,
+          items: [item]
+        });
       });
 
-      const grandTotalAll = coaRows.reduce((sum, r) => sum + r.totalCY, 0);
+      const totalRollupCost = coaRows.reduce((sum, r) => sum + r.totalCY, 0);
+      const colMonthlySums = Array(12).fill(0);
+      coaRows.forEach(r => {
+        r.monthlyValues.forEach((v, idx) => { colMonthlySums[idx] += v; });
+      });
+
+      const catBadges = {
+        travel: { label: '✈️ Travel & Lodging', cls: 'badge-cyan' },
+        supplies: { label: '🖨️ Supplies/Print', cls: 'badge-primary' },
+        communication: { label: '📡 Communication', cls: 'badge-info' },
+        office: { label: '🏢 Office', cls: 'badge-warning' },
+        professional: { label: '💼 Professional', cls: 'badge-emerald' },
+        other: { label: '📑 Other OpEx', cls: 'badge-subtle' }
+      };
 
       return `
         <div class="card mb-lg">
           <div class="card-header flex justify-between items-center">
             <div>
-              <div class="card-title">Master Accounts Overview (${coaRows.length} Lines)</div>
-              <div class="card-subtitle">All Chart of Accounts operating lines are displayed with frozen Parent Account & GL Line. Amounts are auto-aggregated from data input formats.</div>
+              <div class="card-title">All Other Costs — Chart of Accounts Overview</div>
+              <div class="card-subtitle">Showing all standard general ledger account lines &bull; Values auto-rollup from category entries & travel packages</div>
             </div>
           </div>
 
           <div class="table-container">
-            <table class="data-table" id="nonPayrollOverviewTable">
+            <table class="data-table" id="allAccountsTable">
               <thead>
                 <tr>
                   <th class="sticky-col-1">Parent Account</th>
-                  <th class="sticky-col-2">GL Line Item Description</th>
+                  <th class="sticky-col-2">GL Account Description</th>
                   <th>Ledger Code</th>
-                  <th>Budgeted Items</th>
-                  <th style="width: 160px; max-width: 160px; min-width: 120px;">Basis / Calculation Notes</th>
-                  <th style="width: 180px; max-width: 180px; min-width: 130px;">Remarks (Amount Justification)</th>
+                  <th>Category</th>
+                  <th>Entries</th>
                   <th class="num month-group budget-year total-toggle-th" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${budgetYear} <span class="months-toggle-arrow">&#9664;</span></th>
                   ${SEED_DATA.months.map(m => `<th class="num month-group budget-year">${m}-${budgetYear}</th>`).join('')}
-                  <th>Actions</th>
+                  <th class="num font-bold">Total USD</th>
                 </tr>
               </thead>
               <tbody>
-                ${coaRows.map(r => {
-                  const catIcons = { travel: '✈️', supplies: '🖨️', communication: '📡', office: '🏢', professional: '💼', other: '📑' };
-                  const icon = catIcons[r.categoryKey] || '📑';
+                ${coaRows.map((r, idx) => {
+                  const badge = catBadges[r.categoryKey] || catBadges.other;
                   return `
-                    <tr>
-                      <td class="sticky-col-1 font-bold">
-                        <span style="margin-right: 4px;">${icon}</span> ${r.parentAccount}
-                      </td>
-                      <td class="sticky-col-2 font-medium">
-                        ${r.glDescription}
-                      </td>
+                    <tr class="coa-summary-row ${r.totalCY > 0 ? 'has-budget' : ''}">
+                      <td class="sticky-col-1 font-bold"><strong>${r.parentAccount}</strong></td>
+                      <td class="sticky-col-2">${r.glDescription}</td>
                       <td><code>${r.ledgerCode}</code></td>
+                      <td><span class="badge ${badge.cls}" style="font-size: 11px;">${badge.label}</span></td>
                       <td>
-                        <span class="badge ${r.itemCount > 0 ? 'badge-primary' : 'badge-subtle'}" style="font-size: 11px;">
-                          ${r.itemCount} ${r.itemCount === 1 ? 'item' : 'items'}
-                        </span>
+                        ${r.itemCount > 0 ? `<span class="badge badge-primary font-bold" style="font-size: 11px;">${r.itemCount} item${r.itemCount > 1 ? 's' : ''}</span>` : `<span class="text-tertiary" style="font-size: 11px;">0 items</span>`}
                       </td>
-                      <td class="basis-cell" style="font-size: 11px; width: 160px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: ${r.itemCount > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)'};" title="${Utils.escapeHtml(r.basisOfExpense || '')}">
-                        ${r.basisOfExpense}
-                      </td>
-                      <td class="remarks-cell" style="font-size: 11px; width: 180px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: ${r.remarks !== '—' ? 'var(--text-secondary)' : 'var(--text-tertiary)'};" title="${Utils.escapeHtml(r.remarks !== '—' ? r.remarks : '')}">
-                        ${r.remarks}
-                      </td>
-                      <td class="num font-bold field-total-cy" style="color: ${r.totalCY > 0 ? 'var(--accent-secondary)' : 'inherit'};">
-                        ${Utils.formatNumber(r.totalCY)}
-                      </td>
-                      ${SEED_DATA.months.map((m, idx) => `
-                        <td class="num month-col font-mono" style="${r.monthlyValues[idx] > 0 ? 'font-weight: 600; color: var(--text-primary);' : 'color: var(--text-tertiary);'}">
-                          ${r.monthlyValues[idx] > 0 ? Utils.formatNumber(r.monthlyValues[idx]) : '-'}
-                        </td>
+                      <td class="num font-bold field-total-cy" style="color: ${r.totalCY > 0 ? 'var(--accent-primary)' : 'inherit'};">${Utils.formatCurrency(r.totalCY, entity.currency)}</td>
+                      ${SEED_DATA.months.map((m, mIdx) => `
+                        <td class="num month-col font-mono" style="${r.monthlyValues[mIdx] > 0 ? 'font-weight: 600;' : 'color: var(--text-tertiary);'}">${Utils.formatNumber(r.monthlyValues[mIdx])}</td>
                       `).join('')}
-                      <td style="white-space: nowrap;">
-                        <button class="btn btn-ghost btn-sm" onclick="BudgetEntryModule.showExpenseInputWizard('${r.categoryKey}', null, { parentAccount: '${r.parentAccount.replace(/'/g, "\\'")}', glDescription: '${r.glDescription.replace(/'/g, "\\'")}', ledgerCode: '${r.ledgerCode}' })">
-                          + Add
-                        </button>
-                        ${r.itemCount > 0 ? `
-                          <button class="btn btn-secondary btn-sm" onclick="BudgetEntryModule.activeOtherCostSubTab = '${r.categoryKey}'; document.querySelectorAll('#otherCostSubTabs .sub-tab').forEach(t => t.classList.toggle('active', t.dataset.subtab === '${r.categoryKey}')); BudgetEntryModule.renderNonPayrollGrid(BudgetEntryModule._container, BudgetEntryModule._yearId, BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._budgetYear, BudgetEntryModule._locations, BudgetEntryModule._donors, BudgetEntryModule._activities, BudgetEntryModule._conditionAreas);">
-                            🔍 View
-                          </button>
-                        ` : ''}
-                      </td>
+                      <td class="num font-bold" style="color: var(--accent-secondary); font-size: 12px;">≈ ${Utils.formatCurrency(Utils.convertToUSD(r.totalCY, rate), 'USD')}</td>
                     </tr>
                   `;
                 }).join('')}
-                <!-- Monthly Totals at the Bottom of the List -->
                 <tr class="total-row">
                   <td class="sticky-col-1 font-bold">TOTAL OTHER COSTS:</td>
                   <td class="sticky-col-2 font-bold text-right" style="padding-right: 16px;">(${entity.currency})</td>
-                  <td colspan="4"></td>
-                  <td class="num font-bold" style="color: var(--accent-secondary); font-size: 1.05rem;">${Utils.formatCurrency(grandTotalAll, entity.currency)}</td>
-                  ${SEED_DATA.months.map((m, idx) => {
-                    const mSum = coaRows.reduce((sum, r) => sum + (r.monthlyValues[idx] || 0), 0);
-                    return `<td class="num font-bold month-col font-mono" style="font-size: 11px;">${Utils.formatNumber(mSum)}</td>`;
-                  }).join('')}
-                  <td></td>
+                  <td colspan="3"></td>
+                  <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(totalRollupCost, entity.currency)}</td>
+                  ${SEED_DATA.months.map((m, idx) => `
+                    <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx])}</td>
+                  `).join('')}
+                  <td class="num font-bold" style="color: var(--accent-secondary); font-size: 1.05rem;">≈ ${Utils.formatCurrency(Utils.convertToUSD(totalRollupCost, rate), 'USD')}</td>
                 </tr>
               </tbody>
             </table>
@@ -2093,9 +2168,11 @@ const BudgetEntryModule = {
             </div>
             <div class="flex items-center gap-sm">
               <button type="button" class="btn btn-secondary btn-sm" id="btnToggleAllMonths" title="Expand / Collapse all monthly schedules">▶ Expand All</button>
-              <button class="btn btn-primary btn-sm" id="btnHeaderNewTrip">
-                + Add Trip Package
-              </button>
+              ${isLocked ? '' : `
+                <button class="btn btn-primary btn-sm" id="btnHeaderNewTrip">
+                  + Add Trip Package
+                </button>
+              `}
             </div>
           </div>
 
@@ -2104,9 +2181,11 @@ const BudgetEntryModule = {
               <div style="font-size: 2.2rem; margin-bottom: 8px;">✈️</div>
               <h4>No Travel Packages Created Yet</h4>
               <p class="mt-xs">Budget trips with automated benchmark rates for Hotel, Food, Cab, Airfare, and Train.</p>
-              <button class="btn btn-primary mt-md" id="btnEmptyNewTrip">
-                ✈️ Create First Travel Package
-              </button>
+              ${isLocked ? '' : `
+                <button class="btn btn-primary mt-md" id="btnEmptyNewTrip">
+                  ✈️ Create First Travel Package
+                </button>
+              `}
             </div>
           ` : `
             <div class="table-container">
@@ -2152,8 +2231,10 @@ const BudgetEntryModule = {
                       <td class="num font-bold" style="color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(pkg.totalCY || 0, entity.currency)}</td>
                       <td class="num font-bold" style="color: var(--accent-secondary); font-size: 13px;">≈ ${Utils.formatCurrency(Utils.convertToUSD(pkg.totalCY || 0, rate), 'USD')}</td>
                       <td style="white-space: nowrap;">
-                        <button class="btn btn-ghost btn-sm" onclick="BudgetEntryModule.editTravelPackage(${pkg.id})">✏️ Edit</button>
-                        <button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteTravelPackage(${pkg.id})">🗑️</button>
+                        ${isLocked ? '<span class="badge badge-subtle" style="font-size: 11px;">🔒 Read-only</span>' : `
+                          <button class="btn btn-ghost btn-sm" onclick="BudgetEntryModule.editTravelPackage(${pkg.id})">✏️ Edit</button>
+                          <button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteTravelPackage(${pkg.id})">🗑️</button>
+                        `}
                       </td>
                     </tr>
 
@@ -2232,9 +2313,11 @@ const BudgetEntryModule = {
           </div>
           <div class="flex items-center gap-sm">
             <button type="button" class="btn btn-secondary btn-sm" id="btnToggleAllMonths" title="Expand / Collapse all monthly schedules">▶ Expand All</button>
-            <button class="btn btn-primary btn-sm" onclick="BudgetEntryModule.showExpenseInputWizard('${subTab}')">
-              + Add ${catMeta.title.replace('Expenses', '').replace('Costs', '').trim()} Item
-            </button>
+            ${isLocked ? '' : `
+              <button class="btn btn-primary btn-sm" onclick="BudgetEntryModule.showExpenseInputWizard('${subTab}')">
+                + Add ${catMeta.title.replace('Expenses', '').replace('Costs', '').trim()} Item
+              </button>
+            `}
           </div>
         </div>
 
@@ -2243,9 +2326,11 @@ const BudgetEntryModule = {
             <div style="font-size: 2.2rem; margin-bottom: 8px;">${catMeta.icon}</div>
             <h4>No ${catMeta.title} Budgeted Yet</h4>
             <p class="mt-xs">Add structured line items with employee ownership, unit rates, and amount justifications.</p>
-            <button class="btn btn-primary mt-md" onclick="BudgetEntryModule.showExpenseInputWizard('${subTab}')">
-              ➕ Add First Item
-            </button>
+            ${isLocked ? '' : `
+              <button class="btn btn-primary mt-md" onclick="BudgetEntryModule.showExpenseInputWizard('${subTab}')">
+                ➕ Add First Item
+              </button>
+            `}
           </div>
         ` : `
           <div class="table-container">
@@ -2294,8 +2379,10 @@ const BudgetEntryModule = {
                     <td class="num font-bold" style="color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(r.totalCY || 0, entity.currency)}</td>
                     <td class="num font-bold" style="color: var(--accent-secondary); font-size: 13px;">≈ ${Utils.formatCurrency(Utils.convertToUSD(r.totalCY || 0, rate), 'USD')}</td>
                     <td style="white-space: nowrap;">
-                      <button class="btn btn-ghost btn-sm" onclick="BudgetEntryModule.editExpenseItem(${r.id})">✏️ Edit</button>
-                      <button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteExpenseItem(${r.id})">🗑️</button>
+                      ${isLocked ? '<span class="badge badge-subtle" style="font-size: 11px;">🔒 Read-only</span>' : `
+                        <button class="btn btn-ghost btn-sm" onclick="BudgetEntryModule.editExpenseItem(${r.id})">✏️ Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteExpenseItem(${r.id})">🗑️</button>
+                      `}
                     </td>
                   </tr>
 
@@ -2310,7 +2397,7 @@ const BudgetEntryModule = {
                             ${r.calcMode === 'unit' ? `<span class="badge badge-subtle" style="font-size: 11px;">🔢 ${r.unitName || 'Units'} @ ${Utils.formatCurrency(r.unitRate || 0, entity.currency)}</span>` : ''}
                           </div>
                           <div class="text-tertiary font-mono" style="font-size: 11px;">
-                            Basis: ${r.basisOfExpense || 'Monthly distribution'}
+                            ${r.basisOfExpense || 'Manual Entry'}
                           </div>
                         </div>
 
@@ -2323,15 +2410,19 @@ const BudgetEntryModule = {
                             </tr>
                           </thead>
                           <tbody>
-                            ${r.calcMode === 'unit' && r.unitMatrix ? `
+                            ${r.calcMode === 'unit' ? `
                               <tr>
-                                <td style="font-weight: 600; text-align: left; padding-left: 10px; color: var(--text-secondary);">${r.unitName || 'Units'} / Month</td>
-                                ${SEED_DATA.months.map((m, mIdx) => `<td>${r.unitMatrix[mIdx] || 0}</td>`).join('')}
-                                <td class="font-bold font-mono" style="color: var(--accent-primary);">${r.unitMatrix.reduce((s, v) => s + (v || 0), 0)}</td>
+                                <td style="font-weight: 600; text-align: left; padding-left: 10px; color: var(--text-secondary);">Units Count</td>
+                                ${SEED_DATA.months.map((m, mIdx) => `
+                                  <td style="${r.monthlyUnits?.[mIdx] > 0 ? 'font-weight: 600; color: var(--text-primary);' : 'color: var(--text-tertiary);'}">
+                                    ${r.monthlyUnits?.[mIdx] > 0 ? Utils.formatNumber(r.monthlyUnits[mIdx]) : '-'}
+                                  </td>
+                                `).join('')}
+                                <td class="font-bold font-mono" style="color: var(--accent-primary);">${Utils.formatNumber(Object.values(r.monthlyUnits || {}).reduce((s, v) => s + (Utils.parseNumber(v) || 0), 0))}</td>
                               </tr>
                             ` : ''}
                             <tr>
-                              <td style="font-weight: 600; text-align: left; padding-left: 10px; color: var(--text-secondary);">Cost (${entity.currency})</td>
+                              <td style="font-weight: 600; text-align: left; padding-left: 10px; color: var(--text-secondary);">Monthly Cost</td>
                               ${SEED_DATA.months.map((m, mIdx) => `
                                 <td style="${r.monthlyValues?.[mIdx] > 0 ? 'font-weight: 600; color: var(--text-primary);' : 'color: var(--text-tertiary);'}">
                                   ${r.monthlyValues?.[mIdx] > 0 ? Utils.formatNumber(r.monthlyValues[mIdx]) : '-'}
@@ -3842,6 +3933,8 @@ const BudgetEntryModule = {
 
     const deptDisplayName = Utils.getDeptName(dept, entity.deptPrefix);
     const rate = this._conversionRates?.[entity.currency] || 1.0;
+    const isLocked = typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entity.id);
+    const lockAttr = isLocked ? 'disabled readonly style="cursor: not-allowed; opacity: 0.85; background: var(--bg-tertiary);"' : '';
 
     if (visibleLines.length === 0) {
       const currentUser = typeof Auth !== 'undefined' ? Auth.getCurrentUser() : { roleName: 'Current User' };
@@ -3892,7 +3985,7 @@ const BudgetEntryModule = {
         </div>
         <div class="flex gap-sm items-center">
           <span class="badge badge-emerald" style="padding: 6px 12px; font-size: 12px;">🔗 Auto-Linked to Input Sheets</span>
-          ${typeof Auth === 'undefined' || Auth.hasPermission('edit', { category: 'prior-period', entityId: entity.id, deptId: dept.id }) ? `
+          ${!isLocked && (typeof Auth === 'undefined' || Auth.hasPermission('edit', { category: 'prior-period', entityId: entity.id, deptId: dept.id })) ? `
             <button class="btn btn-secondary btn-sm" onclick="ConfigModule.managePriorPeriodCosts('${yearId}', '${entity.id}', '${dept.id}')" title="Directly update prior period costs in application">📊 Edit Prior Period</button>
           ` : ''}
         </div>
@@ -3909,7 +4002,7 @@ const BudgetEntryModule = {
               <th style="width: 160px; max-width: 160px; min-width: 120px;">Basis of Expense</th>
               <th class="num month-group budget-year total-toggle-th" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${budgetYear} <span class="months-toggle-arrow">&#9664;</span></th>
               ${SEED_DATA.months.map(m => `<th class="num month-group budget-year">${m}-${budgetYear}</th>`).join('')}
-              <th class="num month-group" style="min-width: 130px; background: #e2e8f0; color: var(--accent-primary);">Prior Period Cost (${entity.currency})</th>
+              <th class="num prior-cost-col" style="min-width: 140px; background: #e2e8f0; color: var(--accent-primary); font-weight: 700;">Prior Period Cost (${entity.currency})</th>
               <th style="width: 220px; max-width: 220px; min-width: 160px;">Remarks & Tasks</th>
             </tr>
           </thead>
@@ -3925,11 +4018,11 @@ const BudgetEntryModule = {
               let taskBadgeHtml = '';
               const safeGlDesc = Utils.escapeJs(r.glDescription || '');
               if (openCount > 0) {
-                taskBadgeHtml = `<button class="btn btn-warning btn-xs flex items-center gap-xs mt-xs" style="padding: 2px 7px; font-size: 10.5px; border-radius: 12px; font-weight: 600;" onclick="BudgetEntryModule.openLineRemarksModal('${yearId}', '${entity.id}', '${dept.id}', '${r.ledgerCode}', '${safeGlDesc}')" title="View open tasks & remarks">🟡 ${openCount} Task${openCount > 1 ? 's' : ''}</button>`;
+                taskBadgeHtml = `<button class="btn btn-warning btn-xs flex items-center gap-xs" style="padding: 2px 6px; font-size: 10px; border-radius: 10px; font-weight: 600; white-space: nowrap; flex-shrink: 0;" onclick="BudgetEntryModule.openLineRemarksModal('${yearId}', '${entity.id}', '${dept.id}', '${r.ledgerCode}', '${safeGlDesc}')" title="View open tasks & remarks">🟡 ${openCount}</button>`;
               } else if (doneCount > 0) {
-                taskBadgeHtml = `<button class="btn btn-secondary btn-xs flex items-center gap-xs mt-xs" style="padding: 2px 7px; font-size: 10.5px; border-radius: 12px; font-weight: 600; color: var(--success); border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.06);" onclick="BudgetEntryModule.openLineRemarksModal('${yearId}', '${entity.id}', '${dept.id}', '${r.ledgerCode}', '${safeGlDesc}')" title="View resolved remarks">🟢 ✓ ${doneCount} Done</button>`;
+                taskBadgeHtml = `<button class="btn btn-secondary btn-xs flex items-center gap-xs" style="padding: 2px 6px; font-size: 10px; border-radius: 10px; font-weight: 600; color: var(--success); border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.06); white-space: nowrap; flex-shrink: 0;" onclick="BudgetEntryModule.openLineRemarksModal('${yearId}', '${entity.id}', '${dept.id}', '${r.ledgerCode}', '${safeGlDesc}')" title="View resolved remarks">🟢 ✓</button>`;
               } else {
-                taskBadgeHtml = `<button class="btn btn-ghost btn-xs flex items-center gap-xs mt-xs text-tertiary" style="padding: 2px 7px; font-size: 10.5px; border-radius: 12px;" onclick="BudgetEntryModule.openLineRemarksModal('${yearId}', '${entity.id}', '${dept.id}', '${r.ledgerCode}', '${safeGlDesc}')" title="Tag colleague or add action item">💬 + Tag/Assign</button>`;
+                taskBadgeHtml = `<button class="btn btn-ghost btn-xs flex items-center gap-xs text-tertiary" style="padding: 2px 5px; font-size: 10px; border-radius: 8px; white-space: nowrap; flex-shrink: 0;" onclick="BudgetEntryModule.openLineRemarksModal('${yearId}', '${entity.id}', '${dept.id}', '${r.ledgerCode}', '${safeGlDesc}')" title="Tag colleague or add action item">💬</button>`;
               }
 
               return `
@@ -3938,21 +4031,19 @@ const BudgetEntryModule = {
                   <td class="sticky-col-2 font-medium">${r.glDescription || ''}</td>
                   <td><code>${r.ledgerCode || ''}</code></td>
                   <td><span class="badge ${r.linkedSource.includes('Travel') ? 'badge-cyan' : r.linkedSource.includes('Supplies') ? 'badge-primary' : r.linkedSource.includes('Communication') ? 'badge-info' : r.linkedSource.includes('Office') ? 'badge-warning' : r.linkedSource.includes('Professional') ? 'badge-emerald' : 'badge-subtle'}" style="font-size: 11px; white-space: nowrap;">${r.sourceIcon} ${r.linkedSource}</span></td>
-                  <td class="editable basis-cell" style="width: 160px; max-width: 160px; padding: 4px 6px;">
-                    <input type="text" class="field-basis" value="${Utils.escapeHtml(r.basisOfExpense || '')}" placeholder="Basis of calculation" title="${Utils.escapeHtml(r.basisOfExpense || '')}" style="width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                  <td class="editable basis-cell" style="width: 160px; max-width: 160px; padding: 2px 6px;">
+                    <input type="text" class="field-basis" value="${Utils.escapeHtml(r.basisOfExpense || '')}" placeholder="Basis of calculation" title="${Utils.escapeHtml(r.basisOfExpense || '')}" style="width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; height: 26px; padding: 2px 6px; font-size: 11.5px;" ${lockAttr}>
                   </td>
                   <td class="num font-bold field-total-cy" style="color: ${r.totalCY > 0 ? 'var(--accent-primary)' : 'inherit'};">${Utils.formatNumber(r.totalCY || 0)}</td>
                   ${SEED_DATA.months.map((m, idx) => `
                     <td class="num month-col font-mono" style="${r.monthlyValues[idx] > 0 ? 'font-weight: 600;' : 'color: var(--text-tertiary);'}">${Utils.formatNumber(r.monthlyValues[idx] || 0)}</td>
                   `).join('')}
-                  <td class="num month-col font-mono" style="background: rgba(59, 130, 246, 0.03); color: ${r.priorCost > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)'}; font-weight: ${r.priorCost > 0 ? '600' : 'normal'};">${r.priorCost > 0 ? Utils.formatNumber(r.priorCost) : '—'}</td>
-                  <td class="editable remarks-cell" style="width: 240px; max-width: 240px; padding: 4px 6px;">
-                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                      <input type="text" class="field-remarks" value="${Utils.escapeHtml(r.remarks || '')}" placeholder="Remarks" title="${Utils.escapeHtml(r.remarks || '')}" style="width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                      <div class="flex items-center justify-between gap-xs flex-wrap">
-                        ${taskBadgeHtml}
-                        <button type="button" class="btn btn-ghost btn-xs flex items-center gap-xs" style="padding: 2px 6px; font-size: 10px; border-radius: 10px; color: var(--text-secondary); border: 1px solid var(--border-subtle); background: var(--bg-surface);" onclick="BudgetEntryModule.openLinePermissionsModal('${r.ledgerCode}', '${Utils.escapeHtml(r.glDescription)}', '${r.parentAccount || 'other-costs'}')" title="View and customize Roles & Permissions for this line item">🛡️ Permissions</button>
-                      </div>
+                  <td class="num prior-cost-col font-mono" style="background: rgba(59, 130, 246, 0.03); color: ${r.priorCost > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)'}; font-weight: ${r.priorCost > 0 ? '600' : 'normal'};">${r.priorCost > 0 ? Utils.formatNumber(r.priorCost) : '—'}</td>
+                  <td class="editable remarks-cell" style="width: 240px; max-width: 240px; padding: 2px 6px;">
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                      <input type="text" class="field-remarks" value="${Utils.escapeHtml(r.remarks || '')}" placeholder="Remarks" title="${Utils.escapeHtml(r.remarks || '')}" style="width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; height: 26px; padding: 2px 6px; font-size: 11.5px;" ${lockAttr}>
+                      ${taskBadgeHtml}
+                      <button type="button" class="btn btn-ghost btn-xs flex items-center gap-xs" style="padding: 2px 5px; font-size: 10px; border-radius: 8px; color: var(--text-secondary); border: 1px solid var(--border-subtle); background: var(--bg-surface); white-space: nowrap; flex-shrink: 0;" onclick="BudgetEntryModule.openLinePermissionsModal('${r.ledgerCode}', '${Utils.escapeHtml(r.glDescription)}', '${r.parentAccount || 'other-costs'}')" title="View and customize Roles & Permissions for this line item">🛡️</button>
                     </div>
                   </td>
                 </tr>
@@ -3968,7 +4059,7 @@ const BudgetEntryModule = {
               ${SEED_DATA.months.map((m, idx) => `
                 <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
               `).join('')}
-              <td class="num month-col font-mono font-bold" style="background: rgba(59, 130, 246, 0.08); color: var(--accent-primary);">${Utils.formatNumber(totalPriorCost)}</td>
+              <td class="num prior-cost-col font-mono font-bold" style="background: rgba(59, 130, 246, 0.08); color: var(--accent-primary);">${Utils.formatNumber(totalPriorCost)}</td>
               <td></td>
             </tr>
           </tbody>
@@ -3979,6 +4070,7 @@ const BudgetEntryModule = {
     const table = container.querySelector('#totalCostTable');
     if (table) {
       table.addEventListener('change', (e) => {
+        if (isLocked) return;
         if (e.target.classList.contains('field-basis') || e.target.classList.contains('field-remarks')) {
           const row = e.target.closest('tr');
           if (row) this.saveTotalCostRow(row, yearId, entity.id, dept.id);
@@ -4058,14 +4150,14 @@ const BudgetEntryModule = {
     }
 
     const yearId = this._yearId || App.selectedYear || '2026';
-    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
-      Utils.showToast(`🔒 Additions are disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses permit additions.`, 'warning');
-      return;
-    }
-
     const entityId = this.currentEntityId;
     const deptId = this.currentDeptId;
     const categoryKey = this.getActiveCategoryKey();
+
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entityId)) {
+      Utils.showToast(`🔒 Additions are disabled: Entity status is "${Auth.getYearStatusLabel(yearId, entityId)}". Only Draft or Active statuses permit additions.`, 'warning');
+      return;
+    }
 
     if (typeof Auth !== 'undefined' && !Auth.hasPermission('add', { entityId, deptId, category: categoryKey })) {
       Utils.showToast('🔒 Unauthorized: You do not have permission to add rows to this category.', 'warning');
@@ -4139,14 +4231,14 @@ const BudgetEntryModule = {
 
   async deleteRow(storeName, id) {
     const yearId = this._yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026');
-    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
-      Utils.showToast(`🔒 Deletion is disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses permit modifications.`, 'warning');
-      return;
-    }
-
     const entityId = this.currentEntityId;
     const deptId = this.currentDeptId;
     const categoryKey = this.getActiveCategoryKey();
+
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entityId)) {
+      Utils.showToast(`🔒 Deletion is disabled: Entity status is "${Auth.getYearStatusLabel(yearId, entityId)}". Only Draft or Active statuses permit modifications.`, 'warning');
+      return;
+    }
 
     if (typeof Auth !== 'undefined' && !Auth.hasPermission('delete', { entityId, deptId, category: categoryKey })) {
       Utils.showToast('🔒 Unauthorized: You do not have permission to delete rows from this category.', 'warning');
@@ -4610,8 +4702,9 @@ const BudgetEntryModule = {
   // ─── Auto-Populate Department Employees from Employee Master ───
   async autoPopulateDeptEmployees() {
     const yearId = this._yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026');
-    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
-      Utils.showToast(`🔒 Auto-population is disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses permit additions.`, 'warning');
+    const entityId = this.currentEntityId;
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entityId)) {
+      Utils.showToast(`🔒 Auto-population is disabled: Entity status is "${Auth.getYearStatusLabel(yearId, entityId)}". Only Draft or Active statuses permit additions.`, 'warning');
       return;
     }
 

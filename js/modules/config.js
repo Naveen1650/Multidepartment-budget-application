@@ -257,6 +257,25 @@ const ConfigModule = {
     { value: 'closed', label: 'Closed / Archived', icon: '📁', badgeClass: 'badge-danger', dotClass: 'draft' }
   ],
 
+  _matrixCollapsedState: {},
+
+  toggleEntityMatrix(yearId) {
+    if (!this._matrixCollapsedState) this._matrixCollapsedState = {};
+    const sId = String(yearId);
+    this._matrixCollapsedState[sId] = !this._matrixCollapsedState[sId];
+    const isCollapsed = this._matrixCollapsedState[sId];
+
+    const body = document.getElementById(`entityMatrixBody_${sId}`);
+    const chevron = document.getElementById(`cycleHeaderChevron_${sId}`);
+
+    if (body) {
+      body.style.display = isCollapsed ? 'none' : 'block';
+    }
+    if (chevron) {
+      chevron.textContent = isCollapsed ? '▶' : '▼';
+    }
+  },
+
   async renderBudgetYear(container) {
     const budgetYears = await db.getAll(STORES.budgetYears);
     const entities = await db.getAll(STORES.entities);
@@ -265,14 +284,14 @@ const ConfigModule = {
     container.innerHTML = `
       <div class="page-header">
         <h2>Budget Year & Exchange Rates Setup</h2>
-        <p>Define active budget cycles, USD exchange rates, and active departments per entity</p>
+        <p>Define active budget cycles, entity-wise workflow status matrix, USD exchange rates, and active departments per entity</p>
       </div>
 
       <div class="card mb-lg">
         <div class="card-header">
           <div>
             <div class="card-title">Budget Cycles (${budgetYears.length})</div>
-            <div class="card-subtitle">Budgets run on Calendar Year (Jan–Dec) &bull; Select a workflow status to update immediately</div>
+            <div class="card-subtitle">Budgets run on Calendar Year (Jan–Dec) &bull; Manage entity-wise workflow status in grid matrix</div>
           </div>
           <button class="btn btn-primary" id="addYearBtn">+ Create Budget Year</button>
         </div>
@@ -285,31 +304,136 @@ const ConfigModule = {
           ` : budgetYears.map(y => {
             const currentStatus = y.status || 'draft';
             const statusOpt = this.BUDGET_STATUS_OPTIONS.find(o => o.value === currentStatus) || this.BUDGET_STATUS_OPTIONS[0];
+            const isCollapsed = this._matrixCollapsedState?.[String(y.id)] === true;
+
+            const activeCount = entities.filter(ent => {
+              const s = y.entityStatuses?.[ent.id] || y.status || 'draft';
+              return s === 'draft' || s === 'active';
+            }).length;
+            const lockedCount = entities.length - activeCount;
 
             return `
-            <div class="config-list-item">
-              <div class="item-info">
-                <span class="status-dot ${statusOpt.dotClass}"></span>
-                <div>
-                  <div class="item-name flex items-center gap-xs flex-wrap">
-                    <span style="font-weight: 700;">Calendar Year ${y.year}</span>
-                    <select class="form-select form-select-sm year-status-selector" data-year-id="${y.id}" style="font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 12px; cursor: pointer; border: 1.5px solid var(--border-default); background: var(--bg-surface); color: var(--text-primary);" title="Change Budget Status">
-                      ${this.BUDGET_STATUS_OPTIONS.map(opt => `
-                        <option value="${opt.value}" ${currentStatus === opt.value ? 'selected' : ''}>
-                          ${opt.icon} ${opt.label}
-                        </option>
-                      `).join('')}
-                    </select>
+            <div class="config-list-item" style="flex-direction: column; align-items: stretch; gap: 16px; padding: 20px; background: var(--bg-card); border: 1.5px solid var(--border-default); border-radius: var(--radius-lg); margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
+              
+              <!-- Top Cycle Bar (Click anywhere in vacant space to toggle) -->
+              <div class="budget-cycle-header-bar flex items-center justify-between flex-wrap gap-md" onclick="if (!event.target.closest('button, select, input, a, .item-actions')) ConfigModule.toggleEntityMatrix('${y.id}');" style="padding-bottom: 14px; border-bottom: 1px solid var(--border-subtle); cursor: pointer; user-select: none;" title="Click in vacant space to minimize or maximize entity matrix">
+                <div class="item-info" style="min-width: 260px;">
+                  <span class="status-dot ${statusOpt.dotClass}" style="width: 14px; height: 14px; flex-shrink: 0;"></span>
+                  <div>
+                    <div class="item-name flex items-center gap-sm flex-wrap">
+                      <span style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary); letter-spacing: -0.01em;">Calendar Year ${y.year}</span>
+                      <span id="cycleHeaderChevron_${y.id}" class="text-tertiary" style="font-size: 12px; font-weight: 700;">${isCollapsed ? '▶' : '▼'}</span>
+                      <span class="badge ${currentStatus === 'active' ? 'badge-emerald' : currentStatus === 'draft' ? 'badge-primary' : 'badge-amber'}" style="font-size: 11px; font-weight: 700;">
+                        ${statusOpt.icon} Base: ${statusOpt.label.split(' ')[0]}
+                      </span>
+                      <div class="flex items-center gap-xs ml-xs" onclick="event.stopPropagation();">
+                        <span class="text-tertiary" style="font-size: 11.5px; font-weight: 500;">Default Base Status:</span>
+                        <select class="form-select form-select-sm year-status-selector" data-year-id="${y.id}" style="font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 8px; cursor: pointer; border: 1.5px solid var(--border-default); background: var(--bg-surface); color: var(--text-primary);" title="Change Base Year Status">
+                          ${this.BUDGET_STATUS_OPTIONS.map(opt => `
+                            <option value="${opt.value}" ${currentStatus === opt.value ? 'selected' : ''}>
+                              ${opt.icon} ${opt.label}
+                            </option>
+                          `).join('')}
+                        </select>
+                      </div>
+                    </div>
+                    <div class="item-detail mt-xs" style="font-size: 12px; color: var(--text-secondary);">
+                      Prior Reference Base: <strong>CY-${y.priorYear || (y.year - 1)}</strong> &bull; Actuals Available: <strong>Jan–${y.actualsThroughMonth || 'Oct'}</strong> &bull; Currencies Configured: <strong>${entities.map(e => e.currency).filter((v, i, a) => a.indexOf(v) === i).join(', ')}</strong>
+                    </div>
                   </div>
-                  <div class="item-detail">Prior Reference Base: CY-${y.priorYear || (y.year - 1)} &bull; Actuals Available: Jan–${y.actualsThroughMonth || 'Oct'} &bull; Conversion Rates configured for 5 currencies</div>
+                </div>
+                <div class="item-actions flex items-center gap-xs" onclick="event.stopPropagation();">
+                  <button class="btn btn-secondary btn-sm flex items-center gap-xs" onclick="ConfigModule.showEditBudgetYearModal('${y.id}')">✏️ Edit Year</button>
+                  <button class="btn btn-ghost btn-sm flex items-center gap-xs" onclick="ConfigModule.configureYearRates('${y.id}')">💱 Rates</button>
+                  <button class="btn btn-ghost btn-sm flex items-center gap-xs" onclick="ConfigModule.configureYearDepts('${y.id}')">🏛️ Dept Activation</button>
+                  <button class="btn btn-ghost btn-sm flex items-center gap-xs" onclick="ConfigModule.managePriorPeriodCosts('${y.id}')">📊 Prior Period Costs</button>
+                  <button class="btn btn-danger btn-sm flex items-center gap-xs" onclick="ConfigModule.deleteBudgetYear('${y.id}')">🗑️ Delete</button>
                 </div>
               </div>
-              <div class="item-actions">
-                <button class="btn btn-secondary btn-sm" onclick="ConfigModule.showEditBudgetYearModal('${y.id}')">✏️ Edit Year</button>
-                <button class="btn btn-ghost btn-sm" onclick="ConfigModule.configureYearRates('${y.id}')">💱 Rates</button>
-                <button class="btn btn-ghost btn-sm" onclick="ConfigModule.configureYearDepts('${y.id}')">🏛️ Dept Activation</button>
-                <button class="btn btn-ghost btn-sm" onclick="ConfigModule.managePriorPeriodCosts('${y.id}')">📊 Prior Period Costs</button>
-                <button class="btn btn-danger btn-sm" onclick="ConfigModule.deleteBudgetYear('${y.id}')">🗑️ Delete</button>
+
+              <!-- Grid Matrix Matrix Table UI (With Minimize / Maximize Option) -->
+              <div class="entity-matrix-wrapper">
+                <div class="entity-matrix-header flex justify-between items-center flex-wrap gap-sm" onclick="ConfigModule.toggleEntityMatrix('${y.id}')" style="cursor: pointer; user-select: none;" title="Click to minimize or maximize matrix">
+                  <div class="flex items-center gap-sm">
+                    <span style="font-size: 1.25rem;">🏛️</span>
+                    <div>
+                      <div class="flex items-center gap-xs">
+                        <h4 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary);">Entity-Wise Workflow Status Matrix</h4>
+                        <span class="badge ${lockedCount === 0 ? 'badge-emerald' : 'badge-amber'}" id="entityMatrixHeaderBadge_${y.id}" style="font-size: 10.5px; font-weight: 700; padding: 2px 7px;">
+                          ${activeCount} Active, ${lockedCount} Locked
+                        </span>
+                      </div>
+                      <span class="text-tertiary" style="font-size: 11px;">Independent budgeting states & lockout control per operating entity (${entities.length} Entities)</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-xs" onclick="event.stopPropagation();">
+                    <span class="text-secondary font-medium" style="font-size: 11.5px;">⚡ Apply to All:</span>
+                    <select class="form-select form-select-sm bulk-entity-status-select" data-year-id="${y.id}" style="font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px; min-width: 155px; background: var(--bg-surface); cursor: pointer;">
+                      <option value="">— Choose Status —</option>
+                      ${this.BUDGET_STATUS_OPTIONS.map(opt => `<option value="${opt.value}">${opt.icon} ${opt.label}</option>`).join('')}
+                    </select>
+                  </div>
+                </div>
+
+                <div id="entityMatrixBody_${y.id}" class="entity-matrix-body" style="${isCollapsed ? 'display: none;' : 'display: block;'}">
+                  <div class="table-container" style="margin: 0; border: none; border-radius: 0; overflow-x: auto;">
+                    <table class="entity-matrix-table">
+                      <thead>
+                        <tr>
+                          <th style="width: 30%;">Operating Entity</th>
+                          <th style="width: 15%;">Currency</th>
+                          <th style="width: 32%;">Workflow Status</th>
+                          <th style="width: 23%;">Budget Entry State</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${entities.map(ent => {
+                          const entStatus = y.entityStatuses?.[ent.id] || y.status || 'draft';
+                          const opt = this.BUDGET_STATUS_OPTIONS.find(o => o.value === entStatus) || this.BUDGET_STATUS_OPTIONS[0];
+                          const isEntEditable = entStatus === 'draft' || entStatus === 'active';
+                          return `
+                            <tr>
+                              <td>
+                                <div class="flex items-center gap-sm">
+                                  <span style="font-size: 1.5rem; line-height: 1;">${ent.flag || '🏛️'}</span>
+                                  <div>
+                                    <div style="font-weight: 700; color: var(--text-primary); font-size: 13.5px;">${ent.shortName}</div>
+                                    <div class="text-tertiary" style="font-size: 11px; margin-top: 1px;">${ent.name || ent.shortName}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>
+                                <span class="badge badge-subtle font-mono font-bold" style="font-size: 11.5px; padding: 4px 8px; border: 1px solid var(--border-subtle);">
+                                  ${ent.currency}
+                                </span>
+                              </td>
+                              <td>
+                                <select class="form-select form-select-sm entity-status-selector entity-status-matrix-select ${isEntEditable ? 'is-active' : 'is-locked'}" data-year-id="${y.id}" data-entity-id="${ent.id}" title="Update workflow status for ${ent.shortName}">
+                                  ${this.BUDGET_STATUS_OPTIONS.map(o => `
+                                    <option value="${o.value}" ${entStatus === o.value ? 'selected' : ''}>
+                                      ${o.icon} ${o.label}
+                                    </option>
+                                  `).join('')}
+                                </select>
+                              </td>
+                              <td>
+                                ${isEntEditable ? `
+                                  <span class="badge badge-emerald font-bold flex items-center gap-xs" style="width: fit-content; padding: 5px 12px; font-size: 11px;">
+                                    <span>🟢</span> Open for Budgeting
+                                  </span>
+                                ` : `
+                                  <span class="badge badge-amber font-bold flex items-center gap-xs" style="width: fit-content; padding: 5px 12px; font-size: 11px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.35);">
+                                    <span>🔒</span> Read-Only (${opt.label.split(' ')[0]})
+                                  </span>
+                                `}
+                              </td>
+                            </tr>
+                          `;
+                        }).join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </div>
             `;
@@ -320,6 +444,7 @@ const ConfigModule = {
 
     Utils.$('#addYearBtn').addEventListener('click', () => this.showBudgetYearForm());
 
+    // Base year status change listeners
     container.querySelectorAll('.year-status-selector').forEach(sel => {
       sel.addEventListener('change', async (e) => {
         const yId = e.target.dataset.yearId;
@@ -327,10 +452,33 @@ const ConfigModule = {
         await this.changeBudgetYearStatus(yId, newStatus);
       });
     });
+
+    // Individual entity status change listeners
+    container.querySelectorAll('.entity-status-selector').forEach(sel => {
+      sel.addEventListener('change', async (e) => {
+        const yId = e.target.dataset.yearId;
+        const entId = e.target.dataset.entityId;
+        const newStatus = e.target.value;
+        await this.changeEntityBudgetStatus(yId, entId, newStatus);
+      });
+    });
+
+    // Bulk set entity status listeners
+    container.querySelectorAll('.bulk-entity-status-select').forEach(sel => {
+      sel.addEventListener('change', async (e) => {
+        const yId = e.target.dataset.yearId;
+        const newStatus = e.target.value;
+        if (newStatus) {
+          await this.changeBudgetYearStatus(yId, newStatus, { applyToAllEntities: true, entities });
+        }
+      });
+    });
   },
 
-  async changeBudgetYearStatus(yearId, newStatus) {
-    const year = await db.get(STORES.budgetYears, yearId);
+  async changeBudgetYearStatus(yearId, newStatus, meta = {}) {
+    const sId = String(yearId);
+    const nId = parseInt(sId);
+    const year = (await db.get(STORES.budgetYears, sId)) || (!isNaN(nId) ? await db.get(STORES.budgetYears, nId) : null);
     if (!year) return;
 
     const oldStatus = year.status;
@@ -338,38 +486,59 @@ const ConfigModule = {
     await db.put(STORES.budgetYears, year);
 
     // Sync with budget lock status
-    if (newStatus === 'finalized-locked') {
-      await db.setLockStatus(yearId, 'finalized-locked', {
-        unlockedNotes: '',
-        status: 'finalized-locked'
-      });
-    } else if (oldStatus === 'finalized-locked' && newStatus !== 'finalized-locked') {
-      await db.setLockStatus(yearId, newStatus, {
-        status: newStatus
-      });
-    } else {
-      await db.setLockStatus(yearId, newStatus, {
-        status: newStatus
-      });
-    }
+    await db.setLockStatus(yearId, newStatus, {
+      status: newStatus,
+      ...meta
+    });
 
     if (typeof Auth !== 'undefined') {
       await Auth.refreshLockStatus(yearId);
+      await Auth.refreshAllLockStatuses();
     }
 
     const opt = this.BUDGET_STATUS_OPTIONS.find(o => o.value === newStatus);
     Utils.showToast(`Calendar Year ${year.year} status updated to "${opt?.label || newStatus}"`, 'success');
     
     if (typeof App !== 'undefined') {
-      App.populateGlobalSelectors();
-      App.renderCurrentPage();
+      await App.populateGlobalSelectors();
+      await App.renderCurrentPage();
+    }
+  },
+
+  async changeEntityBudgetStatus(yearId, entityId, newStatus) {
+    const sId = String(yearId);
+    const nId = parseInt(sId);
+    const year = (await db.get(STORES.budgetYears, sId)) || (!isNaN(nId) ? await db.get(STORES.budgetYears, nId) : null);
+    if (!year) return;
+
+    await db.setLockStatus(yearId, newStatus, {
+      entityId,
+      status: newStatus
+    });
+
+    if (typeof Auth !== 'undefined') {
+      await Auth.refreshLockStatus(yearId, entityId);
+      await Auth.refreshAllLockStatuses();
+    }
+
+    const entities = await db.getAll(STORES.entities);
+    const ent = entities.find(e => e.id === entityId);
+    const opt = this.BUDGET_STATUS_OPTIONS.find(o => o.value === newStatus);
+    Utils.showToast(`${ent?.shortName || entityId} status updated to "${opt?.label || newStatus}" for CY-${year.year}`, 'success');
+
+    if (typeof App !== 'undefined') {
+      await App.populateGlobalSelectors();
+      await App.renderCurrentPage();
     }
   },
 
   async showEditBudgetYearModal(yearId) {
-    const year = await db.get(STORES.budgetYears, yearId);
+    const sId = String(yearId);
+    const nId = parseInt(sId);
+    const year = (await db.get(STORES.budgetYears, sId)) || (!isNaN(nId) ? await db.get(STORES.budgetYears, nId) : null);
     if (!year) return;
 
+    const entities = await db.getAll(STORES.entities);
     const currentStatus = year.status || 'draft';
 
     const content = `
@@ -386,7 +555,7 @@ const ConfigModule = {
         </div>
 
         <div class="form-group mb-sm">
-          <label class="form-label font-bold">Workflow Status</label>
+          <label class="form-label font-bold">Base Workflow Status</label>
           <select class="form-select" id="editYearStatus">
             ${this.BUDGET_STATUS_OPTIONS.map(opt => `
               <option value="${opt.value}" ${currentStatus === opt.value ? 'selected' : ''}>
@@ -395,7 +564,45 @@ const ConfigModule = {
             `).join('')}
           </select>
           <div class="text-tertiary mt-xs" style="font-size: 11px;">
-            Choose from Draft, Active (Open), Under Review, Finance Approved, Finalized & Locked (CFO), or Closed.
+            Default status for any entities without a specific status override.
+          </div>
+        </div>
+
+        <div class="form-group mb-sm">
+          <label class="form-label font-bold">🏛️ Entity-Wise Workflow Status Matrix</label>
+          <div class="entity-matrix-wrapper" style="border-radius: 8px; max-height: 220px; overflow-y: auto;">
+            <table class="entity-matrix-table" style="font-size: 12px;">
+              <thead>
+                <tr>
+                  <th style="padding: 8px 12px;">Entity</th>
+                  <th style="padding: 8px 12px;">Currency</th>
+                  <th style="padding: 8px 12px;">Workflow Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${entities.map(ent => {
+                  const entStatus = year.entityStatuses?.[ent.id] || currentStatus;
+                  return `
+                    <tr>
+                      <td style="padding: 8px 12px;">
+                        <div class="flex items-center gap-xs">
+                          <span style="font-size: 1.2rem;">${ent.flag || '🏛️'}</span>
+                          <strong style="color: var(--text-primary); font-size: 12.5px;">${ent.shortName}</strong>
+                        </div>
+                      </td>
+                      <td style="padding: 8px 12px;">
+                        <span class="badge badge-subtle font-mono font-bold" style="font-size: 11px;">${ent.currency}</span>
+                      </td>
+                      <td style="padding: 8px 12px;">
+                        <select class="form-select form-select-xs edit-modal-entity-status" data-entity-id="${ent.id}" style="font-size: 11.5px; font-weight: 600; padding: 4px 8px; width: 100%; max-width: 190px;">
+                          ${this.BUDGET_STATUS_OPTIONS.map(opt => `<option value="${opt.value}" ${entStatus === opt.value ? 'selected' : ''}>${opt.icon} ${opt.label}</option>`).join('')}
+                        </select>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -418,16 +625,31 @@ const ConfigModule = {
           className: 'btn btn-primary',
           textContent: 'Save Changes',
           onClick: async () => {
-            const priorYear = parseInt(Utils.$('#editPriorYearNum').value) || (year.year - 1);
-            const status = Utils.$('#editYearStatus').value;
-            const actualsMonth = Utils.$('#editActualsThroughMonth').value;
+            const priorYear = parseInt(document.getElementById('editPriorYearNum')?.value) || (year.year - 1);
+            const status = document.getElementById('editYearStatus')?.value || year.status || 'draft';
+            const actualsMonth = document.getElementById('editActualsThroughMonth')?.value || 'Oct';
+
+            const entityStatuses = {};
+            document.querySelectorAll('.edit-modal-entity-status').forEach(sel => {
+              const eId = sel.dataset.entityId;
+              if (eId) entityStatuses[eId] = sel.value;
+            });
 
             year.priorYear = priorYear;
             year.status = status;
             year.actualsThroughMonth = actualsMonth;
+            year.entityStatuses = entityStatuses;
 
             await db.put(STORES.budgetYears, year);
-            await this.changeBudgetYearStatus(yearId, status);
+            await this.changeBudgetYearStatus(year.id || yearId, status);
+
+            for (const [eId, eStat] of Object.entries(entityStatuses)) {
+              await db.setLockStatus(yearId, eStat, { entityId: eId });
+            }
+            if (typeof Auth !== 'undefined') {
+              await Auth.refreshAllLockStatuses();
+            }
+
             close();
           }
         }));
@@ -763,18 +985,18 @@ const ConfigModule = {
         <div style="font-size: 13px; font-weight: 700; color: var(--accent-primary);" id="pyaFilteredTotal">Total: 0</div>
       </div>
 
-      <!-- Editable Table Container -->
-      <div class="table-container" style="max-height: 380px; overflow-y: auto; background: #ffffff;">
+      <!-- Editable Table Container (Expanded Full View) -->
+      <div class="table-container" style="max-height: calc(96vh - 290px); min-height: 480px; overflow-y: auto; background: #ffffff;">
         <table class="data-table">
           <thead>
             <tr>
-              <th style="min-width: 80px; background: #e2e8f0;">Entity</th>
-              <th style="min-width: 120px; background: #e2e8f0;">Department</th>
-              <th style="background: #e2e8f0;">Parent Account</th>
-              <th style="background: #e2e8f0;">GL Description</th>
-              <th style="background: #e2e8f0;">Ledger Code</th>
-              <th class="num" style="min-width: 150px; background: #e2e8f0; color: var(--accent-primary); font-weight: 700;">Prior Period Cost</th>
-              <th style="min-width: 180px; background: #e2e8f0;">Remarks</th>
+              <th style="min-width: 95px; background: #e2e8f0;">Entity</th>
+              <th style="min-width: 130px; background: #e2e8f0;">Department</th>
+              <th style="min-width: 170px; background: #e2e8f0;">Parent Account</th>
+              <th style="min-width: 240px; background: #e2e8f0;">GL Description</th>
+              <th style="min-width: 120px; background: #e2e8f0;">Ledger Code</th>
+              <th class="num" style="min-width: 170px; background: #e2e8f0; color: var(--accent-primary); font-weight: 700;">Prior Period Cost</th>
+              <th style="min-width: 260px; background: #e2e8f0;">Remarks</th>
               <th style="width: 50px; text-align: center; background: #e2e8f0;">Del</th>
             </tr>
           </thead>
@@ -969,7 +1191,7 @@ const ConfigModule = {
     });
 
     Utils.showModal(`Prior Period Costs Editor — CY ${year?.year || yearId}`, content, {
-      size: 'lg',
+      size: 'full',
       footer: (footer, close) => {
         footer.appendChild(Utils.createElement('button', {
           className: 'btn btn-primary',
@@ -2356,6 +2578,11 @@ const ConfigModule = {
   },
 
   downloadEmployeeMasterTemplate() {
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'employees' }) && !Auth.hasPermission('edit', { category: 'employees' }) && !Auth.hasPermission('add', { category: 'employees' }) && !Auth.hasPermission('view', { category: 'config' })) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to download employee upload templates.', 'warning');
+      return;
+    }
+
     const headers = [
       'Employee Code',
       'Name of Employee',
@@ -2403,6 +2630,11 @@ const ConfigModule = {
   },
 
   async downloadEmployeeMasterData() {
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'employees' }) && !Auth.hasPermission('view', { category: 'config' })) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to view or export employee records.', 'warning');
+      return;
+    }
+
     const rawEntities = (await db.getAll(STORES.entities)) || [];
     const entities = (typeof Auth !== 'undefined') ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
     const accessibleEntityIds = new Set(entities.map(e => e.id));
@@ -2458,6 +2690,7 @@ const ConfigModule = {
       ];
     });
 
+    const yearId = App.selectedYear || '2026';
     if (typeof XLSX !== 'undefined') {
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
@@ -2466,12 +2699,10 @@ const ConfigModule = {
         { wch: 10 }, { wch: 18 }, { wch: 30 }, { wch: 22 }, { wch: 32 },
         { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 12 }
       ];
-      const yearId = App.selectedYear || '2026';
       XLSX.utils.book_append_sheet(wb, ws, 'Employees Master');
       XLSX.writeFile(wb, `Employees_Master_Data_Export_CY${yearId}.xlsx`);
       Utils.showToast(`Downloaded ${employees.length} Employee records successfully!`, 'success');
     } else {
-      const yearId = App.selectedYear || '2026';
       const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].map(e => e.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
       const link = document.createElement("a");
       link.setAttribute("href", encodeURI(csvContent));
@@ -2484,6 +2715,11 @@ const ConfigModule = {
   },
 
   async showEmployeeMasterUploadModal() {
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('edit', { category: 'employees' }) && !Auth.hasPermission('add', { category: 'employees' }) && !Auth.hasPermission('edit', { category: 'config' })) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to upload employee records.', 'warning');
+      return;
+    }
+
     const rawEntities = (await db.getAll(STORES.entities)) || [];
     const entities = (typeof Auth !== 'undefined') ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
     const accessibleEntityIds = new Set(entities.map(e => e.id.toLowerCase()));
@@ -5281,7 +5517,7 @@ const ConfigModule = {
       <!-- Main Navigation Tabs -->
       <div class="tabs mb-md" id="permNavTabs">
         <button class="tab ${this._permActiveTab === 'matrix' ? 'active' : ''}" data-tab="matrix" style="font-size: 13.5px; font-weight: 700;">
-          📊 Granular Line-Item Matrix (Recommended)
+          📊 Access Settings Matrix (Parent Accounts & Modules)
         </button>
         <button class="tab ${this._permActiveTab === 'roles' ? 'active' : ''}" data-tab="roles" style="font-size: 13.5px; font-weight: 700;">
           🎴 Role Hierarchy & Assigned Staff
@@ -5309,27 +5545,71 @@ const ConfigModule = {
     };
 
     // ────────────────────────────────────────────────────────────
-    // ─── TAB 1: GRANULAR LINE-ITEM MATRIX ───
+    // ─── TAB 1: ACCESS SETTINGS MATRIX (PARENT ACCOUNTS & MODULES) ───
     // ────────────────────────────────────────────────────────────
     const renderMatrixTab = (target) => {
       const activeRole = roles.find(r => r.id === this._permSelectedRoleId) || roles[0];
       const activeUser = users.find(u => u.id === this._permSelectedUserId) || users[0];
       const targetRoleMeta = getTierMeta(activeRole);
 
-      // Filter COA line items
-      const search = (this._permSearchTerm || '').trim().toLowerCase();
-      const parentFilter = this._permSelectedParent || 'all';
+      // Section 1: Parent Expense Accounts (All 13 COA Parent Account Groups)
+      const parentAccounts = [
+        { key: 'salaries', label: 'Salaries and Wages', icon: '💼', group: 'Payroll Cost', desc: 'Direct compensation, full-time & part-time base salaries' },
+        { key: 'gratuity', label: 'Health & Retirement Benefits (Gratuity & Bonus)', icon: '🎁', group: 'Payroll Benefits', desc: 'Statutory gratuity, annual performance bonus, provident fund & health benefits' },
+        { key: 'other-staff', label: 'Other Staff Expenses', icon: '👥', group: 'Staff Development', desc: 'Staff training, learning & development, capacity building & team offsites' },
+        { key: 'eha', label: 'Resource Persons (Direct Consultants / EHA)', icon: '🤝', group: 'Direct Consultants', desc: 'Program resource consultants, curriculum experts & external clinical advisors' },
+        { key: 'fixed-assets', label: 'Fixed Assets (CapEx)', icon: '💻', group: 'Fixed Assets & CapEx', desc: 'Laptops, IT equipment, program hardware & office infrastructure' },
+        { key: 'travel', label: 'Travel & Lodging Expenses', icon: '✈️', group: 'Operations Cost', desc: 'Hotel accommodation, airfare, local transport (cab/bus/train) & travel incidentals' },
+        { key: 'supplies', label: 'Supplies & Printing Costs', icon: '🖨️', group: 'Operations Cost', desc: 'Training materials, participant collateral, office printing & stationary' },
+        { key: 'communication', label: 'Communication Expenses', icon: '📡', group: 'Operations Cost', desc: 'High-speed internet, mobile recharges, Zoom/cloud software subscriptions' },
+        { key: 'office', label: 'Office Expenses', icon: '🏢', group: 'Operations Cost', desc: 'Office utilities, repair & maintenance, facility upkeep & workspace rent' },
+        { key: 'professional', label: 'Professional Charges', icon: '💼', group: 'Professional Fees', desc: 'Statutory audit fees, legal counsel, translation & technical evaluation' },
+        { key: 'other-costs', label: 'Other Operating Expenses', icon: '📑', group: 'General OpEx', desc: 'Bank processing fees, government fees, contingency & miscellaneous costs' },
+        { key: 'imp-tot-rates', label: 'ToT Program Budget (IMP)', icon: '🎯', group: 'Special Program Budget', desc: 'Trainer of Trainers implementation events, workshops & unit rates' },
+        { key: 'total-dept-cost', label: 'Master Department Total Rollup', icon: '📊', group: 'Department Summary', desc: 'Consolidated master department totals, grand rollups & variance tracking' }
+      ];
 
-      const filteredCoa = coa.filter(item => {
-        if (parentFilter !== 'all' && item.parentAccount !== parentFilter) return false;
-        if (!search) return true;
-        return (
-          (item.glDescription || '').toLowerCase().includes(search) ||
-          (item.ledgerCode || '').toLowerCase().includes(search) ||
-          (item.parentAccount || '').toLowerCase().includes(search) ||
-          (item.category || '').toLowerCase().includes(search)
-        );
-      });
+      // Section 2: System & Governance Modules
+      const systemModules = [
+        { key: 'employees', label: 'Employee Master & Personnel Records', icon: '🧑‍💼', group: 'Employee Master', desc: 'Permissions to view, add, edit, delete, and import employee records, salary bands, and designations' },
+        { key: 'prior-period', label: 'Prior Period Costs Access & Upload Settings', icon: '⏳', group: 'Historical Reference', desc: 'Permissions to view, direct-edit, bulk upload, and reference prior year historical costs' },
+        { key: 'reports', label: 'Financial Reports & Analytical Settings', icon: '📈', group: 'Analytics & Reporting', desc: 'Access to department summaries, multi-entity consolidated reports, donor reports & exports' },
+        { key: 'config', label: 'All Other System Configurations', icon: '⚙️', group: 'System Setup & Governance', desc: 'Access to entities, department directories, budget cycle deadlines/locks, exchange rates, and dimensions' }
+      ];
+
+      const search = (this._permSearchTerm || '').trim().toLowerCase();
+      const filterGroup = this._permSelectedParent || 'all';
+
+      const filterItems = (items) => {
+        return items.filter(item => {
+          if (filterGroup !== 'all' && filterGroup !== 'parent-accounts' && filterGroup !== 'system-modules') {
+            if (item.key !== filterGroup && item.group !== filterGroup) return false;
+          }
+          if (filterGroup === 'parent-accounts' && !parentAccounts.some(p => p.key === item.key)) return false;
+          if (filterGroup === 'system-modules' && !systemModules.some(s => s.key === item.key)) return false;
+          if (!search) return true;
+          return (
+            item.label.toLowerCase().includes(search) ||
+            item.group.toLowerCase().includes(search) ||
+            item.desc.toLowerCase().includes(search)
+          );
+        });
+      };
+
+      const filteredParents = filterItems(parentAccounts);
+      const filteredModules = filterItems(systemModules);
+      const totalFiltered = filteredParents.length + filteredModules.length;
+
+      const getEffectivePerms = (key) => {
+        if (this._permTargetType === 'role') {
+          return activeRole.permissions?.[key] || {};
+        } else {
+          const uRole = roles.find(r => r.id === activeUser.roleId) || {};
+          const roleStandard = uRole.permissions?.[key] || {};
+          const userOverride = activeUser.categoryOverrides?.[key] || {};
+          return { ...roleStandard, ...userOverride };
+        }
+      };
 
       target.innerHTML = `
         <!-- Target Selection & Filter Toolbar -->
@@ -5337,14 +5617,14 @@ const ConfigModule = {
           <div class="flex justify-between items-center flex-wrap gap-md mb-sm">
             <div class="flex items-center gap-sm">
               <label class="form-label font-bold" style="margin:0; font-size: 12px; text-transform: uppercase; color: var(--text-tertiary);">
-                Configure Permissions For:
+                Configure Access Settings For:
               </label>
               <div class="btn-group">
                 <button class="btn btn-sm ${this._permTargetType === 'role' ? 'btn-primary' : 'btn-ghost'}" id="targetRoleBtn" style="font-weight: 700;">
-                  🛡️ By Role Tier
+                  🛡️ By Role Hierarchy Tier
                 </button>
                 <button class="btn btn-sm ${this._permTargetType === 'user' ? 'btn-primary' : 'btn-ghost'}" id="targetUserBtn" style="font-weight: 700;">
-                  👤 By Specific User
+                  👤 By Specific User Override
                 </button>
               </div>
             </div>
@@ -5373,17 +5653,16 @@ const ConfigModule = {
           <div class="flex justify-between items-center flex-wrap gap-md pt-sm" style="border-top: 1px solid var(--border-subtle);">
             <div class="flex items-center gap-sm flex-wrap" style="flex: 1;">
               <div class="form-group" style="margin:0; min-width: 240px; flex: 1;">
-                <label class="form-label" style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 2px;">Parent Account Filter</label>
+                <label class="form-label" style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 2px;">Scope Group Filter</label>
                 <select class="form-select form-select-sm" id="permParentFilter" style="width: 100%;">
-                  <option value="all">📁 All Parent Accounts (${coa.length} lines)</option>
-                  ${parentCategories.map(p => `
-                    <option value="${p}" ${this._permSelectedParent === p ? 'selected' : ''}>${p}</option>
-                  `).join('')}
+                  <option value="all">📁 All Accounts & Modules (${parentAccounts.length + systemModules.length} scopes)</option>
+                  <option value="parent-accounts" ${this._permSelectedParent === 'parent-accounts' ? 'selected' : ''}>📁 Parent Expense Accounts Only (${parentAccounts.length} items)</option>
+                  <option value="system-modules" ${this._permSelectedParent === 'system-modules' ? 'selected' : ''}>⚙️ System & Governance Modules Only (${systemModules.length} items)</option>
                 </select>
               </div>
               <div class="form-group" style="margin:0; min-width: 260px; flex: 1.2;">
-                <label class="form-label" style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 2px;">Search Accounts</label>
-                <input type="text" class="form-input form-input-sm" id="permSearchInput" placeholder="🔍 Search GL description or ledger code..." value="${this._permSearchTerm}">
+                <label class="form-label" style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 2px;">Search Scopes</label>
+                <input type="text" class="form-input form-input-sm" id="permSearchInput" placeholder="🔍 Search parent account name, module or description..." value="${this._permSearchTerm}">
               </div>
             </div>
 
@@ -5407,85 +5686,150 @@ const ConfigModule = {
                 ${this._permTargetType === 'role' ? activeRole.name : `${activeUser.name} — ${activeUser.title || activeUser.roleId}`}
               </div>
               <div style="font-size: 11.5px; color: var(--text-secondary);">
-                ${this._permTargetType === 'role' ? `Hierarchy Level: ${targetRoleMeta.label} | Scope: ${targetRoleMeta.scope}` : `Primary Role: ${activeUser.roleId} | User Override Mode`}
+                ${this._permTargetType === 'role' ? `Hierarchy Level: ${targetRoleMeta.label} | Scope: ${targetRoleMeta.scope}` : `Primary Role: ${activeUser.roleId} | User Category Override Mode`}
               </div>
             </div>
           </div>
           <div class="badge badge-primary font-bold" style="padding: 6px 12px; font-size: 12px;">
-            Showing ${filteredCoa.length} of ${coa.length} GL Accounts
+            Showing ${totalFiltered} Parent Account & Module Scopes
           </div>
         </div>
 
-        <!-- Granular Permissions Matrix Table -->
+        <!-- Parent Account Level Access Settings Matrix Table -->
         <div class="card p-0 mb-md" style="overflow: hidden; border: 1px solid var(--border-default);">
-          <div class="table-container" style="max-height: 560px; overflow-y: auto;">
+          <div class="table-container" style="max-height: 580px; overflow-y: auto;">
             <table class="data-table" id="unifiedLinePermTable" style="font-size: 12px; margin: 0;">
               <thead style="position: sticky; top: 0; background: var(--bg-card); z-index: 2;">
                 <tr>
-                  <th style="min-width: 160px;">Parent Account</th>
-                  <th style="min-width: 220px;">GL Line Item Description</th>
-                  <th style="min-width: 100px;">Ledger Code</th>
-                  <th style="min-width: 120px;">Category</th>
+                  <th style="min-width: 260px;">Parent Account / System Module Scope</th>
+                  <th style="min-width: 140px;">Classification</th>
                   ${Auth.OPERATIONS.map(op => `
-                    <th style="text-align: center; min-width: 65px; font-size: 11px;" title="${op.label}">
+                    <th style="text-align: center; min-width: 62px; font-size: 11px;" title="${op.label}">
                       ${op.icon || ''} ${op.label}
                     </th>
                   `).join('')}
-                  <th style="text-align: center; width: 60px;">Toggle</th>
+                  <th style="text-align: center; width: 55px;">Toggle</th>
                 </tr>
               </thead>
               <tbody>
-                ${filteredCoa.length === 0 ? `
+                ${totalFiltered === 0 ? `
                   <tr>
-                    <td colspan="13" class="text-center text-tertiary p-xl">
-                      No Chart of Accounts line items found matching your filters.
+                    <td colspan="11" class="text-center text-tertiary p-xl">
+                      No parent accounts or system modules found matching your search filters.
                     </td>
                   </tr>
-                ` : filteredCoa.map(item => {
-                  const lineKey = item.ledgerCode ? String(item.ledgerCode).trim() : Utils.slugify(item.glDescription);
-                  
-                  let effectivePerms = {};
-                  if (this._permTargetType === 'role') {
-                    effectivePerms = activeRole.lineItemPermissions?.[lineKey] || 
-                                     activeRole.permissions?.[item.parentAccount] || 
-                                     activeRole.permissions?.['other-costs'] || {};
-                  } else {
-                    const uRole = roles.find(r => r.id === activeUser.roleId) || {};
-                    const roleStandard = uRole.lineItemPermissions?.[lineKey] || uRole.permissions?.[item.parentAccount] || uRole.permissions?.['other-costs'] || {};
-                    const userOverride = activeUser.lineItemOverrides?.[lineKey] || {};
-                    effectivePerms = { ...roleStandard, ...userOverride };
-                  }
-
-                  return `
-                    <tr data-line-key="${lineKey}">
-                      <td><strong>${item.parentAccount || '—'}</strong></td>
-                      <td>${item.glDescription || '—'}</td>
-                      <td><code>${item.ledgerCode || '—'}</code></td>
-                      <td><span class="badge badge-subtle" style="font-size: 10px;">${item.category || item.subGroup || 'Standard'}</span></td>
+                ` : `
+                  <!-- ─── SECTION 1: PARENT EXPENSE ACCOUNTS ─── -->
+                  ${filteredParents.length > 0 ? `
+                    <tr class="section-header-row" data-group="parents" style="background: #e2e8f0; border-top: 2px solid #cbd5e1; border-bottom: 1.5px solid #cbd5e1;">
+                      <td colspan="2" style="padding: 7px 10px;">
+                        <div class="flex justify-between items-center">
+                          <div class="flex items-center gap-xs">
+                            <span style="font-size: 1.15rem;">📁</span>
+                            <strong style="color: var(--text-primary); font-size: 12.5px;">Parent Expense Accounts (COA Categories)</strong>
+                            <span class="text-tertiary" style="font-size: 11px; margin-left: 6px;">(${filteredParents.length} parent accounts)</span>
+                          </div>
+                          <button type="button" class="btn btn-ghost btn-xs matrix-group-toggle" data-group="parents" style="padding: 1px 6px; font-size: 10px; font-weight: 700; background: rgba(255,255,255,0.75);">Toggle Group</button>
+                        </div>
+                      </td>
                       ${Auth.OPERATIONS.map(op => `
-                        <td style="text-align: center;">
-                          <input type="checkbox" class="unified-perm-cb" data-line-key="${lineKey}" data-op="${op.key}" ${effectivePerms[op.key] ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px;">
+                        <td style="text-align: center; background: #e2e8f0; padding: 4px;">
+                          <input type="checkbox" class="group-op-cb" data-group="parents" data-op="${op.key}" title="Toggle ${op.label} for all Parent Accounts" style="cursor: pointer; width: 14px; height: 14px;">
                         </td>
                       `).join('')}
-                      <td style="text-align: center;">
-                        <button type="button" class="btn btn-ghost btn-xs unified-row-toggle" data-line-key="${lineKey}" style="padding: 2px 6px; font-size: 10px;">Row</button>
+                      <td style="text-align: center; background: #e2e8f0;">
+                        <button type="button" class="btn btn-ghost btn-xs matrix-group-all-toggle" data-group="parents" style="padding: 2px 5px; font-size: 10px;">All</button>
                       </td>
                     </tr>
-                  `;
-                }).join('')}
+                    ${filteredParents.map(item => {
+                      const effectivePerms = getEffectivePerms(item.key);
+                      return `
+                        <tr data-cat="${item.key}" data-group="parents">
+                          <td style="padding: 8px 12px;">
+                            <div class="flex items-center gap-xs">
+                              <span style="font-size: 1.1rem;">${item.icon}</span>
+                              <div>
+                                <strong style="color: var(--text-primary); font-size: 12.5px;">${item.label}</strong>
+                                <div class="text-tertiary" style="font-size: 11px; margin-top: 1px;">${item.desc}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td><span class="badge badge-subtle font-bold" style="font-size: 10.5px;">${item.group}</span></td>
+                          ${Auth.OPERATIONS.map(op => `
+                            <td style="text-align: center; vertical-align: middle;">
+                              <input type="checkbox" class="unified-perm-cb" data-group="parents" data-cat="${item.key}" data-op="${op.key}" ${effectivePerms[op.key] ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px;">
+                            </td>
+                          `).join('')}
+                          <td style="text-align: center; vertical-align: middle;">
+                            <button type="button" class="btn btn-ghost btn-xs unified-row-toggle" data-cat="${item.key}" style="padding: 2px 6px; font-size: 10px;">Row</button>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  ` : ''}
+
+                  <!-- ─── SECTION 2: SYSTEM & GOVERNANCE MODULES ─── -->
+                  ${filteredModules.length > 0 ? `
+                    <tr class="section-header-row" data-group="modules" style="background: #e2e8f0; border-top: 2px solid #cbd5e1; border-bottom: 1.5px solid #cbd5e1;">
+                      <td colspan="2" style="padding: 7px 10px;">
+                        <div class="flex justify-between items-center">
+                          <div class="flex items-center gap-xs">
+                            <span style="font-size: 1.15rem;">⚙️</span>
+                            <strong style="color: var(--text-primary); font-size: 12.5px;">System Governance, Reports & Historical Modules</strong>
+                            <span class="text-tertiary" style="font-size: 11px; margin-left: 6px;">(${filteredModules.length} modules)</span>
+                          </div>
+                          <button type="button" class="btn btn-ghost btn-xs matrix-group-toggle" data-group="modules" style="padding: 1px 6px; font-size: 10px; font-weight: 700; background: rgba(255,255,255,0.75);">Toggle Group</button>
+                        </div>
+                      </td>
+                      ${Auth.OPERATIONS.map(op => `
+                        <td style="text-align: center; background: #e2e8f0; padding: 4px;">
+                          <input type="checkbox" class="group-op-cb" data-group="modules" data-op="${op.key}" title="Toggle ${op.label} for all System Modules" style="cursor: pointer; width: 14px; height: 14px;">
+                        </td>
+                      `).join('')}
+                      <td style="text-align: center; background: #e2e8f0;">
+                        <button type="button" class="btn btn-ghost btn-xs matrix-group-all-toggle" data-group="modules" style="padding: 2px 5px; font-size: 10px;">All</button>
+                      </td>
+                    </tr>
+                    ${filteredModules.map(item => {
+                      const effectivePerms = getEffectivePerms(item.key);
+                      return `
+                        <tr data-cat="${item.key}" data-group="modules">
+                          <td style="padding: 8px 12px;">
+                            <div class="flex items-center gap-xs">
+                              <span style="font-size: 1.1rem;">${item.icon}</span>
+                              <div>
+                                <strong style="color: var(--text-primary); font-size: 12.5px;">${item.label}</strong>
+                                <div class="text-tertiary" style="font-size: 11px; margin-top: 1px;">${item.desc}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td><span class="badge badge-cyan font-bold" style="font-size: 10.5px;">${item.group}</span></td>
+                          ${Auth.OPERATIONS.map(op => `
+                            <td style="text-align: center; vertical-align: middle;">
+                              <input type="checkbox" class="unified-perm-cb" data-group="modules" data-cat="${item.key}" data-op="${op.key}" ${effectivePerms[op.key] ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px;">
+                            </td>
+                          `).join('')}
+                          <td style="text-align: center; vertical-align: middle;">
+                            <button type="button" class="btn btn-ghost btn-xs unified-row-toggle" data-cat="${item.key}" style="padding: 2px 6px; font-size: 10px;">Row</button>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  ` : ''}
+                `}
               </tbody>
             </table>
           </div>
         </div>
 
-        <!-- End of Page Save Actions Card (Non-Sticky, Natural Flow) -->
+        <!-- Save Actions Card -->
         <div class="card p-md flex justify-between items-center mb-xl" style="background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-md);">
           <div class="flex items-center gap-sm">
             <span style="font-size: 1.5rem;">💾</span>
             <div>
-              <div style="font-size: 13.5px; font-weight: 700; color: var(--text-primary);">Save Permissions Matrix</div>
+              <div style="font-size: 13.5px; font-weight: 700; color: var(--text-primary);">Save Access Settings Matrix</div>
               <div style="font-size: 12px; color: var(--text-secondary);">
-                Apply and commit line-item operational matrix changes for <strong>${this._permTargetType === 'role' ? activeRole.name : activeUser.name}</strong>
+                Apply and commit parent account & module access permissions for <strong>${this._permTargetType === 'role' ? activeRole.name : activeUser.name}</strong>
               </div>
             </div>
           </div>
@@ -5533,24 +5877,54 @@ const ConfigModule = {
       }
 
       target.querySelector('#permGrantVisibleBtn')?.addEventListener('click', () => {
-        target.querySelectorAll('.unified-perm-cb').forEach(cb => cb.checked = true);
+        target.querySelectorAll('.unified-perm-cb, .group-op-cb').forEach(cb => cb.checked = true);
       });
       target.querySelector('#permClearVisibleBtn')?.addEventListener('click', () => {
-        target.querySelectorAll('.unified-perm-cb').forEach(cb => cb.checked = false);
+        target.querySelectorAll('.unified-perm-cb, .group-op-cb').forEach(cb => cb.checked = false);
+      });
+
+      // Group operation checkbox toggle (cascades to all items in that group)
+      target.querySelectorAll('.group-op-cb').forEach(groupCb => {
+        groupCb.addEventListener('change', (e) => {
+          const groupKey = e.target.getAttribute('data-group');
+          const op = e.target.getAttribute('data-op');
+          const isChecked = e.target.checked;
+          target.querySelectorAll(`.unified-perm-cb[data-group="${groupKey}"][data-op="${op}"]`).forEach(cb => {
+            cb.checked = isChecked;
+            const catKey = cb.getAttribute('data-cat');
+            if (op === 'view' && !isChecked) {
+              target.querySelectorAll(`.unified-perm-cb[data-cat="${catKey}"]:not([data-op="view"])`).forEach(s => s.checked = false);
+            } else if (op !== 'view' && isChecked) {
+              const viewCb = target.querySelector(`.unified-perm-cb[data-cat="${catKey}"][data-op="view"]`);
+              if (viewCb) viewCb.checked = true;
+            }
+          });
+        });
+      });
+
+      // Group toggle button
+      target.querySelectorAll('.matrix-group-toggle, .matrix-group-all-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const groupKey = btn.getAttribute('data-group');
+          const cbs = target.querySelectorAll(`.unified-perm-cb[data-group="${groupKey}"]`);
+          const allChecked = Array.from(cbs).every(cb => cb.checked);
+          cbs.forEach(cb => cb.checked = !allChecked);
+          target.querySelectorAll(`.group-op-cb[data-group="${groupKey}"]`).forEach(gcb => gcb.checked = !allChecked);
+        });
       });
 
       // Logical RBAC Rule: If View is unchecked, automatically uncheck Add, Edit, Delete, Remarks, Review, Approve, Finalize.
       // If any non-view operation is checked, automatically check View.
       target.querySelectorAll('.unified-perm-cb').forEach(cb => {
         cb.addEventListener('change', (e) => {
-          const lKey = e.target.getAttribute('data-line-key');
+          const catKey = e.target.getAttribute('data-cat');
           const op = e.target.getAttribute('data-op');
           if (op === 'view' && !e.target.checked) {
-            target.querySelectorAll(`.unified-perm-cb[data-line-key="${lKey}"]:not([data-op="view"])`).forEach(sibling => {
+            target.querySelectorAll(`.unified-perm-cb[data-cat="${catKey}"]:not([data-op="view"])`).forEach(sibling => {
               sibling.checked = false;
             });
           } else if (op !== 'view' && e.target.checked) {
-            const viewCb = target.querySelector(`.unified-perm-cb[data-line-key="${lKey}"][data-op="view"]`);
+            const viewCb = target.querySelector(`.unified-perm-cb[data-cat="${catKey}"][data-op="view"]`);
             if (viewCb) viewCb.checked = true;
           }
         });
@@ -5558,23 +5932,23 @@ const ConfigModule = {
 
       target.querySelectorAll('.unified-row-toggle').forEach(btn => {
         btn.addEventListener('click', () => {
-          const lKey = btn.getAttribute('data-line-key');
-          const cbs = target.querySelectorAll(`.unified-perm-cb[data-line-key="${lKey}"]`);
+          const catKey = btn.getAttribute('data-cat');
+          const cbs = target.querySelectorAll(`.unified-perm-cb[data-cat="${catKey}"]`);
           const allChecked = Array.from(cbs).every(cb => cb.checked);
           cbs.forEach(cb => cb.checked = !allChecked);
         });
       });
 
       const saveAction = async () => {
-        const rows = target.querySelectorAll('#unifiedLinePermTable tbody tr');
+        const rows = target.querySelectorAll('#unifiedLinePermTable tbody tr[data-cat]');
         if (this._permTargetType === 'role') {
           const targetRole = roles.find(r => r.id === this._permSelectedRoleId);
           if (!targetRole) return;
-          if (!targetRole.lineItemPermissions) targetRole.lineItemPermissions = {};
+          if (!targetRole.permissions) targetRole.permissions = {};
 
           rows.forEach(tr => {
-            const lKey = tr.getAttribute('data-line-key');
-            if (!lKey) return;
+            const catKey = tr.getAttribute('data-cat');
+            if (!catKey) return;
             const perms = {};
             Auth.OPERATIONS.forEach(op => {
               const cb = tr.querySelector(`.unified-perm-cb[data-op="${op.key}"]`);
@@ -5584,25 +5958,26 @@ const ConfigModule = {
             if (!perms.view) {
               Auth.OPERATIONS.forEach(op => { perms[op.key] = false; });
             }
-            targetRole.lineItemPermissions[lKey] = perms;
+            targetRole.permissions[catKey] = perms;
           });
 
           await db.saveRole(targetRole);
+          await Auth.init();
           await db.logAudit({
             category: 'config',
             action: 'UPDATE',
             recordId: targetRole.id,
-            description: `Updated granular line-item permissions matrix for role "${targetRole.name}"`
+            description: `Updated access settings matrix for role "${targetRole.name}"`
           });
-          Utils.showToast(`Granular line-item permissions saved for role "${targetRole.name}"!`, 'success');
+          Utils.showToast(`Access settings matrix saved for role "${targetRole.name}"!`, 'success');
         } else {
           const targetUser = users.find(u => u.id === this._permSelectedUserId);
           if (!targetUser) return;
-          if (!targetUser.lineItemOverrides) targetUser.lineItemOverrides = {};
+          if (!targetUser.categoryOverrides) targetUser.categoryOverrides = {};
 
           rows.forEach(tr => {
-            const lKey = tr.getAttribute('data-line-key');
-            if (!lKey) return;
+            const catKey = tr.getAttribute('data-cat');
+            if (!catKey) return;
             const perms = {};
             Auth.OPERATIONS.forEach(op => {
               const cb = tr.querySelector(`.unified-perm-cb[data-op="${op.key}"]`);
@@ -5612,17 +5987,24 @@ const ConfigModule = {
             if (!perms.view) {
               Auth.OPERATIONS.forEach(op => { perms[op.key] = false; });
             }
-            targetUser.lineItemOverrides[lKey] = perms;
+            targetUser.categoryOverrides[catKey] = perms;
+            if (targetUser.roleAssignments && Array.isArray(targetUser.roleAssignments)) {
+              targetUser.roleAssignments.forEach(a => {
+                if (!a.categoryOverrides) a.categoryOverrides = {};
+                a.categoryOverrides[catKey] = perms;
+              });
+            }
           });
 
           await db.saveUser(targetUser);
+          await Auth.init();
           await db.logAudit({
             category: 'config',
             action: 'UPDATE',
             recordId: targetUser.id,
-            description: `Updated line-item permission overrides for user "${targetUser.name}"`
+            description: `Updated access settings matrix overrides for user "${targetUser.name}"`
           });
-          Utils.showToast(`Line-item permission overrides saved for user "${targetUser.name}"!`, 'success');
+          Utils.showToast(`Access settings matrix overrides saved for user "${targetUser.name}"!`, 'success');
         }
       };
 
@@ -5638,8 +6020,8 @@ const ConfigModule = {
         <div class="card p-0 mb-xl" style="overflow: hidden; border: 1px solid var(--border-default);">
           <div class="card-header flex justify-between items-center p-sm" style="background: var(--bg-surface); border-bottom: 1px solid var(--border-subtle);">
             <div>
-              <h3 style="margin:0; font-size: 1.15rem;">🎴 8-Tier Role Hierarchy & Configured Personnel Grid</h3>
-              <p class="text-secondary" style="margin:2px 0 0; font-size: 12px;">Compact matrix of role authority tiers, operational scopes, and assigned employee profiles</p>
+              <h3 style="margin:0; font-size: 1.15rem;">🎴 Role Hierarchy & Governance Authority Matrix</h3>
+              <p class="text-secondary" style="margin:2px 0 0; font-size: 12px;">Defines baseline authority for <strong>Parent Accounts</strong>, <strong>Prior Period Costs</strong>, <strong>Reports</strong>, and <strong>Configurations</strong>. Individual GL line-item overrides are managed via the Granular Matrix.</p>
             </div>
             <div class="flex gap-xs">
               <span class="badge badge-primary font-bold">${roles.length} Configured Tiers</span>
@@ -5655,7 +6037,7 @@ const ConfigModule = {
                   <th style="min-width: 180px;">Role Name & ID</th>
                   <th style="min-width: 140px;">Operational Scope</th>
                   <th style="min-width: 280px;">Assigned Personnel in Users & Access</th>
-                  <th style="min-width: 120px; text-align: center;">Line Permissions</th>
+                  <th style="min-width: 130px; text-align: center;">Line Overrides</th>
                   <th style="min-width: 140px; text-align: right;">Actions</th>
                 </tr>
               </thead>
@@ -5891,20 +6273,20 @@ const ConfigModule = {
         <div class="form-row mb-sm">
           <div class="form-group" style="flex: 2;">
             <label class="form-label font-bold">Role Name</label>
-            <input type="text" class="form-input" id="roleFormName" value="${role?.name || ''}" placeholder="e.g. Regional Program Officer" required>
+            <input type="text" class="form-input" id="roleFormName" value="${role?.name || ''}" placeholder="e.g. Regional Finance Manager" required>
           </div>
-          <div class="form-group" style="flex: 1;">
-            <label class="form-label font-bold">Hierarchy Tier</label>
+          <div class="form-group" style="flex: 1.2;">
+            <label class="form-label font-bold">Hierarchy Authority Tier</label>
             <select class="form-select" id="roleFormTier">
-              <option value="1" ${role?.tier === 1 ? 'selected' : ''}>👑 Tier 1 — Super Admin</option>
-              <option value="2" ${role?.tier === 2 ? 'selected' : ''}>🏛️ Tier 2 — Entity Admin</option>
-              <option value="3" ${role?.tier === 3 ? 'selected' : ''}>👥 Tier 3 — HR Team</option>
-              <option value="4" ${role?.tier === 4 ? 'selected' : ''}>📂 Tier 4 — Dept Lead</option>
-              <option value="5" ${role?.tier === 5 ? 'selected' : ''}>✏️ Tier 5 — Data Entry</option>
-              <option value="6" ${role?.tier === 6 ? 'selected' : ''}>🌐 Tier 6 — Country Director</option>
-              <option value="7" ${role?.tier === 7 ? 'selected' : ''}>💼 Tier 7 — Finance Team</option>
-              <option value="8" ${role?.tier === 8 ? 'selected' : ''}>🔒 Tier 8 — Finalizer</option>
-              <option value="9" ${role?.tier === 9 || !role?.tier ? 'selected' : ''}>Custom Tier</option>
+              <option value="1" ${role?.tier === 1 ? 'selected' : ''}>👑 Tier 1 — Super Admin (Global / All Entities)</option>
+              <option value="2" ${role?.tier === 2 ? 'selected' : ''}>🏛️ Tier 2 — Entity Admin (Assigned Entity Scoped)</option>
+              <option value="3" ${role?.tier === 3 ? 'selected' : ''}>👥 Tier 3 — HR Team (Payroll & Personnel)</option>
+              <option value="4" ${role?.tier === 4 ? 'selected' : ''}>📂 Tier 4 — Dept Lead (Assigned Dept Operations)</option>
+              <option value="5" ${role?.tier === 5 ? 'selected' : ''}>✏️ Tier 5 — Data Entry / Sub-Assignee</option>
+              <option value="6" ${role?.tier === 6 ? 'selected' : ''}>🌐 Tier 6 — Country Director (Entity Oversight)</option>
+              <option value="7" ${role?.tier === 7 ? 'selected' : ''}>💼 Tier 7 — Finance Team (Verification & Approval)</option>
+              <option value="8" ${role?.tier === 8 ? 'selected' : ''}>🔒 Tier 8 — Finalizer (Global Sign-off & Lock)</option>
+              <option value="9" ${role?.tier === 9 || !role?.tier ? 'selected' : ''}>🛡️ Custom Hierarchy Tier</option>
             </select>
           </div>
           <div class="form-group" style="flex: 1;">
@@ -5914,67 +6296,47 @@ const ConfigModule = {
               <option value="emerald" ${role?.badgeColor === 'emerald' ? 'selected' : ''}>Green (Emerald)</option>
               <option value="cyan" ${role?.badgeColor === 'cyan' ? 'selected' : ''}>Cyan (Teal)</option>
               <option value="teal" ${role?.badgeColor === 'teal' ? 'selected' : ''}>Teal (Entity Admin)</option>
-              <option value="amber" ${role?.badgeColor === 'amber' ? 'selected' : ''}>Amber (Orange)</option>
-              <option value="purple" ${role?.badgeColor === 'purple' ? 'selected' : ''}>Purple</option>
+              <option value="amber" ${role?.badgeColor === 'amber' ? 'selected' : ''}>Amber (Warning)</option>
+              <option value="purple" ${role?.badgeColor === 'purple' ? 'selected' : ''}>Purple (HR/Data)</option>
               <option value="rose" ${role?.badgeColor === 'rose' ? 'selected' : ''}>Rose (Finalizer)</option>
-              <option value="gray" ${role?.badgeColor === 'gray' ? 'selected' : ''}>Gray</option>
+              <option value="gray" ${role?.badgeColor === 'gray' ? 'selected' : ''}>Gray (Auditor)</option>
             </select>
           </div>
         </div>
 
         <div class="form-group mb-md">
-          <label class="form-label">Role Description</label>
-          <input type="text" class="form-input" id="roleFormDesc" value="${role?.description || ''}" placeholder="Describe role scope and responsibilities">
+          <label class="form-label font-bold">Role Description & Operational Scope</label>
+          <input type="text" class="form-input" id="roleFormDesc" value="${role?.description || ''}" placeholder="Describe role authority, responsibilities, and operational scope">
         </div>
 
-        <h4 class="mb-xs flex justify-between items-center">
-          <span>Granular Permission Matrix (8 Operations × 11 Categories)</span>
-          <div class="flex gap-xs">
-            <button type="button" class="btn btn-ghost btn-xs" id="roleSelectAllBtn">✓ Grant All</button>
-            <button type="button" class="btn btn-ghost btn-xs text-danger" id="roleClearAllBtn">✗ Clear All</button>
+        <div class="card p-md mb-sm" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.06), rgba(16, 185, 129, 0.06)); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: var(--radius-md);">
+          <div class="flex items-center justify-between flex-wrap gap-sm">
+            <div class="flex items-center gap-sm">
+              <span style="font-size: 1.6rem;">🎛️</span>
+              <div>
+                <strong style="font-size: 13px; color: var(--text-primary);">Unified Access Settings Matrix</strong>
+                <p style="margin: 2px 0 0; font-size: 11.5px; color: var(--text-secondary);">
+                  All operational access settings for <strong>Parent Expense Accounts</strong>, <strong>Prior Period Costs</strong>, <strong>Financial Reports</strong>, and <strong>System Configurations</strong> are configured in the <strong>Access Settings Matrix</strong>.
+                </p>
+              </div>
+            </div>
+            ${isEdit ? `
+              <button type="button" class="btn btn-secondary btn-sm font-bold" id="modalOpenMatrixBtn" style="white-space: nowrap;">
+                📊 Open Access Matrix →
+              </button>
+            ` : ''}
           </div>
-        </h4>
-        <p class="text-secondary mb-sm" style="font-size: 11.5px;">Configure operational permissions for each expense category:</p>
-
-        <div class="table-container" style="max-height: 360px; overflow-y: auto;">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th style="min-width: 180px;">Expense Category / Area</th>
-                ${Auth.OPERATIONS.map(op => `<th style="text-align: center; min-width: 65px; font-size: 11px;">${op.label}</th>`).join('')}
-                <th style="text-align: center; width: 60px;">Toggle</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${Auth.CATEGORIES.map(cat => {
-                const catPerms = role?.permissions?.[cat.key] || {};
-                return `
-                  <tr data-cat="${cat.key}">
-                    <td><strong>${cat.icon} ${cat.label}</strong></td>
-                    ${Auth.OPERATIONS.map(op => `
-                      <td style="text-align: center;">
-                        <input type="checkbox" class="role-perm-cb" data-cat="${cat.key}" data-op="${op.key}" ${catPerms[op.key] ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px;">
-                      </td>
-                    `).join('')}
-                    <td style="text-align: center;">
-                      <button type="button" class="btn btn-ghost btn-xs role-row-toggle" data-cat="${cat.key}" title="Toggle row" style="padding: 2px 5px; font-size: 10px;">Row</button>
-                    </td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
         </div>
       </form>
     `;
 
-    Utils.showModal(isEdit ? `Edit Role — ${role.name}` : 'Create New Role', content, {
-      size: 'lg',
+    Utils.showModal(isEdit ? `Edit Role & Hierarchy Tier — ${role.name}` : '➕ Create New Role & Hierarchy Tier', content, {
+      size: 'md',
       footer: (footer, close) => {
         footer.appendChild(Utils.createElement('button', { className: 'btn btn-ghost', textContent: 'Cancel', onClick: close }));
         footer.appendChild(Utils.createElement('button', {
-          className: 'btn btn-primary',
-          textContent: isEdit ? '💾 Update Role' : '➕ Create Role',
+          className: 'btn btn-primary font-bold',
+          textContent: isEdit ? '💾 Save Role Details' : '➕ Create Role',
           onClick: async () => {
             const name = Utils.$('#roleFormName').value.trim();
             if (!name) {
@@ -5985,20 +6347,8 @@ const ConfigModule = {
             const badgeColor = Utils.$('#roleFormColor').value;
             const tier = parseInt(Utils.$('#roleFormTier').value, 10) || 5;
 
-            const permissions = {};
-            Auth.CATEGORIES.forEach(cat => {
-              permissions[cat.key] = {};
-              Auth.OPERATIONS.forEach(op => {
-                const cb = document.querySelector(`.role-perm-cb[data-cat="${cat.key}"][data-op="${op.key}"]`);
-                permissions[cat.key][op.key] = cb ? cb.checked : false;
-              });
-              // Logical RBAC Rule: If view is false, all other operations must be false
-              if (!permissions[cat.key].view) {
-                Auth.OPERATIONS.forEach(op => { permissions[cat.key][op.key] = false; });
-              }
-            });
-
             const roleObj = {
+              ...role,
               id: role?.id || `role_${Utils.slugify(name)}`,
               name,
               tier,
@@ -6008,16 +6358,18 @@ const ConfigModule = {
               isSuperAdmin: tier === 1,
               isEntityAdmin: tier === 2,
               isFinalizer: tier === 8,
-              permissions
+              permissions: role?.permissions || {},
+              lineItemPermissions: role?.lineItemPermissions || {}
             };
 
             await db.saveRole(roleObj);
+            await Auth.init();
             await db.logAudit({
               category: 'config',
               action: isEdit ? 'UPDATE' : 'CREATE',
               recordId: roleObj.id,
               description: `${isEdit ? 'Updated' : 'Created'} RBAC role "${name}" (Tier ${tier})`,
-              changes: { permissions, tier }
+              changes: { tier, description, badgeColor }
             });
 
             Utils.showToast(`Role "${name}" saved successfully!`, 'success');
@@ -6029,39 +6381,11 @@ const ConfigModule = {
       }
     });
 
-    // Quick Matrix Toggles & View Cascading
-    const formModal = document.getElementById('roleModalForm');
-    if (formModal) {
-      document.getElementById('roleSelectAllBtn')?.addEventListener('click', () => {
-        formModal.querySelectorAll('.role-perm-cb').forEach(cb => cb.checked = true);
-      });
-      document.getElementById('roleClearAllBtn')?.addEventListener('click', () => {
-        formModal.querySelectorAll('.role-perm-cb').forEach(cb => cb.checked = false);
-      });
-      formModal.querySelectorAll('.role-row-toggle').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const catKey = btn.getAttribute('data-cat');
-          const cbs = formModal.querySelectorAll(`.role-perm-cb[data-cat="${catKey}"]`);
-          const allChecked = Array.from(cbs).every(cb => cb.checked);
-          cbs.forEach(cb => cb.checked = !allChecked);
-        });
-      });
-
-      // View dependency cascade: Unchecking view clears add/edit/delete/etc.
-      // Checking any non-view operation checks view.
-      formModal.querySelectorAll('.role-perm-cb').forEach(cb => {
-        cb.addEventListener('change', (e) => {
-          const catKey = e.target.getAttribute('data-cat');
-          const op = e.target.getAttribute('data-op');
-          if (op === 'view' && !e.target.checked) {
-            formModal.querySelectorAll(`.role-perm-cb[data-cat="${catKey}"]:not([data-op="view"])`).forEach(s => {
-              s.checked = false;
-            });
-          } else if (op !== 'view' && e.target.checked) {
-            const viewCb = formModal.querySelector(`.role-perm-cb[data-cat="${catKey}"][data-op="view"]`);
-            if (viewCb) viewCb.checked = true;
-          }
-        });
+    if (isEdit) {
+      document.getElementById('modalOpenMatrixBtn')?.addEventListener('click', () => {
+        const modal = document.querySelector('.modal-backdrop');
+        if (modal) modal.remove();
+        this.openMatrixForRole(role.id);
       });
     }
   },

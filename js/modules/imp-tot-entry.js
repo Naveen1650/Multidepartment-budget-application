@@ -294,6 +294,7 @@ const ImpTotModule = {
     const entity = this._entity;
     const dept = this._dept;
     const budgetYear = this._budgetYear;
+    const isLocked = typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entity?.id);
 
     const events = await db.getImpTotEvents(yearId, entity.id, dept.id);
     const templates = await db.getAllImpActivityTemplates();
@@ -516,14 +517,16 @@ const ImpTotModule = {
                 Enter the number of batches per month &bull; Click <strong>⚙️</strong> to customize days, trainees or exclude hotel/venue costs for any specific month
               </div>
             </div>
-            <div class="flex items-center gap-xs">
-              <button type="button" class="btn btn-secondary btn-sm" onclick="ImpTotModule.applyQuickQuarterlyPreset()" title="Add 1 batch per quarter across all activities">
-                📑 1 Batch / Quarter
-              </button>
-              <button type="button" class="btn btn-ghost btn-sm text-danger font-bold" onclick="ImpTotModule.resetMatrixGrid()" title="Clear all matrix inputs to zero">
-                ↺ Reset All
-              </button>
-            </div>
+            ${isLocked ? '' : `
+              <div class="flex items-center gap-xs">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="ImpTotModule.applyQuickQuarterlyPreset()" title="Add 1 batch per quarter across all activities">
+                  📑 1 Batch / Quarter
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm text-danger font-bold" onclick="ImpTotModule.resetMatrixGrid()" title="Clear all matrix inputs to zero">
+                  ↺ Reset All
+                </button>
+              </div>
+            `}
           </div>
 
           <div class="table-container mb-none" style="overflow-x: auto; max-height: 600px;">
@@ -581,13 +584,15 @@ const ImpTotModule = {
                                        data-act="${code}" data-month="${idx}" 
                                        value="${cnt}" 
                                        oninput="ImpTotModule.onMatrixCellInput('${code}', ${idx}, this.value)"
-                                       style="width: 44px; height: 28px; text-align: center; padding: 2px; font-size: 12px; ${cnt > 0 ? 'border-color: var(--accent-primary); background: var(--bg-primary); color: var(--accent-primary);' : 'color: var(--text-tertiary);'}">
-                                <button type="button" class="btn btn-ghost btn-xs matrix-gear-btn" 
-                                        onclick="ImpTotModule.showMatrixCellCustomizer('${code}', ${idx})" 
-                                        title="Customize line items, trainees, or duration for this month" 
-                                        style="padding: 2px 3px; font-size: 10px; opacity: ${isCustom ? '1' : '0.4'};">
-                                  ${isCustom ? '⭐' : '⚙️'}
-                                </button>
+                                       ${isLocked ? 'disabled readonly style="width: 44px; height: 28px; text-align: center; padding: 2px; font-size: 12px; cursor: not-allowed; opacity: 0.85; background: var(--bg-tertiary);"' : `style="width: 44px; height: 28px; text-align: center; padding: 2px; font-size: 12px; ${cnt > 0 ? 'border-color: var(--accent-primary); background: var(--bg-primary); color: var(--accent-primary);' : 'color: var(--text-tertiary);'}"`}>
+                                ${isLocked ? '' : `
+                                  <button type="button" class="btn btn-ghost btn-xs matrix-gear-btn" 
+                                          onclick="ImpTotModule.showMatrixCellCustomizer('${code}', ${idx})" 
+                                          title="Customize line items, trainees, or duration for this month" 
+                                          style="padding: 2px 3px; font-size: 10px; opacity: ${isCustom ? '1' : '0.4'};">
+                                    ${isCustom ? '⭐' : '⚙️'}
+                                  </button>
+                                `}
                               </div>
                               <div class="matrix-cell-cost-label font-bold font-mono mt-none" id="cellCost_${code}_${idx}" style="font-size: 9.5px; color: ${cnt > 0 ? 'var(--accent-secondary)' : 'transparent'}; white-space: nowrap; height: 14px;">
                                 ${cnt > 0 ? Utils.formatCurrency(cost, entity.currency) : ''}
@@ -644,14 +649,20 @@ const ImpTotModule = {
                 (≈ ${Utils.formatCurrency(Utils.convertToUSD(totalAnnualCost, conversionRate), 'USD')})
               </span>
             </div>
-            <div class="flex items-center gap-sm">
-              <button type="button" class="btn btn-ghost font-bold" onclick="ImpTotModule.renderMatrixPlanner(ImpTotModule._container)">
-                ↺ Cancel Changes
-              </button>
-              <button type="button" class="btn btn-primary font-bold" onclick="ImpTotModule.saveAnnualMatrix()" style="padding: 8px 24px; font-size: 13.5px; background: linear-gradient(135deg, var(--accent-primary), #6366f1); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
-                💾 Save & Apply Annual Matrix to Budget
-              </button>
-            </div>
+            ${isLocked ? `
+              <div class="flex items-center gap-sm">
+                <span class="badge badge-subtle font-bold" style="padding: 8px 16px; font-size: 13px;">🔒 Budget Year is Read-Only (${typeof Auth !== 'undefined' ? Auth.getYearStatusLabel(yearId) : 'Locked'})</span>
+              </div>
+            ` : `
+              <div class="flex items-center gap-sm">
+                <button type="button" class="btn btn-ghost font-bold" onclick="ImpTotModule.renderMatrixPlanner(ImpTotModule._container)">
+                  ↺ Cancel Changes
+                </button>
+                <button type="button" class="btn btn-primary font-bold" onclick="ImpTotModule.saveAnnualMatrix()" style="padding: 8px 24px; font-size: 13.5px; background: linear-gradient(135deg, var(--accent-primary), #6366f1); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
+                  💾 Save & Apply Annual Matrix to Budget
+                </button>
+              </div>
+            `}
           </div>
         </div>
       </div>
@@ -660,6 +671,7 @@ const ImpTotModule = {
 
   // Interactive Live Cell Calculation on Typing (Zero DOM teardown)
   onMatrixCellInput(actCode, monthIdx, val) {
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(this._yearId, this._entity?.id)) return;
     const activeLocation = this.activeLocationFilter;
     if (!this.matrixState[activeLocation] || !this.matrixState[activeLocation][actCode]) return;
 
@@ -1079,8 +1091,9 @@ const ImpTotModule = {
   async saveAnnualMatrix() {
     try {
       const yearId = this._yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026');
-      if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
-        Utils.showToast(`🔒 Matrix saving is disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses permit modifications.`, 'warning');
+      const entityId = this._entity?.id;
+      if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entityId)) {
+        Utils.showToast(`🔒 Matrix saving is disabled: Entity status is "${Auth.getYearStatusLabel(yearId, entityId)}". Only Draft or Active statuses permit modifications.`, 'warning');
         return;
       }
 
@@ -2569,8 +2582,9 @@ const ImpTotModule = {
 
   async deleteEvent(eventId) {
     const yearId = this._yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026');
-    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
-      Utils.showToast(`🔒 Deletions are disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses permit modifications.`, 'warning');
+    const entityId = this._entity?.id;
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entityId)) {
+      Utils.showToast(`🔒 Deletions are disabled: Entity status is "${Auth.getYearStatusLabel(yearId, entityId)}". Only Draft or Active statuses permit modifications.`, 'warning');
       return;
     }
 

@@ -1239,7 +1239,7 @@ const ReportsModule = {
                   <th style="min-width: 130px;">Basis of Expense</th>
                   <th class="num font-bold total-toggle-th month-group" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${budgetYear} (${entity.currency} & USD) <span class="months-toggle-arrow">&#9664;</span></th>
                   ${SEED_DATA.months.map(m => `<th class="num month-group">${m}-${budgetYear}</th>`).join('')}
-                  <th class="num font-bold month-group" style="min-width: 130px; background: #e2e8f0; color: var(--accent-primary);">Prior Period Cost (${entity.currency})</th>
+                  <th class="num font-bold prior-cost-col" style="min-width: 140px; background: #e2e8f0; color: var(--accent-primary);">Prior Period Cost (${entity.currency})</th>
                   <th style="min-width: 180px;">Remarks & Tasks</th>
                 </tr>
               </thead>
@@ -1255,11 +1255,11 @@ const ReportsModule = {
                   let taskBadgeHtml = '';
                   const safeGlDesc = Utils.escapeJs(r.glDescription || '');
                   if (openCount > 0) {
-                    taskBadgeHtml = `<button class="btn btn-warning btn-xs flex items-center gap-xs mt-xs" style="padding: 2px 7px; font-size: 10.5px; border-radius: 12px; font-weight: 600;" onclick="BudgetEntryModule.openLineRemarksModal('${yearId}', '${entity.id}', '${dept.id}', '${r.ledgerCode}', '${safeGlDesc}')" title="View open tasks & remarks">🟡 ${openCount} Task${openCount > 1 ? 's' : ''}</button>`;
+                    taskBadgeHtml = `<button class="btn btn-warning btn-xs flex items-center gap-xs" style="padding: 2px 6px; font-size: 10px; border-radius: 10px; font-weight: 600; white-space: nowrap; flex-shrink: 0;" onclick="BudgetEntryModule.openLineRemarksModal('${yearId}', '${entity.id}', '${dept.id}', '${r.ledgerCode}', '${safeGlDesc}')" title="View open tasks & remarks">🟡 ${openCount}</button>`;
                   } else if (doneCount > 0) {
-                    taskBadgeHtml = `<button class="btn btn-secondary btn-xs flex items-center gap-xs mt-xs" style="padding: 2px 7px; font-size: 10.5px; border-radius: 12px; font-weight: 600; color: var(--success); border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.06);" onclick="BudgetEntryModule.openLineRemarksModal('${yearId}', '${entity.id}', '${dept.id}', '${r.ledgerCode}', '${safeGlDesc}')" title="View resolved remarks">🟢 ✓ ${doneCount} Done</button>`;
+                    taskBadgeHtml = `<button class="btn btn-secondary btn-xs flex items-center gap-xs" style="padding: 2px 6px; font-size: 10px; border-radius: 10px; font-weight: 600; color: var(--success); border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.06); white-space: nowrap; flex-shrink: 0;" onclick="BudgetEntryModule.openLineRemarksModal('${yearId}', '${entity.id}', '${dept.id}', '${r.ledgerCode}', '${safeGlDesc}')" title="View resolved remarks">🟢 ✓</button>`;
                   } else {
-                    taskBadgeHtml = `<button class="btn btn-ghost btn-xs flex items-center gap-xs mt-xs text-tertiary" style="padding: 2px 7px; font-size: 10.5px; border-radius: 12px;" onclick="BudgetEntryModule.openLineRemarksModal('${yearId}', '${entity.id}', '${dept.id}', '${r.ledgerCode}', '${safeGlDesc}')" title="Tag colleague or add action item">💬 + Tag/Assign</button>`;
+                    taskBadgeHtml = `<button class="btn btn-ghost btn-xs flex items-center gap-xs text-tertiary" style="padding: 2px 5px; font-size: 10px; border-radius: 8px; white-space: nowrap; flex-shrink: 0;" onclick="BudgetEntryModule.openLineRemarksModal('${yearId}', '${entity.id}', '${dept.id}', '${r.ledgerCode}', '${safeGlDesc}')" title="Tag colleague or add action item">💬</button>`;
                   }
 
                   return `
@@ -1275,12 +1275,12 @@ const ReportsModule = {
                       ${SEED_DATA.months.map((m, idx) => `
                         <td class="num month-col font-mono" style="${r.monthlyValues[idx] > 0 ? 'font-weight: 600;' : 'color: var(--text-tertiary);'}">${Utils.formatCurrency(r.monthlyValues[idx] || 0, entity.currency)}</td>
                       `).join('')}
-                      <td class="num month-col font-mono" style="background: rgba(59, 130, 246, 0.03); color: ${r.priorCost > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)'}; font-weight: ${r.priorCost > 0 ? '600' : 'normal'};">${r.priorCost > 0 ? Utils.formatCurrency(r.priorCost, entity.currency) : '—'}</td>
+                      <td class="num prior-cost-col font-mono" style="background: rgba(59, 130, 246, 0.03); color: ${r.priorCost > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)'}; font-weight: ${r.priorCost > 0 ? '600' : 'normal'};">${r.priorCost > 0 ? Utils.formatCurrency(r.priorCost, entity.currency) : '—'}</td>
                       <td style="font-size: 11.5px; color: var(--text-primary); max-width: 240px;">
-                        <div>${r.remarks || '<span class="text-tertiary">—</span>'}</div>
-                        <div class="mt-xs flex items-center justify-between gap-xs flex-wrap">
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">${r.remarks || '<span class="text-tertiary">—</span>'}</span>
                           ${taskBadgeHtml}
-                          <button type="button" class="btn btn-ghost btn-xs flex items-center gap-xs" style="padding: 2px 6px; font-size: 10px; border-radius: 10px; color: var(--text-secondary); border: 1px solid var(--border-subtle); background: var(--bg-surface);" onclick="BudgetEntryModule.openLinePermissionsModal('${r.ledgerCode}', '${Utils.escapeHtml(r.glDescription)}', '${r.parentAccount || 'other-costs'}')" title="View and customize Roles & Permissions for this line item">🛡️ Permissions</button>
+                          <button type="button" class="btn btn-ghost btn-xs flex items-center gap-xs" style="padding: 2px 5px; font-size: 10px; border-radius: 8px; color: var(--text-secondary); border: 1px solid var(--border-subtle); background: var(--bg-surface); white-space: nowrap; flex-shrink: 0;" onclick="BudgetEntryModule.openLinePermissionsModal('${r.ledgerCode}', '${Utils.escapeHtml(r.glDescription)}', '${r.parentAccount || 'other-costs'}')" title="View and customize Roles & Permissions for this line item">🛡️</button>
                         </div>
                       </td>
                     </tr>
@@ -1298,7 +1298,7 @@ const ReportsModule = {
                   ${SEED_DATA.months.map((m, idx) => `
                     <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatCurrency(colMonthlySums[idx] || 0, entity.currency)}</td>
                   `).join('')}
-                  <td class="num month-col font-mono font-bold" style="background: rgba(59, 130, 246, 0.08); color: var(--accent-primary);">${Utils.formatCurrency(totalPriorCost, entity.currency)}</td>
+                  <td class="num prior-cost-col font-mono font-bold" style="background: rgba(59, 130, 246, 0.08); color: var(--accent-primary);">${Utils.formatCurrency(totalPriorCost, entity.currency)}</td>
                   <td></td>
                 </tr>
               </tbody>

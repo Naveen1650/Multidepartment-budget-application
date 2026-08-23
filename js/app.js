@@ -100,16 +100,19 @@ const App = {
         return `<option value="${y.id}" ${String(y.id) === String(this.selectedYear) ? 'selected' : ''}>${icon} CY-${y.year}</option>`;
       }).join('');
       yearSelect.value = this.selectedYear;
+      if (typeof Auth !== 'undefined') {
+        await Auth.refreshAllLockStatuses();
+      }
     }
 
-    yearSelect.addEventListener('change', async () => {
+    yearSelect.onchange = async () => {
       this.selectedYear = yearSelect.value;
       if (typeof ReportsModule !== 'undefined') ReportsModule._selectedYear = yearSelect.value;
       if (typeof BudgetEntryModule !== 'undefined') BudgetEntryModule._yearId = yearSelect.value;
       // Refresh lock status for newly selected year
       if (typeof Auth !== 'undefined') await Auth.refreshLockStatus(yearSelect.value);
       this.onGlobalFilterChange();
-    });
+    };
 
     // Entity selector (Filtered based on user permissions)
     const entitySelect = Utils.$('#globalEntitySelect');
@@ -120,13 +123,15 @@ const App = {
 
     entitySelect.innerHTML = '<option value="">All Entities</option>';
     entities.forEach(e => {
-      entitySelect.innerHTML += `<option value="${e.id}">${e.flag} ${e.shortName} (${e.currency})</option>`;
+      const eStat = typeof Auth !== 'undefined' ? Auth.getYearStatus(this.selectedYear, e.id) : 'active';
+      const isEditable = eStat === 'draft' || eStat === 'active';
+      entitySelect.innerHTML += `<option value="${e.id}" ${e.id === this.selectedEntity ? 'selected' : ''}>${e.flag} ${e.shortName} (${e.currency}) ${isEditable ? '🟢' : '🔒'}</option>`;
     });
 
-    entitySelect.addEventListener('change', () => {
+    entitySelect.onchange = () => {
       this.selectedEntity = entitySelect.value;
       this.onGlobalFilterChange();
-    });
+    };
 
     this.updateSidebarVisibility();
   },
@@ -136,7 +141,7 @@ const App = {
     const canViewConfig = Auth.hasPermission('view', { category: 'config' });
     const canViewReports = Auth.hasPermission('view', { category: 'reports' });
     const canViewPrior = Auth.hasPermission('view', { category: 'prior-period' });
-    const canViewEmployees = canViewConfig || Auth.hasPermission('view', { category: 'salaries' }) || Auth.hasPermission('view', { category: 'other-staff' });
+    const canViewEmployees = Auth.hasPermission('view', { category: 'employees' }) || canViewConfig;
 
     Utils.$$('.nav-item').forEach(item => {
       const page = item.dataset.page;

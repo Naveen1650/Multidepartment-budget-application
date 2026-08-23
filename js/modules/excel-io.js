@@ -7,80 +7,125 @@
 
 const ExcelIOModule = {
   async render(container) {
-    container.innerHTML = `
-      <div class="page-header">
-        <h2>Excel Import & Export Engine</h2>
-        <p>Bulk import salary details, EHA consultants, fixed assets, master data, and export budget workbooks</p>
-      </div>
+    const canViewEmployees = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'employees' }) || Auth.hasPermission('view', { category: 'config' });
+    const canUploadEmployees = typeof Auth === 'undefined' || Auth.hasPermission('edit', { category: 'employees' }) || Auth.hasPermission('add', { category: 'employees' }) || Auth.hasPermission('edit', { category: 'config' });
 
-      <!-- Quick Upload Shortcuts -->
-      <div class="form-row mb-lg">
-        <!-- Employees Master Bulk Upload Card -->
-        <div class="card p-md" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(6, 182, 212, 0.08)); border: 1px solid rgba(37, 99, 235, 0.3);">
-          <div class="flex justify-between items-center mb-sm">
-            <h3 style="font-size: var(--font-size-md); font-weight: 700;">👥 Bulk Upload Employees Master</h3>
-            <div class="flex gap-xs">
-              <button class="btn btn-secondary btn-sm" onclick="ConfigModule.downloadEmployeeMasterData()">📊 Download Data</button>
-              <button class="btn btn-secondary btn-sm" onclick="ConfigModule.downloadEmployeeMasterTemplate()">📥 Template</button>
-            </div>
-          </div>
-          <p class="text-secondary mb-md" style="font-size: var(--font-size-xs);">Upload full organization employee directory (Code, Name, Band, DOJ, Dept, Manager, Annual CTC).</p>
-          <button class="btn btn-primary w-full btn-sm" onclick="ConfigModule.showEmployeeMasterUploadModal()">📤 Upload Employees File</button>
+    const canViewSalaries = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'salaries' }) || Auth.hasPermission('view', { category: 'other-staff' }) || Auth.hasPermission('view', { category: 'gratuity' });
+    const canUploadSalaries = typeof Auth === 'undefined' || Auth.hasPermission('edit', { category: 'salaries' }) || Auth.hasPermission('add', { category: 'salaries' });
+
+    const canViewOtherCosts = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'other-costs' }) || Auth.hasPermission('view', { category: 'travel' }) || Auth.hasPermission('view', { category: 'supplies' }) || Auth.hasPermission('view', { category: 'office' }) || Auth.hasPermission('view', { category: 'communication' }) || Auth.hasPermission('view', { category: 'professional' });
+    const canUploadOtherCosts = typeof Auth === 'undefined' || Auth.hasPermission('edit', { category: 'other-costs' }) || Auth.hasPermission('add', { category: 'other-costs' });
+
+    const canViewTotal = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'total-dept-cost' });
+    const canUploadTotal = typeof Auth === 'undefined' || Auth.hasPermission('edit', { category: 'total-dept-cost' }) || Auth.hasPermission('add', { category: 'total-dept-cost' });
+
+    const canViewConfig = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'config' });
+    const canUploadConfig = typeof Auth === 'undefined' || Auth.hasPermission('edit', { category: 'config' }) || Auth.hasPermission('add', { category: 'config' });
+
+    const canViewReports = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'reports' });
+
+    const hasAnyAccess = canViewEmployees || canViewSalaries || canViewOtherCosts || canViewTotal || canViewConfig || canViewReports;
+
+    if (!hasAnyAccess) {
+      container.innerHTML = `
+        <div class="page-header">
+          <h2>Excel Import & Export Engine</h2>
+          <p>Bulk import data, operational expenses, and export budget workbooks</p>
         </div>
-      </div>
-
-      <!-- Non-Payroll Costs Bulk Upload Card -->
-      <div class="form-row mb-lg">
-        <div class="card p-md" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(6, 182, 212, 0.08)); border: 1px solid rgba(139, 92, 246, 0.3);">
-          <div class="flex justify-between items-center mb-sm">
-            <h3 style="font-size: var(--font-size-md); font-weight: 700;">📑 Bulk Upload Non-Payroll Costs</h3>
-            <div class="flex gap-xs">
-              <button class="btn btn-secondary btn-sm" onclick="ExcelIOModule.downloadNonPayrollData()">📊 Download Data</button>
-              <button class="btn btn-secondary btn-sm" onclick="ExcelIOModule.downloadNonPayrollTemplate()">📥 Template</button>
-            </div>
-          </div>
-          <p class="text-secondary mb-md" style="font-size: var(--font-size-xs);">Upload operating expenses, travel, supplies, monthly values, and 5D tags.</p>
-          <button class="btn btn-primary w-full btn-sm" onclick="ExcelIOModule.showNonPayrollUploadModal()">📤 Upload Non-Payroll File</button>
+        <div class="card p-xl text-center" style="max-width: 620px; margin: 40px auto; border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-card);">
+          <div style="font-size: 2.8rem; margin-bottom: 12px;">🔒</div>
+          <h3 style="margin: 0 0 8px; color: var(--text-primary);">Access Restricted</h3>
+          <p class="text-secondary" style="margin: 0 0 16px; font-size: 13px; line-height: 1.5;">
+            Your role (<strong>${(typeof Auth !== 'undefined' && Auth.getCurrentUser()?.roleName) || 'Active User'}</strong>) does not have permission to import or export budget datasets.
+          </p>
         </div>
-      </div>
+      `;
+      return;
+    }
 
-      <!-- Total Dept Cost Bulk Upload Card -->
-      <div class="form-row mb-lg">
-        <div class="card p-md" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(6, 182, 212, 0.08)); border: 1px solid rgba(16, 185, 129, 0.3);">
-          <div class="flex justify-between items-center mb-sm">
-            <h3 style="font-size: var(--font-size-md); font-weight: 700;">📊 Bulk Upload Total Dept Cost</h3>
-            <div class="flex gap-xs">
-              <button class="btn btn-secondary btn-sm" onclick="ExcelIOModule.downloadTotalCostData()">📊 Download Data</button>
-              <button class="btn btn-secondary btn-sm" onclick="ExcelIOModule.downloadTotalCostTemplate()">📥 Template</button>
+    let cardsHtml = '';
+
+    // 1. Employees Master Card
+    if (canViewEmployees) {
+      cardsHtml += `
+        <div class="form-row mb-lg">
+          <div class="card p-md" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(6, 182, 212, 0.08)); border: 1px solid rgba(37, 99, 235, 0.3);">
+            <div class="flex justify-between items-center mb-sm">
+              <h3 style="font-size: var(--font-size-md); font-weight: 700;">👥 Bulk Upload Employees Master</h3>
+              <div class="flex gap-xs">
+                <button class="btn btn-secondary btn-sm" onclick="ConfigModule.downloadEmployeeMasterData()">📊 Download Data</button>
+                <button class="btn btn-secondary btn-sm" onclick="ConfigModule.downloadEmployeeMasterTemplate()">📥 Template</button>
+              </div>
             </div>
+            <p class="text-secondary mb-md" style="font-size: var(--font-size-xs);">Upload full organization employee directory (Code, Name, Band, DOJ, Dept, Manager, Annual CTC).</p>
+            ${canUploadEmployees ? `<button class="btn btn-primary w-full btn-sm" onclick="ConfigModule.showEmployeeMasterUploadModal()">📤 Upload Employees File</button>` : ''}
           </div>
-          <p class="text-secondary mb-md" style="font-size: var(--font-size-xs);">Upload total department cost line items, accounts, monthly values, and 5D tags.</p>
-          <button class="btn btn-primary w-full btn-sm" onclick="ExcelIOModule.showTotalCostUploadModal()">📤 Upload Total Dept Cost File</button>
         </div>
-      </div>
+      `;
+    }
 
-      <div class="form-row mb-lg">
-        <!-- Master Data Import Card -->
+    // 2. Non-Payroll Costs Card
+    if (canViewOtherCosts) {
+      cardsHtml += `
+        <div class="form-row mb-lg">
+          <div class="card p-md" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(6, 182, 212, 0.08)); border: 1px solid rgba(139, 92, 246, 0.3);">
+            <div class="flex justify-between items-center mb-sm">
+              <h3 style="font-size: var(--font-size-md); font-weight: 700;">📑 Bulk Upload Non-Payroll Costs</h3>
+              <div class="flex gap-xs">
+                <button class="btn btn-secondary btn-sm" onclick="ExcelIOModule.downloadNonPayrollData()">📊 Download Data</button>
+                <button class="btn btn-secondary btn-sm" onclick="ExcelIOModule.downloadNonPayrollTemplate()">📥 Template</button>
+              </div>
+            </div>
+            <p class="text-secondary mb-md" style="font-size: var(--font-size-xs);">Upload operating expenses, travel, supplies, monthly values, and 5D tags.</p>
+            ${canUploadOtherCosts ? `<button class="btn btn-primary w-full btn-sm" onclick="ExcelIOModule.showNonPayrollUploadModal()">📤 Upload Non-Payroll File</button>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    // 3. Total Dept Cost Card
+    if (canViewTotal) {
+      cardsHtml += `
+        <div class="form-row mb-lg">
+          <div class="card p-md" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(6, 182, 212, 0.08)); border: 1px solid rgba(16, 185, 129, 0.3);">
+            <div class="flex justify-between items-center mb-sm">
+              <h3 style="font-size: var(--font-size-md); font-weight: 700;">📊 Bulk Upload Total Dept Cost</h3>
+              <div class="flex gap-xs">
+                <button class="btn btn-secondary btn-sm" onclick="ExcelIOModule.downloadTotalCostData()">📊 Download Data</button>
+                <button class="btn btn-secondary btn-sm" onclick="ExcelIOModule.downloadTotalCostTemplate()">📥 Template</button>
+              </div>
+            </div>
+            <p class="text-secondary mb-md" style="font-size: var(--font-size-xs);">Upload total department cost line items, accounts, monthly values, and 5D tags.</p>
+            ${canUploadTotal ? `<button class="btn btn-primary w-full btn-sm" onclick="ExcelIOModule.showTotalCostUploadModal()">📤 Upload Total Dept Cost File</button>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    // 4. Master Data Import & Export Cards
+    let bottomRowHtml = '';
+    if (canViewConfig || canUploadConfig) {
+      bottomRowHtml += `
         <div class="card">
           <div class="card-header">
             <div class="card-title">📥 Import Master Data & Dimensions</div>
           </div>
           <p class="text-secondary mb-md">Upload an Excel file (.xlsx) containing sheets named <code>Department</code>, <code>Location</code>, <code>Donor</code>, <code>Condition Area</code>, or <code>Activity</code> to populate or update dimensions.</p>
-
           <div class="form-group">
             <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="form-input">
           </div>
-
           <button class="btn btn-primary w-full" id="processImportBtn">Process Master Data Import</button>
         </div>
+      `;
+    }
 
-        <!-- Export Card -->
+    if (canViewReports) {
+      bottomRowHtml += `
         <div class="card">
           <div class="card-header">
             <div class="card-title">📤 Export Budget Workbooks</div>
           </div>
           <p class="text-secondary mb-md">Download full consolidated budget workbooks or individual entity reports in Excel format.</p>
-
           <div class="form-group">
             <label class="form-label">Export Type</label>
             <select class="form-select" id="exportTypeSelect">
@@ -89,17 +134,32 @@ const ExcelIOModule = {
               <option value="full-book">Full Budget Book (All Entities & Departments)</option>
             </select>
           </div>
-
           <button class="btn btn-primary w-full" id="processExportBtn">Generate & Download Excel</button>
         </div>
+      `;
+    }
+
+    if (bottomRowHtml) {
+      cardsHtml += `<div class="form-row mb-lg">${bottomRowHtml}</div>`;
+    }
+
+    container.innerHTML = `
+      <div class="page-header">
+        <h2>Excel Import & Export Engine</h2>
+        <p>Bulk import salary details, EHA consultants, fixed assets, master data, and export budget workbooks</p>
       </div>
+      ${cardsHtml}
     `;
 
-    container.querySelector('#processImportBtn').addEventListener('click', () => this.handleExcelImport());
-    container.querySelector('#processExportBtn').addEventListener('click', () => {
-      const type = container.querySelector('#exportTypeSelect').value;
-      this.exportReportToExcel(type);
-    });
+    if (container.querySelector('#processImportBtn')) {
+      container.querySelector('#processImportBtn').addEventListener('click', () => this.handleExcelImport());
+    }
+    if (container.querySelector('#processExportBtn')) {
+      container.querySelector('#processExportBtn').addEventListener('click', () => {
+        const type = container.querySelector('#exportTypeSelect').value;
+        this.exportReportToExcel(type);
+      });
+    }
   },
 
   // ════════════════════════════════════════════════════════════
@@ -131,13 +191,33 @@ const ExcelIOModule = {
   // ════════════════════════════════════════════════════════════
 
   async downloadSalaryData() {
+    const canViewSalaries = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'salaries' });
+    const canViewOtherStaff = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'other-staff' });
+    const canViewGratuity = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'gratuity' });
+
+    if (!canViewSalaries && !canViewOtherStaff && !canViewGratuity) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to view or export payroll salary data.', 'warning');
+      return;
+    }
+
     const activeYearObj = await this.getActiveYearObj();
     const yearId = activeYearObj.id;
     const budgetYear = activeYearObj.year;
-    const entities = await db.getAll(STORES.entities);
+    const rawEntities = await db.getAll(STORES.entities);
+    const entities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
+    const accessibleEntityIds = new Set(entities.map(e => e.id));
     const departments = await db.getAll(STORES.departments);
     const allRecords = await db.getAll(STORES.payrollPersonnel);
-    const records = allRecords.filter(r => String(r.yearId) === String(yearId) || String(r.year) === String(budgetYear));
+
+    let records = allRecords.filter(r => (String(r.yearId) === String(yearId) || String(r.year) === String(budgetYear)) && accessibleEntityIds.has(r.entityId));
+
+    records = records.filter(r => {
+      const subCat = r.subCategory || 'salaries-wages';
+      if (subCat === 'salaries-wages' && !canViewSalaries) return false;
+      if (subCat === 'other-staff-expenses' && !canViewOtherStaff) return false;
+      if (subCat === 'gratuity-bonus' && !canViewGratuity) return false;
+      return true;
+    });
 
     const headers = [
       'Sub Category', 'Employee Status', 'Entity Code', 'Entity Name', 'Department Code', 'Department Name',
@@ -177,6 +257,17 @@ const ExcelIOModule = {
   },
 
   async downloadSalaryTemplate(subCategory = 'salaries-wages') {
+    const catMap = {
+      'salaries-wages': 'salaries',
+      'other-staff-expenses': 'other-staff',
+      'gratuity-bonus': 'gratuity'
+    };
+    const targetCat = catMap[subCategory] || 'salaries';
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: targetCat }) && !Auth.hasPermission('edit', { category: targetCat }) && !Auth.hasPermission('add', { category: targetCat })) {
+      Utils.showToast(`🔒 Access Denied: You do not have permission to download ${targetCat} templates.`, 'warning');
+      return;
+    }
+
     const activeYearObj = await this.getActiveYearObj();
     const budgetYear = activeYearObj.year;
     const titles = {
@@ -276,9 +367,20 @@ const ExcelIOModule = {
   },
 
   showSalaryUploadModal(defaultEntityId = null, defaultDeptId = null, subCategory = 'salaries-wages') {
+    const catMap = {
+      'salaries-wages': 'salaries',
+      'other-staff-expenses': 'other-staff',
+      'gratuity-bonus': 'gratuity'
+    };
+    const targetCat = catMap[subCategory] || 'salaries';
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('edit', { category: targetCat, entityId: defaultEntityId, deptId: defaultDeptId }) && !Auth.hasPermission('add', { category: targetCat, entityId: defaultEntityId, deptId: defaultDeptId })) {
+      Utils.showToast(`🔒 Access Denied: You do not have permission to upload ${targetCat} data.`, 'warning');
+      return;
+    }
+
     const yearId = typeof App !== 'undefined' ? App.selectedYear : '2026';
-    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
-      Utils.showToast(`🔒 Bulk uploads are disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses allow uploads.`, 'warning');
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, defaultEntityId)) {
+      Utils.showToast(`🔒 Bulk uploads are disabled: Entity status is "${Auth.getYearStatusLabel(yearId, defaultEntityId)}". Only Draft or Active statuses allow uploads.`, 'warning');
       return;
     }
 
@@ -594,13 +696,20 @@ const ExcelIOModule = {
   // ════════════════════════════════════════════════════════════
 
   async downloadEhaData() {
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'eha' })) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to view or export EHA consultants data.', 'warning');
+      return;
+    }
+
     const activeYearObj = await this.getActiveYearObj();
     const yearId = activeYearObj.id;
     const budgetYear = activeYearObj.year;
-    const entities = await db.getAll(STORES.entities);
+    const rawEntities = await db.getAll(STORES.entities);
+    const entities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
+    const accessibleEntityIds = new Set(entities.map(e => e.id));
     const departments = await db.getAll(STORES.departments);
     const allRecords = await db.getAll(STORES.payrollEHA);
-    const records = allRecords.filter(r => String(r.yearId) === String(yearId) || String(r.year) === String(budgetYear));
+    const records = allRecords.filter(r => (String(r.yearId) === String(yearId) || String(r.year) === String(budgetYear)) && accessibleEntityIds.has(r.entityId));
 
     const headers = [
       'Entity Code', 'Entity Name', 'Department Code', 'Department Name',
@@ -631,6 +740,11 @@ const ExcelIOModule = {
   },
 
   async downloadEhaTemplate() {
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'eha' }) && !Auth.hasPermission('edit', { category: 'eha' }) && !Auth.hasPermission('add', { category: 'eha' })) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to download EHA templates.', 'warning');
+      return;
+    }
+
     const activeYearObj = await this.getActiveYearObj();
     const budgetYear = activeYearObj.year;
     const headers = [
@@ -672,9 +786,13 @@ const ExcelIOModule = {
   },
 
   showEhaUploadModal(defaultEntityId = null, defaultDeptId = null) {
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('edit', { category: 'eha', entityId: defaultEntityId, deptId: defaultDeptId }) && !Auth.hasPermission('add', { category: 'eha', entityId: defaultEntityId, deptId: defaultDeptId })) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to upload EHA data.', 'warning');
+      return;
+    }
     const yearId = typeof App !== 'undefined' ? App.selectedYear : '2026';
-    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
-      Utils.showToast(`🔒 Bulk uploads are disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses allow uploads.`, 'warning');
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, defaultEntityId)) {
+      Utils.showToast(`🔒 Bulk uploads are disabled: Entity status is "${Auth.getYearStatusLabel(yearId, defaultEntityId)}". Only Draft or Active statuses allow uploads.`, 'warning');
       return;
     }
 
@@ -893,13 +1011,20 @@ const ExcelIOModule = {
   // ════════════════════════════════════════════════════════════
 
   async downloadFixedAssetData() {
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'fixed-assets' })) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to view or export Fixed Assets data.', 'warning');
+      return;
+    }
+
     const activeYearObj = await this.getActiveYearObj();
     const yearId = activeYearObj.id;
     const budgetYear = activeYearObj.year;
-    const entities = await db.getAll(STORES.entities);
+    const rawEntities = await db.getAll(STORES.entities);
+    const entities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
+    const accessibleEntityIds = new Set(entities.map(e => e.id));
     const departments = await db.getAll(STORES.departments);
     const allRecords = await db.getAll(STORES.payrollFixedAsset);
-    const records = allRecords.filter(r => String(r.yearId) === String(yearId) || String(r.year) === String(budgetYear));
+    const records = allRecords.filter(r => (String(r.yearId) === String(yearId) || String(r.year) === String(budgetYear)) && accessibleEntityIds.has(r.entityId));
 
     const headers = [
       'Entity Code', 'Entity Name', 'Department Code', 'Department Name',
@@ -930,6 +1055,11 @@ const ExcelIOModule = {
   },
 
   async downloadFixedAssetTemplate() {
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'fixed-assets' }) && !Auth.hasPermission('edit', { category: 'fixed-assets' }) && !Auth.hasPermission('add', { category: 'fixed-assets' })) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to download Fixed Assets templates.', 'warning');
+      return;
+    }
+
     const activeYearObj = await this.getActiveYearObj();
     const budgetYear = activeYearObj.year;
     const headers = [
@@ -971,9 +1101,13 @@ const ExcelIOModule = {
   },
 
   showFixedAssetUploadModal(defaultEntityId = null, defaultDeptId = null) {
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('edit', { category: 'fixed-assets', entityId: defaultEntityId, deptId: defaultDeptId }) && !Auth.hasPermission('add', { category: 'fixed-assets', entityId: defaultEntityId, deptId: defaultDeptId })) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to upload Fixed Assets data.', 'warning');
+      return;
+    }
     const yearId = typeof App !== 'undefined' ? App.selectedYear : '2026';
-    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
-      Utils.showToast(`🔒 Bulk uploads are disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses allow uploads.`, 'warning');
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, defaultEntityId)) {
+      Utils.showToast(`🔒 Bulk uploads are disabled: Entity status is "${Auth.getYearStatusLabel(yearId, defaultEntityId)}". Only Draft or Active statuses allow uploads.`, 'warning');
       return;
     }
 
@@ -1198,10 +1332,18 @@ const ExcelIOModule = {
   // ════════════════════════════════════════════════════════════
 
   async downloadNonPayrollData() {
+    const canViewOtherCosts = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'other-costs' }) || Auth.hasPermission('view', { category: 'travel' }) || Auth.hasPermission('view', { category: 'supplies' }) || Auth.hasPermission('view', { category: 'office' }) || Auth.hasPermission('view', { category: 'communication' }) || Auth.hasPermission('view', { category: 'professional' });
+    if (!canViewOtherCosts) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to view or export non-payroll cost data.', 'warning');
+      return;
+    }
+
     const activeYearObj = await this.getActiveYearObj();
     const yearId = activeYearObj.id;
     const budgetYear = activeYearObj.year;
-    const entities = await db.getAll(STORES.entities);
+    const rawEntities = await db.getAll(STORES.entities);
+    const entities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
+    const accessibleEntityIds = new Set(entities.map(e => e.id));
     const departments = await db.getAll(STORES.departments);
     const allRecords = await db.getAll(STORES.nonPayrollCost);
 
@@ -1220,7 +1362,12 @@ const ExcelIOModule = {
       return false;
     };
 
-    const records = allRecords.filter(r => (String(r.yearId) === String(yearId) || String(r.year) === String(budgetYear)) && !isExcludedFromOtherCosts(r));
+    let records = allRecords.filter(r => (String(r.yearId) === String(yearId) || String(r.year) === String(budgetYear)) && !isExcludedFromOtherCosts(r) && accessibleEntityIds.has(r.entityId));
+
+    records = records.filter(r => {
+      const targetCat = (typeof Auth !== 'undefined') ? Auth.getCategoryForLineItem(r) : 'other-costs';
+      return typeof Auth === 'undefined' || Auth.hasPermission('view', { category: targetCat, ledgerCode: r.ledgerCode, glDescription: r.glDescription, parentAccount: r.parentAccount, entityId: r.entityId, deptId: r.deptId });
+    });
 
     const headers = [
       'Entity Code', 'Entity Name', 'Department Code', 'Department Name',
@@ -1251,6 +1398,12 @@ const ExcelIOModule = {
   },
 
   async downloadNonPayrollTemplate() {
+    const canViewOtherCosts = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'other-costs' }) || Auth.hasPermission('edit', { category: 'other-costs' }) || Auth.hasPermission('add', { category: 'other-costs' }) || Auth.hasPermission('view', { category: 'travel' }) || Auth.hasPermission('view', { category: 'supplies' }) || Auth.hasPermission('view', { category: 'office' }) || Auth.hasPermission('view', { category: 'communication' }) || Auth.hasPermission('view', { category: 'professional' });
+    if (!canViewOtherCosts) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to download non-payroll templates.', 'warning');
+      return;
+    }
+
     const activeYearObj = await this.getActiveYearObj();
     const budgetYear = activeYearObj.year;
     const headers = [
@@ -1287,9 +1440,14 @@ const ExcelIOModule = {
   },
 
   showNonPayrollUploadModal(defaultEntityId = null, defaultDeptId = null) {
+    const canUploadOtherCosts = typeof Auth === 'undefined' || Auth.hasPermission('edit', { category: 'other-costs', entityId: defaultEntityId, deptId: defaultDeptId }) || Auth.hasPermission('add', { category: 'other-costs', entityId: defaultEntityId, deptId: defaultDeptId });
+    if (!canUploadOtherCosts) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to upload Non-Payroll Costs.', 'warning');
+      return;
+    }
     const yearId = typeof App !== 'undefined' ? App.selectedYear : '2026';
-    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
-      Utils.showToast(`🔒 Bulk uploads are disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses allow uploads.`, 'warning');
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, defaultEntityId)) {
+      Utils.showToast(`🔒 Bulk uploads are disabled: Entity status is "${Auth.getYearStatusLabel(yearId, defaultEntityId)}". Only Draft or Active statuses allow uploads.`, 'warning');
       return;
     }
 
@@ -1531,13 +1689,20 @@ const ExcelIOModule = {
   // 4B. TOTAL DEPT COST EXCEL OPERATIONS (REPLICATED)
   // ════════════════════════════════════════════════════════════
   async downloadTotalCostData() {
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'total-dept-cost' })) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to view or export Total Department Cost data.', 'warning');
+      return;
+    }
+
     const activeYearObj = await this.getActiveYearObj();
     const yearId = activeYearObj.id;
     const budgetYear = activeYearObj.year;
-    const entities = await db.getAll(STORES.entities);
+    const rawEntities = await db.getAll(STORES.entities);
+    const entities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
+    const accessibleEntityIds = new Set(entities.map(e => e.id));
     const departments = await db.getAll(STORES.departments);
     const allRecords = await db.getAll(STORES.totalCostSheet);
-    const records = allRecords.filter(r => String(r.yearId) === String(yearId) || String(r.year) === String(budgetYear));
+    const records = allRecords.filter(r => (String(r.yearId) === String(yearId) || String(r.year) === String(budgetYear)) && accessibleEntityIds.has(r.entityId));
     const allPriorCosts = await db.getPriorPeriodCosts(yearId);
 
     const headers = [
@@ -1573,6 +1738,11 @@ const ExcelIOModule = {
   },
 
   async downloadTotalCostTemplate() {
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'total-dept-cost' }) && !Auth.hasPermission('edit', { category: 'total-dept-cost' }) && !Auth.hasPermission('add', { category: 'total-dept-cost' })) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to download Total Department Cost templates.', 'warning');
+      return;
+    }
+
     const activeYearObj = await this.getActiveYearObj();
     const budgetYear = activeYearObj.year;
     const headers = [
@@ -1607,11 +1777,17 @@ const ExcelIOModule = {
   // 4C. PRIOR PERIOD COSTS EXCEL OPERATIONS (ADMIN CONFIGURATION)
   // ════════════════════════════════════════════════════════════
   async downloadPriorPeriodTemplate(yearIdParam = null) {
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'prior-period' }) && !Auth.hasPermission('edit', { category: 'prior-period' }) && !Auth.hasPermission('add', { category: 'prior-period' }) && !Auth.hasPermission('view', { category: 'config' })) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to download Prior Period Cost templates.', 'warning');
+      return;
+    }
+
     const activeYearObj = await this.getActiveYearObj();
     const yearId = yearIdParam || activeYearObj.id;
     const budgetYear = activeYearObj.year;
     const priorYear = activeYearObj.priorYear || (budgetYear - 1);
-    const entities = await db.getAll(STORES.entities);
+    const rawEntities = await db.getAll(STORES.entities);
+    const entities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
     const departments = Utils.sortDepartments(await db.getAll(STORES.departments));
     const coa = await db.getAll(STORES.chartOfAccounts);
 
@@ -1653,13 +1829,21 @@ const ExcelIOModule = {
   },
 
   async downloadPriorPeriodData(yearIdParam = null) {
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'prior-period' }) && !Auth.hasPermission('view', { category: 'config' })) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to view or export Prior Period Cost data.', 'warning');
+      return;
+    }
+
     const activeYearObj = await this.getActiveYearObj();
     const yearId = yearIdParam || activeYearObj.id;
     const budgetYear = activeYearObj.year;
     const priorYear = activeYearObj.priorYear || (budgetYear - 1);
-    const entities = await db.getAll(STORES.entities);
+    const rawEntities = await db.getAll(STORES.entities);
+    const entities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
+    const accessibleEntityIds = new Set(entities.map(e => e.id));
     const departments = await db.getAll(STORES.departments);
-    const records = await db.getPriorPeriodCosts(yearId);
+    const allRecords = await db.getPriorPeriodCosts(yearId);
+    const records = allRecords.filter(r => accessibleEntityIds.has(r.entityId));
 
     const headers = [
       'Entity Code', 'Entity Name', 'Department Code', 'Department Name', 'Currency',
@@ -1693,6 +1877,10 @@ const ExcelIOModule = {
   },
 
   showPriorPeriodUploadModal(yearIdParam = null) {
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('edit', { category: 'prior-period' }) && !Auth.hasPermission('add', { category: 'prior-period' }) && !Auth.hasPermission('edit', { category: 'config' })) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to upload Prior Period Costs.', 'warning');
+      return;
+    }
     const yearId = yearIdParam || (typeof ReportsModule !== 'undefined' && ReportsModule._selectedYear) || App.selectedYear || '2026';
 
     const content = `
@@ -1894,9 +2082,13 @@ const ExcelIOModule = {
   },
 
   showTotalCostUploadModal(defaultEntityId = null, defaultDeptId = null) {
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('edit', { category: 'total-dept-cost', entityId: defaultEntityId, deptId: defaultDeptId }) && !Auth.hasPermission('add', { category: 'total-dept-cost', entityId: defaultEntityId, deptId: defaultDeptId })) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to upload Total Department Cost data.', 'warning');
+      return;
+    }
     const yearId = typeof App !== 'undefined' ? App.selectedYear : '2026';
-    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
-      Utils.showToast(`🔒 Bulk uploads are disabled: Budget year status is "${Auth.getYearStatusLabel(yearId)}". Only Draft or Active statuses allow uploads.`, 'warning');
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, defaultEntityId)) {
+      Utils.showToast(`🔒 Bulk uploads are disabled: Entity status is "${Auth.getYearStatusLabel(yearId, defaultEntityId)}". Only Draft or Active statuses allow uploads.`, 'warning');
       return;
     }
 
@@ -2223,6 +2415,12 @@ const ExcelIOModule = {
     const coa = await db.getAll(STORES.chartOfAccounts);
     const cleanStr = (s) => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 
+    const canViewSalaries = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'salaries' });
+    const canViewOtherStaff = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'other-staff' });
+    const canViewGratuity = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'gratuity' });
+    const canViewEha = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'eha' });
+    const canViewFixedAssets = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'fixed-assets' });
+
     const allSalaries = [];
     const allOtherStaff = [];
     const allGratuity = [];
@@ -2232,21 +2430,40 @@ const ExcelIOModule = {
 
     for (const e of entityList) {
       const rate = conversionRates?.[e.currency] || 1.0;
-      const payroll = await db.getEntityBudgetData(STORES.payrollPersonnel, yearId, e.id);
-      const salaries = payroll.filter(p => !p.subCategory || p.subCategory === 'salaries-wages');
-      const otherStaff = payroll.filter(p => p.subCategory === 'other-staff-expenses');
-      const gratuity = payroll.filter(p => p.subCategory === 'gratuity-bonus');
-      const eha = await db.getEntityBudgetData(STORES.payrollEHA, yearId, e.id);
-      const fixedAssets = await db.getEntityBudgetData(STORES.payrollFixedAsset, yearId, e.id);
-      const nonPayroll = await db.getEntityBudgetData(STORES.nonPayrollCost, yearId, e.id);
-
       const attachRate = (rows) => rows.map(r => ({ ...r, currency: e.currency, rate }));
-      allSalaries.push(...attachRate(salaries));
-      allOtherStaff.push(...attachRate(otherStaff));
-      allGratuity.push(...attachRate(gratuity));
-      allEha.push(...attachRate(eha));
-      allFixedAssets.push(...attachRate(fixedAssets));
-      allNonPayroll.push(...attachRate(nonPayroll));
+
+      if (canViewSalaries || canViewOtherStaff || canViewGratuity) {
+        const payroll = await db.getEntityBudgetData(STORES.payrollPersonnel, yearId, e.id);
+        if (canViewSalaries) {
+          const salaries = payroll.filter(p => !p.subCategory || p.subCategory === 'salaries-wages');
+          allSalaries.push(...attachRate(salaries));
+        }
+        if (canViewOtherStaff) {
+          const otherStaff = payroll.filter(p => p.subCategory === 'other-staff-expenses');
+          allOtherStaff.push(...attachRate(otherStaff));
+        }
+        if (canViewGratuity) {
+          const gratuity = payroll.filter(p => p.subCategory === 'gratuity-bonus');
+          allGratuity.push(...attachRate(gratuity));
+        }
+      }
+
+      if (canViewEha) {
+        const eha = await db.getEntityBudgetData(STORES.payrollEHA, yearId, e.id);
+        allEha.push(...attachRate(eha));
+      }
+
+      if (canViewFixedAssets) {
+        const fixedAssets = await db.getEntityBudgetData(STORES.payrollFixedAsset, yearId, e.id);
+        allFixedAssets.push(...attachRate(fixedAssets));
+      }
+
+      const nonPayroll = await db.getEntityBudgetData(STORES.nonPayrollCost, yearId, e.id);
+      const filteredNonPayroll = nonPayroll.filter(r => {
+        const targetCat = typeof Auth !== 'undefined' ? Auth.getCategoryForLineItem(r) : 'other-costs';
+        return typeof Auth === 'undefined' || Auth.hasPermission('view', { category: targetCat, ledgerCode: r.ledgerCode, glDescription: r.glDescription, parentAccount: r.parentAccount, entityId: e.id, deptId: r.deptId });
+      });
+      allNonPayroll.push(...attachRate(filteredNonPayroll));
     }
 
     const sumRowsWithConversion = (rows) => {
@@ -2273,6 +2490,11 @@ const ExcelIOModule = {
     const matchedOtherCostIndices = new Set();
 
     const lines = coa.map(account => {
+      const targetCat = typeof Auth !== 'undefined' ? Auth.getCategoryForLineItem(account) : null;
+      if (typeof Auth !== 'undefined' && targetCat && !Auth.hasPermission('view', { category: targetCat, ledgerCode: account.ledgerCode, glDescription: account.glDescription, parentAccount: account.parentAccount })) {
+        return null;
+      }
+
       let linkedSource = '';
       const accGlClean = cleanStr(account.glDescription);
       const accLedgerClean = cleanStr(account.ledgerCode);
@@ -2323,18 +2545,30 @@ const ExcelIOModule = {
         totalLocal: rollup.totalLocal,
         totalUSD: rollup.totalUSD
       };
-    });
+    }).filter(Boolean);
 
     return lines;
   },
 
   async exportReportToExcel(type) {
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'reports' })) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to view or export financial reports.', 'warning');
+      return;
+    }
+
     const activeYearObj = await this.getActiveYearObj();
     const yearId = activeYearObj.id;
     const budgetYear = activeYearObj.year;
     const years = await db.getAll(STORES.budgetYears);
-    const entities = await db.getAll(STORES.entities);
+    const rawEntities = await db.getAll(STORES.entities);
+    const entities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
     const departments = Utils.sortDepartments(await db.getAll(STORES.departments));
+
+    const canViewSalaries = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'salaries' });
+    const canViewOtherStaff = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'other-staff' });
+    const canViewGratuity = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'gratuity' });
+    const canViewEha = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'eha' });
+    const canViewFixedAssets = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'fixed-assets' });
 
     const wb = XLSX.utils.book_new();
 
@@ -2351,15 +2585,27 @@ const ExcelIOModule = {
       const grandMonthlyUSD = Array(12).fill(0);
 
       for (const e of entities) {
-        const payroll = await db.getEntityBudgetData(STORES.payrollPersonnel, yearId, e.id);
-        const eha = await db.getEntityBudgetData(STORES.payrollEHA, yearId, e.id);
-        const fixedAssets = await db.getEntityBudgetData(STORES.payrollFixedAsset, yearId, e.id);
+        const payroll = (canViewSalaries || canViewOtherStaff || canViewGratuity) ? await db.getEntityBudgetData(STORES.payrollPersonnel, yearId, e.id) : [];
+        const filteredPayroll = payroll.filter(p => {
+          const sub = p.subCategory || 'salaries-wages';
+          if (sub === 'salaries-wages' && !canViewSalaries) return false;
+          if (sub === 'other-staff-expenses' && !canViewOtherStaff) return false;
+          if (sub === 'gratuity-bonus' && !canViewGratuity) return false;
+          return true;
+        });
+
+        const eha = canViewEha ? await db.getEntityBudgetData(STORES.payrollEHA, yearId, e.id) : [];
+        const fixedAssets = canViewFixedAssets ? await db.getEntityBudgetData(STORES.payrollFixedAsset, yearId, e.id) : [];
         const nonPayroll = await db.getEntityBudgetData(STORES.nonPayrollCost, yearId, e.id);
+        const filteredNonPayroll = nonPayroll.filter(r => {
+          const targetCat = typeof Auth !== 'undefined' ? Auth.getCategoryForLineItem(r) : 'other-costs';
+          return typeof Auth === 'undefined' || Auth.hasPermission('view', { category: targetCat, ledgerCode: r.ledgerCode, glDescription: r.glDescription, parentAccount: r.parentAccount, entityId: e.id, deptId: r.deptId });
+        });
 
         const monthlyLocal = Array(12).fill(0);
         let totalLocal = 0;
 
-        [...payroll, ...eha, ...fixedAssets, ...nonPayroll].forEach(row => {
+        [...filteredPayroll, ...eha, ...fixedAssets, ...filteredNonPayroll].forEach(row => {
           if (row.monthlyValues) {
             Object.entries(row.monthlyValues).forEach(([mIdx, val]) => {
               const num = Utils.parseNumber(val);
@@ -2424,15 +2670,27 @@ const ExcelIOModule = {
       const grandMonthly = Array(12).fill(0);
 
       for (const e of indiaEntities) {
-        const payroll = await db.getEntityBudgetData(STORES.payrollPersonnel, yearId, e.id);
-        const eha = await db.getEntityBudgetData(STORES.payrollEHA, yearId, e.id);
-        const fixedAssets = await db.getEntityBudgetData(STORES.payrollFixedAsset, yearId, e.id);
+        const payroll = (canViewSalaries || canViewOtherStaff || canViewGratuity) ? await db.getEntityBudgetData(STORES.payrollPersonnel, yearId, e.id) : [];
+        const filteredPayroll = payroll.filter(p => {
+          const sub = p.subCategory || 'salaries-wages';
+          if (sub === 'salaries-wages' && !canViewSalaries) return false;
+          if (sub === 'other-staff-expenses' && !canViewOtherStaff) return false;
+          if (sub === 'gratuity-bonus' && !canViewGratuity) return false;
+          return true;
+        });
+
+        const eha = canViewEha ? await db.getEntityBudgetData(STORES.payrollEHA, yearId, e.id) : [];
+        const fixedAssets = canViewFixedAssets ? await db.getEntityBudgetData(STORES.payrollFixedAsset, yearId, e.id) : [];
         const nonPayroll = await db.getEntityBudgetData(STORES.nonPayrollCost, yearId, e.id);
+        const filteredNonPayroll = nonPayroll.filter(r => {
+          const targetCat = typeof Auth !== 'undefined' ? Auth.getCategoryForLineItem(r) : 'other-costs';
+          return typeof Auth === 'undefined' || Auth.hasPermission('view', { category: targetCat, ledgerCode: r.ledgerCode, glDescription: r.glDescription, parentAccount: r.parentAccount, entityId: e.id, deptId: r.deptId });
+        });
 
         const monthly = Array(12).fill(0);
         let total = 0;
 
-        [...payroll, ...eha, ...fixedAssets, ...nonPayroll].forEach(row => {
+        [...filteredPayroll, ...eha, ...fixedAssets, ...filteredNonPayroll].forEach(row => {
           if (row.monthlyValues) {
             Object.entries(row.monthlyValues).forEach(([mIdx, val]) => {
               const num = Utils.parseNumber(val);
@@ -2496,19 +2754,23 @@ const ExcelIOModule = {
       ];
 
       for (const d of departments) {
-        const payroll = await db.getBudgetData(STORES.payrollPersonnel, yearId, entity.id, d.id);
-        const salaries = payroll.filter(p => !p.subCategory || p.subCategory === 'salaries-wages');
-        const otherStaffGratuity = payroll.filter(p => p.subCategory === 'other-staff-expenses' || p.subCategory === 'gratuity-bonus');
-        const eha = await db.getBudgetData(STORES.payrollEHA, yearId, entity.id, d.id);
-        const fixedAssets = await db.getBudgetData(STORES.payrollFixedAsset, yearId, entity.id, d.id);
+        const payroll = (canViewSalaries || canViewOtherStaff || canViewGratuity) ? await db.getBudgetData(STORES.payrollPersonnel, yearId, entity.id, d.id) : [];
+        const salaries = canViewSalaries ? payroll.filter(p => !p.subCategory || p.subCategory === 'salaries-wages') : [];
+        const otherStaffGratuity = payroll.filter(p => (canViewOtherStaff && p.subCategory === 'other-staff-expenses') || (canViewGratuity && p.subCategory === 'gratuity-bonus'));
+        const eha = canViewEha ? await db.getBudgetData(STORES.payrollEHA, yearId, entity.id, d.id) : [];
+        const fixedAssets = canViewFixedAssets ? await db.getBudgetData(STORES.payrollFixedAsset, yearId, entity.id, d.id) : [];
         const nonPayroll = await db.getBudgetData(STORES.nonPayrollCost, yearId, entity.id, d.id);
+        const filteredNonPayroll = nonPayroll.filter(r => {
+          const targetCat = typeof Auth !== 'undefined' ? Auth.getCategoryForLineItem(r) : 'other-costs';
+          return typeof Auth === 'undefined' || Auth.hasPermission('view', { category: targetCat, ledgerCode: r.ledgerCode, glDescription: r.glDescription, parentAccount: r.parentAccount, entityId: entity.id, deptId: d.id });
+        });
 
         let sal = 0, oth = 0, ehaTot = 0, fa = 0, np = 0;
         salaries.forEach(p => sal += Utils.parseNumber(p.totalCY));
         otherStaffGratuity.forEach(p => oth += Utils.parseNumber(p.totalCY));
         eha.forEach(p => ehaTot += Utils.parseNumber(p.totalCY));
         fixedAssets.forEach(f => fa += Utils.parseNumber(f.totalCY));
-        nonPayroll.forEach(p => np += Utils.parseNumber(p.totalCY));
+        filteredNonPayroll.forEach(p => np += Utils.parseNumber(p.totalCY));
 
         const grand = sal + oth + ehaTot + fa + np;
         if (grand > 0) {
@@ -2567,12 +2829,12 @@ const ExcelIOModule = {
         ['Parent Account', 'GL Line Item Description', 'Ledger Code', 'Linked Input Source', 'Basis of Expense', `Total CY-${budgetYear} (${entity.currency})`, 'Total USD', ...SEED_DATA.months.map(m => `${m}-${budgetYear}`), `Prior Period Cost (CY-${priorYear})`, 'Remarks']
       ];
 
-      const payroll = await db.getBudgetData(STORES.payrollPersonnel, yearId, entity.id, dept.id);
-      const salariesRows = payroll.filter(p => !p.subCategory || p.subCategory === 'salaries-wages');
-      const otherStaffRows = payroll.filter(p => p.subCategory === 'other-staff-expenses');
-      const gratuityRows = payroll.filter(p => p.subCategory === 'gratuity-bonus');
-      const ehaRows = await db.getBudgetData(STORES.payrollEHA, yearId, entity.id, dept.id);
-      const fixedAssetRows = await db.getBudgetData(STORES.payrollFixedAsset, yearId, entity.id, dept.id);
+      const payroll = (canViewSalaries || canViewOtherStaff || canViewGratuity) ? await db.getBudgetData(STORES.payrollPersonnel, yearId, entity.id, dept.id) : [];
+      const salariesRows = canViewSalaries ? payroll.filter(p => !p.subCategory || p.subCategory === 'salaries-wages') : [];
+      const otherStaffRows = canViewOtherStaff ? payroll.filter(p => p.subCategory === 'other-staff-expenses') : [];
+      const gratuityRows = canViewGratuity ? payroll.filter(p => p.subCategory === 'gratuity-bonus') : [];
+      const ehaRows = canViewEha ? await db.getBudgetData(STORES.payrollEHA, yearId, entity.id, dept.id) : [];
+      const fixedAssetRows = canViewFixedAssets ? await db.getBudgetData(STORES.payrollFixedAsset, yearId, entity.id, dept.id) : [];
       const otherCostRows = await db.getBudgetData(STORES.nonPayrollCost, yearId, entity.id, dept.id);
 
       const sumMonths = (dataRows) => {
@@ -2599,6 +2861,11 @@ const ExcelIOModule = {
       });
 
       coa.forEach(account => {
+        const targetCat = typeof Auth !== 'undefined' ? Auth.getCategoryForLineItem(account) : null;
+        if (typeof Auth !== 'undefined' && targetCat && !Auth.hasPermission('view', { category: targetCat, ledgerCode: account.ledgerCode, glDescription: account.glDescription, parentAccount: account.parentAccount, entityId: entity.id, deptId: dept.id })) {
+          return;
+        }
+
         let rollup = { monthlyValues: Array(12).fill(0), totalCY: 0 };
         let linkedSource = '';
         const accGlClean = cleanStr(account.glDescription);
@@ -2688,12 +2955,12 @@ const ExcelIOModule = {
         const entityDepts = departments.filter(d => activeDeptIds.size === 0 || activeDeptIds.has(d.id));
 
         for (const d of entityDepts) {
-          const payroll = await db.getBudgetData(STORES.payrollPersonnel, yearId, e.id, d.id);
-          const salariesRows = payroll.filter(p => !p.subCategory || p.subCategory === 'salaries-wages');
-          const otherStaffRows = payroll.filter(p => p.subCategory === 'other-staff-expenses');
-          const gratuityRows = payroll.filter(p => p.subCategory === 'gratuity-bonus');
-          const ehaRows = await db.getBudgetData(STORES.payrollEHA, yearId, e.id, d.id);
-          const fixedAssetRows = await db.getBudgetData(STORES.payrollFixedAsset, yearId, e.id, d.id);
+          const payroll = (canViewSalaries || canViewOtherStaff || canViewGratuity) ? await db.getBudgetData(STORES.payrollPersonnel, yearId, e.id, d.id) : [];
+          const salariesRows = canViewSalaries ? payroll.filter(p => !p.subCategory || p.subCategory === 'salaries-wages') : [];
+          const otherStaffRows = canViewOtherStaff ? payroll.filter(p => p.subCategory === 'other-staff-expenses') : [];
+          const gratuityRows = canViewGratuity ? payroll.filter(p => p.subCategory === 'gratuity-bonus') : [];
+          const ehaRows = canViewEha ? await db.getBudgetData(STORES.payrollEHA, yearId, e.id, d.id) : [];
+          const fixedAssetRows = canViewFixedAssets ? await db.getBudgetData(STORES.payrollFixedAsset, yearId, e.id, d.id) : [];
           const otherCostRows = await db.getBudgetData(STORES.nonPayrollCost, yearId, e.id, d.id);
 
           const totalDeptActivity = payroll.length + ehaRows.length + fixedAssetRows.length + otherCostRows.length;
@@ -2734,6 +3001,11 @@ const ExcelIOModule = {
           });
 
           coa.forEach(account => {
+            const targetCat = typeof Auth !== 'undefined' ? Auth.getCategoryForLineItem(account) : null;
+            if (typeof Auth !== 'undefined' && targetCat && !Auth.hasPermission('view', { category: targetCat, ledgerCode: account.ledgerCode, glDescription: account.glDescription, parentAccount: account.parentAccount, entityId: e.id, deptId: d.id })) {
+              return;
+            }
+
             let rollup = { monthlyValues: Array(12).fill(0), totalCY: 0 };
             let linkedSource = '';
             let basis = savedBasisMap[account.ledgerCode] || savedBasisMap[account.glDescription] || '';
@@ -2795,6 +3067,8 @@ const ExcelIOModule = {
 
     // Helper: Add Detailed Salaries & Wages Inputs Sheet
     const addSalariesInputSheet = async (targetEntities, targetDepts = null, sheetTitle = 'Salaries & Wages (Inputs)') => {
+      if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'salaries' })) return;
+
       const rows = [
         [`Noora Health — Detailed Salaries & Wages Budget (Bottom-Up Personnel Inputs)`, `CY-${budgetYear}`],
         ['Includes employee roster, designations, dates of joining, band, level, current CTC, increment details, new monthly CTC, monthly allocations & 5D tags'],
@@ -2813,6 +3087,7 @@ const ExcelIOModule = {
         const rate = activeYearObj.conversionRates?.[e.currency] || 1.0;
         const deptsToIterate = targetDepts || departments;
         for (const d of deptsToIterate) {
+          if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'salaries', entityId: e.id, deptId: d.id })) continue;
           const records = await db.getBudgetData(STORES.payrollPersonnel, yearId, e.id, d.id);
           const salaries = records.filter(p => !p.subCategory || p.subCategory === 'salaries-wages');
 
@@ -2844,6 +3119,8 @@ const ExcelIOModule = {
 
     // Helper: Add Detailed Other Staff Expenses Inputs Sheet
     const addOtherStaffInputSheet = async (targetEntities, targetDepts = null, sheetTitle = 'Other Staff Expenses (Inputs)') => {
+      if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'other-staff' })) return;
+
       const rows = [
         [`Noora Health — Detailed Other Staff Expenses & Benefits Budget (Bottom-Up Inputs)`, `CY-${budgetYear}`],
         ['Includes staff insurance, medical coverage, allowances, staff welfare, training, reimbursements, monthly allocations & 5D tags'],
@@ -2861,6 +3138,7 @@ const ExcelIOModule = {
         const rate = activeYearObj.conversionRates?.[e.currency] || 1.0;
         const deptsToIterate = targetDepts || departments;
         for (const d of deptsToIterate) {
+          if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'other-staff', entityId: e.id, deptId: d.id })) continue;
           const records = await db.getBudgetData(STORES.payrollPersonnel, yearId, e.id, d.id);
           const otherStaff = records.filter(p => p.subCategory === 'other-staff-expenses');
 
@@ -2886,6 +3164,8 @@ const ExcelIOModule = {
 
     // Helper: Add Detailed Gratuity & Bonus Inputs Sheet
     const addGratuityBonusInputSheet = async (targetEntities, targetDepts = null, sheetTitle = 'Gratuity & Bonus (Inputs)') => {
+      if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'gratuity' })) return;
+
       const rows = [
         [`Noora Health — Detailed Gratuity & Statutory Bonus Budget (Bottom-Up Inputs)`, `CY-${budgetYear}`],
         ['Includes gratuity provisions, statutory bonuses, performance awards, retirement allocations & 5D tags'],
@@ -2903,6 +3183,7 @@ const ExcelIOModule = {
         const rate = activeYearObj.conversionRates?.[e.currency] || 1.0;
         const deptsToIterate = targetDepts || departments;
         for (const d of deptsToIterate) {
+          if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'gratuity', entityId: e.id, deptId: d.id })) continue;
           const records = await db.getBudgetData(STORES.payrollPersonnel, yearId, e.id, d.id);
           const gratuity = records.filter(p => p.subCategory === 'gratuity-bonus');
 
@@ -2928,6 +3209,8 @@ const ExcelIOModule = {
 
     // Helper: Add Detailed EHA Consultants Inputs Sheet
     const addEhaInputSheet = async (targetEntities, targetDepts = null, sheetTitle = 'EHA Consultants (Inputs)') => {
+      if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'eha' })) return;
+
       const rows = [
         [`Noora Health — Detailed External Hired Assistance (EHA Consultants) Budget (Bottom-Up Inputs)`, `CY-${budgetYear}`],
         ['Includes professional consultants, advisory contracts, monthly fees, retainers, deliverable budgets & 5D tags'],
@@ -2945,6 +3228,7 @@ const ExcelIOModule = {
         const rate = activeYearObj.conversionRates?.[e.currency] || 1.0;
         const deptsToIterate = targetDepts || departments;
         for (const d of deptsToIterate) {
+          if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'eha', entityId: e.id, deptId: d.id })) continue;
           const eha = await db.getBudgetData(STORES.payrollEHA, yearId, e.id, d.id);
 
           eha.forEach(r => {
@@ -2970,6 +3254,8 @@ const ExcelIOModule = {
 
     // Helper: Add Detailed Fixed Assets (CapEx) Inputs Sheet
     const addFixedAssetsInputSheet = async (targetEntities, targetDepts = null, sheetTitle = 'Fixed Assets (Inputs)') => {
+      if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'fixed-assets' })) return;
+
       const rows = [
         [`Noora Health — Detailed Fixed Assets (CapEx) Budget (Bottom-Up Inputs)`, `CY-${budgetYear}`],
         ['Includes IT hardware (laptops, desktops, monitors, printers), office equipment, quantities, unit costs, delivery schedule & 5D tags'],
@@ -2987,6 +3273,7 @@ const ExcelIOModule = {
         const rate = activeYearObj.conversionRates?.[e.currency] || 1.0;
         const deptsToIterate = targetDepts || departments;
         for (const d of deptsToIterate) {
+          if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'fixed-assets', entityId: e.id, deptId: d.id })) continue;
           const assets = await db.getBudgetData(STORES.payrollFixedAsset, yearId, e.id, d.id);
 
           assets.forEach(r => {
@@ -3032,8 +3319,12 @@ const ExcelIOModule = {
         const deptsToIterate = targetDepts || departments;
         for (const d of deptsToIterate) {
           const nonPayroll = await db.getBudgetData(STORES.nonPayrollCost, yearId, e.id, d.id);
+          const filteredNonPayroll = nonPayroll.filter(r => {
+            const targetCat = typeof Auth !== 'undefined' ? Auth.getCategoryForLineItem(r) : 'other-costs';
+            return typeof Auth === 'undefined' || Auth.hasPermission('view', { category: targetCat, ledgerCode: r.ledgerCode, glDescription: r.glDescription, parentAccount: r.parentAccount, entityId: e.id, deptId: d.id });
+          });
 
-          nonPayroll.forEach(r => {
+          filteredNonPayroll.forEach(r => {
             const mVals = get12Months(r);
             const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
             const totalUSD = Utils.convertToUSD(totalLocal, rate);
@@ -3058,6 +3349,8 @@ const ExcelIOModule = {
 
     // Helper: Add Detailed IMP ToT Programs & Training Workshops Inputs Sheet
     const addImpTotProgramsInputSheet = async (targetEntities, targetDepts = null, sheetTitle = 'IMP Programs (Inputs)') => {
+      if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'other-costs' }) && !Auth.hasPermission('view', { category: 'tot-programs' }) && !Auth.hasPermission('view', { category: 'other-expenses' })) return;
+
       const allEvents = await db.getAll(STORES.impTotEvents);
       if (!allEvents || allEvents.length === 0) return;
 
@@ -3104,6 +3397,12 @@ const ExcelIOModule = {
     // Helper: Extract all budget line items with unified 5 dimensions across selected entities & departments
     const getUnified5DLineItems = async (targetEntities, targetDepts = null) => {
       const lineItems = [];
+      const canViewSalaries = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'salaries' });
+      const canViewOtherStaff = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'other-staff' });
+      const canViewGratuity = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'gratuity' });
+      const canViewEha = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'eha' });
+      const canViewFixedAssets = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'fixed-assets' });
+
       for (const e of targetEntities) {
         const rate = activeYearObj.conversionRates?.[e.currency] || 1.0;
         const deptsToIterate = targetDepts || departments;
@@ -3112,139 +3411,155 @@ const ExcelIOModule = {
           const deptName = Utils.getDeptName(d, e.deptPrefix);
 
           // 1. Salaries
-          const payroll = await db.getBudgetData(STORES.payrollPersonnel, yearId, e.id, d.id);
-          const salaries = payroll.filter(p => !p.subCategory || p.subCategory === 'salaries-wages');
-          salaries.forEach(r => {
-            const mVals = get12Months(r);
-            const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
-            const totalUSD = Utils.convertToUSD(totalLocal, rate);
-            lineItems.push({
-              entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
-              deptId: d.id, deptShort, deptName,
-              location: r.location || 'All Locations',
-              donor: r.donor || 'General Fund',
-              activity: r.activity || 'Direct Service',
-              conditionArea: r.conditionArea || 'All',
-              parentAccount: 'Payroll & Personnel',
-              glDescription: 'Salaries & Wages',
-              ledgerCode: '91101',
-              linkedSource: 'Payroll — Salaries & Wages',
-              itemDescription: `${r.name || 'Staff'}${r.designation ? ' (' + r.designation + ')' : ''}`,
-              basisOfExpense: `${r.banding || 'NH3'} - ${r.employeeStatus || 'Existing'}`,
-              monthlyValuesLocal: mVals,
-              monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
-              totalLocal, totalUSD,
-              remarks: r.remarks || ''
+          if (canViewSalaries && (typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'salaries', entityId: e.id, deptId: d.id }))) {
+            const payroll = await db.getBudgetData(STORES.payrollPersonnel, yearId, e.id, d.id);
+            const salaries = payroll.filter(p => !p.subCategory || p.subCategory === 'salaries-wages');
+            salaries.forEach(r => {
+              const mVals = get12Months(r);
+              const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
+              const totalUSD = Utils.convertToUSD(totalLocal, rate);
+              lineItems.push({
+                entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
+                deptId: d.id, deptShort, deptName,
+                location: r.location || 'All Locations',
+                donor: r.donor || 'General Fund',
+                activity: r.activity || 'Direct Service',
+                conditionArea: r.conditionArea || 'All',
+                parentAccount: 'Payroll & Personnel',
+                glDescription: 'Salaries & Wages',
+                ledgerCode: '91101',
+                linkedSource: 'Payroll — Salaries & Wages',
+                itemDescription: `${r.name || 'Staff'}${r.designation ? ' (' + r.designation + ')' : ''}`,
+                basisOfExpense: `${r.banding || 'NH3'} - ${r.employeeStatus || 'Existing'}`,
+                monthlyValuesLocal: mVals,
+                monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
+                totalLocal, totalUSD,
+                remarks: r.remarks || ''
+              });
             });
-          });
+          }
 
           // 2. Other Staff Expenses
-          const otherStaff = payroll.filter(p => p.subCategory === 'other-staff-expenses');
-          otherStaff.forEach(r => {
-            const mVals = get12Months(r);
-            const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
-            const totalUSD = Utils.convertToUSD(totalLocal, rate);
-            lineItems.push({
-              entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
-              deptId: d.id, deptShort, deptName,
-              location: r.location || 'All Locations',
-              donor: r.donor || 'General Fund',
-              activity: r.activity || 'Operations',
-              conditionArea: r.conditionArea || 'All',
-              parentAccount: 'Payroll & Personnel',
-              glDescription: 'Staff Insurance, Welfare & Benefits',
-              ledgerCode: '91301',
-              linkedSource: 'Payroll — Other Staff Expenses',
-              itemDescription: r.name || r.expenseType || 'Staff Expense',
-              basisOfExpense: r.expenseType || 'Staff Benefit',
-              monthlyValuesLocal: mVals,
-              monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
-              totalLocal, totalUSD,
-              remarks: r.remarks || ''
+          if (canViewOtherStaff && (typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'other-staff', entityId: e.id, deptId: d.id }))) {
+            const payroll = await db.getBudgetData(STORES.payrollPersonnel, yearId, e.id, d.id);
+            const otherStaff = payroll.filter(p => p.subCategory === 'other-staff-expenses');
+            otherStaff.forEach(r => {
+              const mVals = get12Months(r);
+              const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
+              const totalUSD = Utils.convertToUSD(totalLocal, rate);
+              lineItems.push({
+                entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
+                deptId: d.id, deptShort, deptName,
+                location: r.location || 'All Locations',
+                donor: r.donor || 'General Fund',
+                activity: r.activity || 'Operations',
+                conditionArea: r.conditionArea || 'All',
+                parentAccount: 'Payroll & Personnel',
+                glDescription: 'Staff Insurance, Welfare & Benefits',
+                ledgerCode: '91301',
+                linkedSource: 'Payroll — Other Staff Expenses',
+                itemDescription: r.name || r.expenseType || 'Staff Expense',
+                basisOfExpense: r.expenseType || 'Staff Benefit',
+                monthlyValuesLocal: mVals,
+                monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
+                totalLocal, totalUSD,
+                remarks: r.remarks || ''
+              });
             });
-          });
+          }
 
           // 3. Gratuity & Bonus
-          const gratuity = payroll.filter(p => p.subCategory === 'gratuity-bonus');
-          gratuity.forEach(r => {
-            const mVals = get12Months(r);
-            const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
-            const totalUSD = Utils.convertToUSD(totalLocal, rate);
-            lineItems.push({
-              entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
-              deptId: d.id, deptShort, deptName,
-              location: r.location || 'All Locations',
-              donor: r.donor || 'General Fund',
-              activity: r.activity || 'Operations',
-              conditionArea: r.conditionArea || 'All',
-              parentAccount: 'Payroll & Personnel',
-              glDescription: 'Gratuity & Statutory Bonus',
-              ledgerCode: '91201',
-              linkedSource: 'Payroll — Gratuity & Bonus',
-              itemDescription: r.name || 'Bonus Provision',
-              basisOfExpense: r.expenseType || 'Gratuity / Bonus',
-              monthlyValuesLocal: mVals,
-              monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
-              totalLocal, totalUSD,
-              remarks: r.remarks || ''
+          if (canViewGratuity && (typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'gratuity', entityId: e.id, deptId: d.id }))) {
+            const payroll = await db.getBudgetData(STORES.payrollPersonnel, yearId, e.id, d.id);
+            const gratuity = payroll.filter(p => p.subCategory === 'gratuity-bonus');
+            gratuity.forEach(r => {
+              const mVals = get12Months(r);
+              const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
+              const totalUSD = Utils.convertToUSD(totalLocal, rate);
+              lineItems.push({
+                entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
+                deptId: d.id, deptShort, deptName,
+                location: r.location || 'All Locations',
+                donor: r.donor || 'General Fund',
+                activity: r.activity || 'Operations',
+                conditionArea: r.conditionArea || 'All',
+                parentAccount: 'Payroll & Personnel',
+                glDescription: 'Gratuity & Statutory Bonus',
+                ledgerCode: '91201',
+                linkedSource: 'Payroll — Gratuity & Bonus',
+                itemDescription: r.name || 'Bonus Provision',
+                basisOfExpense: r.expenseType || 'Gratuity / Bonus',
+                monthlyValuesLocal: mVals,
+                monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
+                totalLocal, totalUSD,
+                remarks: r.remarks || ''
+              });
             });
-          });
+          }
 
           // 4. EHA Consultants
-          const eha = await db.getBudgetData(STORES.payrollEHA, yearId, e.id, d.id);
-          eha.forEach(r => {
-            const mVals = get12Months(r);
-            const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
-            const totalUSD = Utils.convertToUSD(totalLocal, rate);
-            lineItems.push({
-              entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
-              deptId: d.id, deptShort, deptName,
-              location: r.location || 'All Locations',
-              donor: r.donor || 'General Fund',
-              activity: r.activity || 'Direct Service',
-              conditionArea: r.conditionArea || 'All',
-              parentAccount: 'Professional Fees',
-              glDescription: 'Program Resource Consultants (EHA)',
-              ledgerCode: '92101',
-              linkedSource: 'Payroll — EHA Consultants',
-              itemDescription: `${r.name || r.consultantName || 'Consultant'}${r.designation ? ' (' + r.designation + ')' : ''}`,
-              basisOfExpense: r.contractType || 'Retainer',
-              monthlyValuesLocal: mVals,
-              monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
-              totalLocal, totalUSD,
-              remarks: r.remarks || ''
+          if (canViewEha && (typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'eha', entityId: e.id, deptId: d.id }))) {
+            const eha = await db.getBudgetData(STORES.payrollEHA, yearId, e.id, d.id);
+            eha.forEach(r => {
+              const mVals = get12Months(r);
+              const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
+              const totalUSD = Utils.convertToUSD(totalLocal, rate);
+              lineItems.push({
+                entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
+                deptId: d.id, deptShort, deptName,
+                location: r.location || 'All Locations',
+                donor: r.donor || 'General Fund',
+                activity: r.activity || 'Direct Service',
+                conditionArea: r.conditionArea || 'All',
+                parentAccount: 'Professional Fees',
+                glDescription: 'Program Resource Consultants (EHA)',
+                ledgerCode: '92101',
+                linkedSource: 'Payroll — EHA Consultants',
+                itemDescription: `${r.name || r.consultantName || 'Consultant'}${r.designation ? ' (' + r.designation + ')' : ''}`,
+                basisOfExpense: r.contractType || 'Retainer',
+                monthlyValuesLocal: mVals,
+                monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
+                totalLocal, totalUSD,
+                remarks: r.remarks || ''
+              });
             });
-          });
+          }
 
           // 5. Fixed Assets
-          const fixedAssets = await db.getBudgetData(STORES.payrollFixedAsset, yearId, e.id, d.id);
-          fixedAssets.forEach(r => {
-            const mVals = get12Months(r);
-            const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
-            const totalUSD = Utils.convertToUSD(totalLocal, rate);
-            lineItems.push({
-              entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
-              deptId: d.id, deptShort, deptName,
-              location: r.location || 'All Locations',
-              donor: r.donor || 'General Fund',
-              activity: r.activity || 'Operations',
-              conditionArea: r.conditionArea || 'All',
-              parentAccount: 'Fixed Assets & Hardware',
-              glDescription: 'Computers, Hardware & Equipment',
-              ledgerCode: '11301',
-              linkedSource: 'Fixed Assets',
-              itemDescription: `${r.category || 'IT Hardware'}: ${r.description || r.itemDescription || 'Equipment'}`,
-              basisOfExpense: `Qty: ${r.quantity || 1} @ ${Utils.formatCurrency(r.unitCost || 0, e.currency)}`,
-              monthlyValuesLocal: mVals,
-              monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
-              totalLocal, totalUSD,
-              remarks: r.remarks || ''
+          if (canViewFixedAssets && (typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'fixed-assets', entityId: e.id, deptId: d.id }))) {
+            const fixedAssets = await db.getBudgetData(STORES.payrollFixedAsset, yearId, e.id, d.id);
+            fixedAssets.forEach(r => {
+              const mVals = get12Months(r);
+              const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
+              const totalUSD = Utils.convertToUSD(totalLocal, rate);
+              lineItems.push({
+                entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
+                deptId: d.id, deptShort, deptName,
+                location: r.location || 'All Locations',
+                donor: r.donor || 'General Fund',
+                activity: r.activity || 'Operations',
+                conditionArea: r.conditionArea || 'All',
+                parentAccount: 'Fixed Assets & Hardware',
+                glDescription: 'Computers, Hardware & Equipment',
+                ledgerCode: '11301',
+                linkedSource: 'Fixed Assets',
+                itemDescription: `${r.category || 'IT Hardware'}: ${r.description || r.itemDescription || 'Equipment'}`,
+                basisOfExpense: `Qty: ${r.quantity || 1} @ ${Utils.formatCurrency(r.unitCost || 0, e.currency)}`,
+                monthlyValuesLocal: mVals,
+                monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
+                totalLocal, totalUSD,
+                remarks: r.remarks || ''
+              });
             });
-          });
+          }
 
           // 6. Non-Payroll / Operating / Travel Costs
           const nonPayroll = await db.getBudgetData(STORES.nonPayrollCost, yearId, e.id, d.id);
           nonPayroll.forEach(r => {
+            const targetCat = typeof Auth !== 'undefined' ? Auth.getCategoryForLineItem(r) : 'other-costs';
+            if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: targetCat, ledgerCode: r.ledgerCode, glDescription: r.glDescription, parentAccount: r.parentAccount, entityId: e.id, deptId: d.id })) {
+              return;
+            }
             const mVals = get12Months(r);
             const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
             const totalUSD = Utils.convertToUSD(totalLocal, rate);
@@ -3699,10 +4014,16 @@ const ExcelIOModule = {
 
   // Dedicated Exporter for Custom Dimension Selection
   async exportDimensionReport(dimKey = 'donor', entityFilter = 'all') {
+    if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: 'reports' })) {
+      Utils.showToast('🔒 Access Denied: You do not have permission to view or export dimension reports.', 'warning');
+      return;
+    }
+
     const activeYearObj = await this.getActiveYearObj();
     const yearId = activeYearObj.id;
     const budgetYear = activeYearObj.year;
-    const allEntities = await db.getAll(STORES.entities);
+    const rawEntities = await db.getAll(STORES.entities);
+    const allEntities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
     const departments = Utils.sortDepartments(await db.getAll(STORES.departments));
 
     let targetEntities = allEntities;
@@ -3742,6 +4063,12 @@ const ExcelIOModule = {
 
     const getUnified5DLineItems = async (targetEntities) => {
       const lineItems = [];
+      const canViewSalaries = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'salaries' });
+      const canViewOtherStaff = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'other-staff' });
+      const canViewGratuity = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'gratuity' });
+      const canViewEha = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'eha' });
+      const canViewFixedAssets = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'fixed-assets' });
+
       for (const e of targetEntities) {
         const rate = activeYearObj.conversionRates?.[e.currency] || 1.0;
         for (const d of departments) {
@@ -3749,139 +4076,155 @@ const ExcelIOModule = {
           const deptName = Utils.getDeptName(d, e.deptPrefix);
 
           // 1. Salaries
-          const payroll = await db.getBudgetData(STORES.payrollPersonnel, yearId, e.id, d.id);
-          const salaries = payroll.filter(p => !p.subCategory || p.subCategory === 'salaries-wages');
-          salaries.forEach(r => {
-            const mVals = get12Months(r);
-            const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
-            const totalUSD = Utils.convertToUSD(totalLocal, rate);
-            lineItems.push({
-              entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
-              deptId: d.id, deptShort, deptName,
-              location: r.location || 'All Locations',
-              donor: r.donor || 'General Fund',
-              activity: r.activity || 'Direct Service',
-              conditionArea: r.conditionArea || 'All',
-              parentAccount: 'Payroll & Personnel',
-              glDescription: 'Salaries & Wages',
-              ledgerCode: '91101',
-              linkedSource: 'Payroll — Salaries & Wages',
-              itemDescription: `${r.name || 'Staff'}${r.designation ? ' (' + r.designation + ')' : ''}`,
-              basisOfExpense: `${r.banding || 'NH3'} - ${r.employeeStatus || 'Existing'}`,
-              monthlyValuesLocal: mVals,
-              monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
-              totalLocal, totalUSD,
-              remarks: r.remarks || ''
+          if (canViewSalaries && (typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'salaries', entityId: e.id, deptId: d.id }))) {
+            const payroll = await db.getBudgetData(STORES.payrollPersonnel, yearId, e.id, d.id);
+            const salaries = payroll.filter(p => !p.subCategory || p.subCategory === 'salaries-wages');
+            salaries.forEach(r => {
+              const mVals = get12Months(r);
+              const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
+              const totalUSD = Utils.convertToUSD(totalLocal, rate);
+              lineItems.push({
+                entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
+                deptId: d.id, deptShort, deptName,
+                location: r.location || 'All Locations',
+                donor: r.donor || 'General Fund',
+                activity: r.activity || 'Direct Service',
+                conditionArea: r.conditionArea || 'All',
+                parentAccount: 'Payroll & Personnel',
+                glDescription: 'Salaries & Wages',
+                ledgerCode: '91101',
+                linkedSource: 'Payroll — Salaries & Wages',
+                itemDescription: `${r.name || 'Staff'}${r.designation ? ' (' + r.designation + ')' : ''}`,
+                basisOfExpense: `${r.banding || 'NH3'} - ${r.employeeStatus || 'Existing'}`,
+                monthlyValuesLocal: mVals,
+                monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
+                totalLocal, totalUSD,
+                remarks: r.remarks || ''
+              });
             });
-          });
+          }
 
           // 2. Other Staff Expenses
-          const otherStaff = payroll.filter(p => p.subCategory === 'other-staff-expenses');
-          otherStaff.forEach(r => {
-            const mVals = get12Months(r);
-            const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
-            const totalUSD = Utils.convertToUSD(totalLocal, rate);
-            lineItems.push({
-              entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
-              deptId: d.id, deptShort, deptName,
-              location: r.location || 'All Locations',
-              donor: r.donor || 'General Fund',
-              activity: r.activity || 'Operations',
-              conditionArea: r.conditionArea || 'All',
-              parentAccount: 'Payroll & Personnel',
-              glDescription: 'Staff Insurance, Welfare & Benefits',
-              ledgerCode: '91301',
-              linkedSource: 'Payroll — Other Staff Expenses',
-              itemDescription: r.name || r.expenseType || 'Staff Expense',
-              basisOfExpense: r.expenseType || 'Staff Benefit',
-              monthlyValuesLocal: mVals,
-              monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
-              totalLocal, totalUSD,
-              remarks: r.remarks || ''
+          if (canViewOtherStaff && (typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'other-staff', entityId: e.id, deptId: d.id }))) {
+            const payroll = await db.getBudgetData(STORES.payrollPersonnel, yearId, e.id, d.id);
+            const otherStaff = payroll.filter(p => p.subCategory === 'other-staff-expenses');
+            otherStaff.forEach(r => {
+              const mVals = get12Months(r);
+              const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
+              const totalUSD = Utils.convertToUSD(totalLocal, rate);
+              lineItems.push({
+                entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
+                deptId: d.id, deptShort, deptName,
+                location: r.location || 'All Locations',
+                donor: r.donor || 'General Fund',
+                activity: r.activity || 'Operations',
+                conditionArea: r.conditionArea || 'All',
+                parentAccount: 'Payroll & Personnel',
+                glDescription: 'Staff Insurance, Welfare & Benefits',
+                ledgerCode: '91301',
+                linkedSource: 'Payroll — Other Staff Expenses',
+                itemDescription: r.name || r.expenseType || 'Staff Expense',
+                basisOfExpense: r.expenseType || 'Staff Benefit',
+                monthlyValuesLocal: mVals,
+                monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
+                totalLocal, totalUSD,
+                remarks: r.remarks || ''
+              });
             });
-          });
+          }
 
           // 3. Gratuity & Bonus
-          const gratuity = payroll.filter(p => p.subCategory === 'gratuity-bonus');
-          gratuity.forEach(r => {
-            const mVals = get12Months(r);
-            const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
-            const totalUSD = Utils.convertToUSD(totalLocal, rate);
-            lineItems.push({
-              entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
-              deptId: d.id, deptShort, deptName,
-              location: r.location || 'All Locations',
-              donor: r.donor || 'General Fund',
-              activity: r.activity || 'Operations',
-              conditionArea: r.conditionArea || 'All',
-              parentAccount: 'Payroll & Personnel',
-              glDescription: 'Gratuity & Statutory Bonus',
-              ledgerCode: '91201',
-              linkedSource: 'Payroll — Gratuity & Bonus',
-              itemDescription: r.name || 'Bonus Provision',
-              basisOfExpense: r.expenseType || 'Gratuity / Bonus',
-              monthlyValuesLocal: mVals,
-              monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
-              totalLocal, totalUSD,
-              remarks: r.remarks || ''
+          if (canViewGratuity && (typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'gratuity', entityId: e.id, deptId: d.id }))) {
+            const payroll = await db.getBudgetData(STORES.payrollPersonnel, yearId, e.id, d.id);
+            const gratuity = payroll.filter(p => p.subCategory === 'gratuity-bonus');
+            gratuity.forEach(r => {
+              const mVals = get12Months(r);
+              const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
+              const totalUSD = Utils.convertToUSD(totalLocal, rate);
+              lineItems.push({
+                entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
+                deptId: d.id, deptShort, deptName,
+                location: r.location || 'All Locations',
+                donor: r.donor || 'General Fund',
+                activity: r.activity || 'Operations',
+                conditionArea: r.conditionArea || 'All',
+                parentAccount: 'Payroll & Personnel',
+                glDescription: 'Gratuity & Statutory Bonus',
+                ledgerCode: '91201',
+                linkedSource: 'Payroll — Gratuity & Bonus',
+                itemDescription: r.name || 'Bonus Provision',
+                basisOfExpense: r.expenseType || 'Gratuity / Bonus',
+                monthlyValuesLocal: mVals,
+                monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
+                totalLocal, totalUSD,
+                remarks: r.remarks || ''
+              });
             });
-          });
+          }
 
           // 4. EHA Consultants
-          const eha = await db.getBudgetData(STORES.payrollEHA, yearId, e.id, d.id);
-          eha.forEach(r => {
-            const mVals = get12Months(r);
-            const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
-            const totalUSD = Utils.convertToUSD(totalLocal, rate);
-            lineItems.push({
-              entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
-              deptId: d.id, deptShort, deptName,
-              location: r.location || 'All Locations',
-              donor: r.donor || 'General Fund',
-              activity: r.activity || 'Direct Service',
-              conditionArea: r.conditionArea || 'All',
-              parentAccount: 'Professional Fees',
-              glDescription: 'Program Resource Consultants (EHA)',
-              ledgerCode: '92101',
-              linkedSource: 'Payroll — EHA Consultants',
-              itemDescription: `${r.name || r.consultantName || 'Consultant'}${r.designation ? ' (' + r.designation + ')' : ''}`,
-              basisOfExpense: r.contractType || 'Retainer',
-              monthlyValuesLocal: mVals,
-              monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
-              totalLocal, totalUSD,
-              remarks: r.remarks || ''
+          if (canViewEha && (typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'eha', entityId: e.id, deptId: d.id }))) {
+            const eha = await db.getBudgetData(STORES.payrollEHA, yearId, e.id, d.id);
+            eha.forEach(r => {
+              const mVals = get12Months(r);
+              const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
+              const totalUSD = Utils.convertToUSD(totalLocal, rate);
+              lineItems.push({
+                entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
+                deptId: d.id, deptShort, deptName,
+                location: r.location || 'All Locations',
+                donor: r.donor || 'General Fund',
+                activity: r.activity || 'Direct Service',
+                conditionArea: r.conditionArea || 'All',
+                parentAccount: 'Professional Fees',
+                glDescription: 'Program Resource Consultants (EHA)',
+                ledgerCode: '92101',
+                linkedSource: 'Payroll — EHA Consultants',
+                itemDescription: `${r.name || r.consultantName || 'Consultant'}${r.designation ? ' (' + r.designation + ')' : ''}`,
+                basisOfExpense: r.contractType || 'Retainer',
+                monthlyValuesLocal: mVals,
+                monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
+                totalLocal, totalUSD,
+                remarks: r.remarks || ''
+              });
             });
-          });
+          }
 
           // 5. Fixed Assets
-          const fixedAssets = await db.getBudgetData(STORES.payrollFixedAsset, yearId, e.id, d.id);
-          fixedAssets.forEach(r => {
-            const mVals = get12Months(r);
-            const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
-            const totalUSD = Utils.convertToUSD(totalLocal, rate);
-            lineItems.push({
-              entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
-              deptId: d.id, deptShort, deptName,
-              location: r.location || 'All Locations',
-              donor: r.donor || 'General Fund',
-              activity: r.activity || 'Operations',
-              conditionArea: r.conditionArea || 'All',
-              parentAccount: 'Fixed Assets & Hardware',
-              glDescription: 'Computers, Hardware & Equipment',
-              ledgerCode: '11301',
-              linkedSource: 'Fixed Assets',
-              itemDescription: `${r.category || 'IT Hardware'}: ${r.description || r.itemDescription || 'Equipment'}`,
-              basisOfExpense: `Qty: ${r.quantity || 1} @ ${Utils.formatCurrency(r.unitCost || 0, e.currency)}`,
-              monthlyValuesLocal: mVals,
-              monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
-              totalLocal, totalUSD,
-              remarks: r.remarks || ''
+          if (canViewFixedAssets && (typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'fixed-assets', entityId: e.id, deptId: d.id }))) {
+            const fixedAssets = await db.getBudgetData(STORES.payrollFixedAsset, yearId, e.id, d.id);
+            fixedAssets.forEach(r => {
+              const mVals = get12Months(r);
+              const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
+              const totalUSD = Utils.convertToUSD(totalLocal, rate);
+              lineItems.push({
+                entityId: e.id, entityShort: e.shortName, entityName: e.name, country: e.country, currency: e.currency, rate,
+                deptId: d.id, deptShort, deptName,
+                location: r.location || 'All Locations',
+                donor: r.donor || 'General Fund',
+                activity: r.activity || 'Operations',
+                conditionArea: r.conditionArea || 'All',
+                parentAccount: 'Fixed Assets & Hardware',
+                glDescription: 'Computers, Hardware & Equipment',
+                ledgerCode: '11301',
+                linkedSource: 'Fixed Assets',
+                itemDescription: `${r.category || 'IT Hardware'}: ${r.description || r.itemDescription || 'Equipment'}`,
+                basisOfExpense: `Qty: ${r.quantity || 1} @ ${Utils.formatCurrency(r.unitCost || 0, e.currency)}`,
+                monthlyValuesLocal: mVals,
+                monthlyValuesUSD: mVals.map(v => Utils.convertToUSD(v, rate)),
+                totalLocal, totalUSD,
+                remarks: r.remarks || ''
+              });
             });
-          });
+          }
 
           // 6. Non-Payroll / Operating Costs
           const nonPayroll = await db.getBudgetData(STORES.nonPayrollCost, yearId, e.id, d.id);
           nonPayroll.forEach(r => {
+            const targetCat = typeof Auth !== 'undefined' ? Auth.getCategoryForLineItem(r) : 'other-costs';
+            if (typeof Auth !== 'undefined' && !Auth.hasPermission('view', { category: targetCat, ledgerCode: r.ledgerCode, glDescription: r.glDescription, parentAccount: r.parentAccount, entityId: e.id, deptId: d.id })) {
+              return;
+            }
             const mVals = get12Months(r);
             const totalLocal = Utils.parseNumber(r.totalCY) || mVals.reduce((sum, v) => sum + v, 0);
             const totalUSD = Utils.convertToUSD(totalLocal, rate);

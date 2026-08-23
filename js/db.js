@@ -228,7 +228,31 @@ class BudgetDB {
       const tx = this.db.transaction(storeName, 'readonly');
       const store = tx.objectStore(storeName);
       const request = store.get(key);
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => {
+        if (request.result !== undefined) {
+          resolve(request.result);
+        } else if (typeof key === 'string' && !isNaN(parseInt(key))) {
+          // Fallback to numeric key
+          try {
+            const numReq = store.get(parseInt(key));
+            numReq.onsuccess = () => resolve(numReq.result !== undefined ? numReq.result : null);
+            numReq.onerror = () => resolve(null);
+          } catch (e) {
+            resolve(null);
+          }
+        } else if (typeof key === 'number') {
+          // Fallback to string key
+          try {
+            const strReq = store.get(String(key));
+            strReq.onsuccess = () => resolve(strReq.result !== undefined ? strReq.result : null);
+            strReq.onerror = () => resolve(null);
+          } catch (e) {
+            resolve(null);
+          }
+        } else {
+          resolve(null);
+        }
+      };
       request.onerror = () => reject(request.error);
     });
   }
@@ -237,6 +261,24 @@ class BudgetDB {
     await this.ready;
     if (!this.db || !this.db.objectStoreNames.contains(storeName)) return null;
     const item = { ...data };
+
+    // Strict Lock Enforcement for budget transaction stores (Entity-Scoped)
+    const BUDGET_TX_STORES = [
+      STORES.payrollPersonnel,
+      STORES.payrollEHA,
+      STORES.payrollFixedAsset,
+      STORES.nonPayrollCost,
+      STORES.totalCostSheet,
+      STORES.travelPackages,
+      STORES.impTotEvents
+    ];
+    if (BUDGET_TX_STORES.includes(storeName) && item.yearId) {
+      if (await this.isYearLocked(item.yearId, item.entityId)) {
+        console.warn(`[BudgetDB] Blocked put to ${storeName}: Budget cycle CY-${item.yearId} (${item.entityId || 'All'}) is locked.`);
+        return null;
+      }
+    }
+
     if (item.id === undefined || item.id === null || item.id === '' || item.id === 'null' || item.id === 'undefined') {
       delete item.id;
       return this.add(storeName, item);
@@ -254,6 +296,23 @@ class BudgetDB {
     await this.ready;
     if (!this.db || !this.db.objectStoreNames.contains(storeName)) return null;
     const item = { ...data };
+
+    const BUDGET_TX_STORES = [
+      STORES.payrollPersonnel,
+      STORES.payrollEHA,
+      STORES.payrollFixedAsset,
+      STORES.nonPayrollCost,
+      STORES.totalCostSheet,
+      STORES.travelPackages,
+      STORES.impTotEvents
+    ];
+    if (BUDGET_TX_STORES.includes(storeName) && item.yearId) {
+      if (await this.isYearLocked(item.yearId, item.entityId)) {
+        console.warn(`[BudgetDB] Blocked add to ${storeName}: Budget cycle CY-${item.yearId} (${item.entityId || 'All'}) is locked.`);
+        return null;
+      }
+    }
+
     if (item.id === undefined || item.id === null || item.id === '' || item.id === 'null' || item.id === 'undefined') {
       delete item.id;
     }
@@ -269,6 +328,24 @@ class BudgetDB {
   async delete(storeName, key) {
     await this.ready;
     if (!this.db || !this.db.objectStoreNames.contains(storeName)) return;
+
+    const BUDGET_TX_STORES = [
+      STORES.payrollPersonnel,
+      STORES.payrollEHA,
+      STORES.payrollFixedAsset,
+      STORES.nonPayrollCost,
+      STORES.totalCostSheet,
+      STORES.travelPackages,
+      STORES.impTotEvents
+    ];
+    if (BUDGET_TX_STORES.includes(storeName)) {
+      const rec = await this.get(storeName, key);
+      if (rec && rec.yearId && (await this.isYearLocked(rec.yearId, rec.entityId))) {
+        console.warn(`[BudgetDB] Blocked delete from ${storeName}: Budget cycle CY-${rec.yearId} (${rec.entityId || 'All'}) is locked.`);
+        return;
+      }
+    }
+
     return new Promise((resolve, reject) => {
       const tx = this.db.transaction(storeName, 'readwrite');
       const store = tx.objectStore(storeName);
@@ -1122,6 +1199,10 @@ class BudgetDB {
           users[existingIdx].roleAssignments = defUser.roleAssignments || [];
           users[existingIdx].roleId = defUser.roleId;
           try { await this.put(STORES.users, users[existingIdx]); } catch (e) {}
+        } else if (users[existingIdx].id === 'user-lead-hcomm' && users[existingIdx].roleAssignments?.[0]?.categoryOverrides?.salaries?.view === true && !users[existingIdx]._customizedByUser) {
+          users[existingIdx].roleAssignments[0].categoryOverrides = {};
+          if (users[existingIdx].categoryOverrides) users[existingIdx].categoryOverrides = {};
+          try { await this.put(STORES.users, users[existingIdx]); } catch (e) {}
         }
       }
     }
@@ -1345,55 +1426,129 @@ class BudgetDB {
   // ─── Budget Lock Status Helpers ───
 
   /**
-   * Get lock status for a budget year.
-   * Returns: { yearId, status: 'draft'|'under-review'|'finance-approved'|'finalized-locked', ... }
+   * Get lock status for a budget year (optionally scoped to a specific entity).
+   * Returns: { yearId, entityId, status: 'draft'|'under-review'|'finance-approved'|'finalized-locked', ... }
    */
-  async getLockStatus(yearId) {
+  async getLockStatus(yearId, entityId = null) {
     await this.ready;
     let status = 'draft';
+    const sId = String(yearId || '');
+    const nId = parseInt(sId);
+    const sEntityId = entityId ? String(entityId).trim() : null;
+
     try {
-      if (this.db && this.db.objectStoreNames.contains(STORES.budgetYears)) {
-        const yearRec = await this.get(STORES.budgetYears, String(yearId));
-        if (yearRec && yearRec.status) {
-          status = yearRec.status;
+      // 1. Check budgetLockStatus as baseline
+      if (this.db && this.db.objectStoreNames.contains(STORES.budgetLockStatus)) {
+        if (sEntityId) {
+          const entityLock = await this.get(STORES.budgetLockStatus, `${sId}_${sEntityId}`);
+          if (entityLock && entityLock.status) {
+            status = entityLock.status;
+          }
+        }
+        if (!status || status === 'draft') {
+          const record = (await this.get(STORES.budgetLockStatus, sId)) || (!isNaN(nId) ? await this.get(STORES.budgetLockStatus, nId) : null);
+          if (record && record.status) {
+            status = record.status;
+          }
         }
       }
-      if (this.db && this.db.objectStoreNames.contains(STORES.budgetLockStatus)) {
-        const record = await this.get(STORES.budgetLockStatus, String(yearId));
-        if (record && record.status) {
-          status = record.status;
+
+      // 2. budgetYears is the master record — its status takes highest precedence
+      if (this.db && this.db.objectStoreNames.contains(STORES.budgetYears)) {
+        const yearRec = (await this.get(STORES.budgetYears, sId)) || (!isNaN(nId) ? await this.get(STORES.budgetYears, nId) : null);
+        if (yearRec) {
+          if (sEntityId && yearRec.entityStatuses && yearRec.entityStatuses[sEntityId]) {
+            status = yearRec.entityStatuses[sEntityId];
+          } else if (yearRec.status) {
+            status = yearRec.status;
+          }
         }
       }
     } catch (e) {}
-    return { yearId: String(yearId), status };
+    return { yearId: sId, entityId: sEntityId, status };
   }
 
   /**
-   * Set lock status for a budget year.
+   * Set lock status for a budget year or entity-specifically.
    * Allowed statuses: 'draft', 'active', 'under-review', 'finance-approved', 'finalized-locked', 'closed'
    */
   async setLockStatus(yearId, status, meta = {}) {
     await this.ready;
-    if (!this.db || !this.db.objectStoreNames.contains(STORES.budgetLockStatus)) return null;
-    const current = await this.getLockStatus(yearId);
-    const record = {
-      ...current,
-      yearId: String(yearId),
-      status,
-      updatedAt: new Date().toISOString(),
-      ...meta
-    };
-    await this.put(STORES.budgetLockStatus, record);
-    return record;
+    const sId = String(yearId);
+    const nId = parseInt(sId);
+    const sEntityId = meta.entityId ? String(meta.entityId).trim() : null;
+
+    if (sEntityId) {
+      // Entity-specific status change
+      const recordKey = `${sId}_${sEntityId}`;
+      const record = {
+        id: recordKey,
+        yearId: sId,
+        entityId: sEntityId,
+        status,
+        updatedAt: new Date().toISOString(),
+        ...meta
+      };
+      if (this.db && this.db.objectStoreNames.contains(STORES.budgetLockStatus)) {
+        await this.put(STORES.budgetLockStatus, record);
+      }
+      if (this.db && this.db.objectStoreNames.contains(STORES.budgetYears)) {
+        const yearRec = (await this.get(STORES.budgetYears, sId)) || (!isNaN(nId) ? await this.get(STORES.budgetYears, nId) : null);
+        if (yearRec) {
+          yearRec.entityStatuses = yearRec.entityStatuses || {};
+          yearRec.entityStatuses[sEntityId] = status;
+          await this.put(STORES.budgetYears, yearRec);
+        }
+      }
+      return record;
+    } else {
+      // Year-wide base status change
+      const current = await this.getLockStatus(yearId);
+      const record = {
+        ...current,
+        id: sId,
+        yearId: sId,
+        status,
+        updatedAt: new Date().toISOString(),
+        ...meta
+      };
+      if (this.db && this.db.objectStoreNames.contains(STORES.budgetLockStatus)) {
+        await this.put(STORES.budgetLockStatus, record);
+      }
+      if (this.db && this.db.objectStoreNames.contains(STORES.budgetYears)) {
+        const yearRec = (await this.get(STORES.budgetYears, sId)) || (!isNaN(nId) ? await this.get(STORES.budgetYears, nId) : null);
+        if (yearRec) {
+          yearRec.status = status;
+          if (meta.applyToAllEntities && meta.entities && Array.isArray(meta.entities)) {
+            yearRec.entityStatuses = yearRec.entityStatuses || {};
+            for (const ent of meta.entities) {
+              const entId = ent.id || ent;
+              yearRec.entityStatuses[entId] = status;
+              if (this.db.objectStoreNames.contains(STORES.budgetLockStatus)) {
+                await this.put(STORES.budgetLockStatus, {
+                  id: `${sId}_${entId}`,
+                  yearId: sId,
+                  entityId: entId,
+                  status,
+                  updatedAt: new Date().toISOString()
+                });
+              }
+            }
+          }
+          await this.put(STORES.budgetYears, yearRec);
+        }
+      }
+      return record;
+    }
   }
 
   /**
-   * Check if a budget year is locked (read-only).
+   * Check if a budget year (or specific entity) is locked (read-only).
    * Only 'draft' and 'active' permit additions/edits.
    * Any other status ('under-review', 'finance-approved', 'finalized-locked', 'closed') is locked.
    */
-  async isYearLocked(yearId) {
-    const ls = await this.getLockStatus(yearId);
+  async isYearLocked(yearId, entityId = null) {
+    const ls = await this.getLockStatus(yearId, entityId);
     return ls.status !== 'draft' && ls.status !== 'active';
   }
 

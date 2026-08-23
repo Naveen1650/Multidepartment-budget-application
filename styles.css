@@ -871,10 +871,10 @@ a:hover { color: var(--accent-primary-hover); }
   background: #e2e8f0; /* 100% solid, fully opaque */
   color: var(--text-primary);
   font-weight: 700;
-  font-size: var(--font-size-xs);
+  font-size: 11.5px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 10px 14px;
+  letter-spacing: 0.03em;
+  padding: 7px 10px;
   border-bottom: 2px solid #cbd5e1;
   white-space: nowrap;
   text-align: left;
@@ -974,11 +974,13 @@ a:hover { color: var(--accent-primary-hover); }
 }
 
 .data-table td {
-  padding: var(--space-xs) var(--space-md);
+  padding: 4px 8px;
   border-bottom: 1px solid var(--border-subtle);
   color: var(--text-primary);
   white-space: nowrap;
   vertical-align: middle;
+  font-size: 12px;
+  line-height: 1.3;
 }
 
 /* Remarks & Basis bounded column styling */
@@ -1015,10 +1017,10 @@ td.editable .field-basis,
   white-space: nowrap;
   background: transparent;
   border: 1px solid transparent;
-  padding: 3px 6px;
+  padding: 2px 5px;
   border-radius: var(--radius-sm);
   font-family: inherit;
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
 td.editable input:focus {
@@ -1055,6 +1057,7 @@ td.editable input:focus {
 .data-table tbody tr.total-row td {
   background: #f1f5f9;
   font-weight: 700;
+  padding: 6px 8px;
 }
 .data-table tbody tr.total-row td.sticky-col,
 .data-table tbody tr.total-row td.sticky-col-1,
@@ -1091,18 +1094,19 @@ td.editable input:focus {
 
 .data-table td.editable input {
   width: 100%;
-  padding: 6px 8px;
+  padding: 3px 6px;
   background: #ffffff;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-family: var(--font-family);
-  font-size: var(--font-size-sm);
+  font-size: 11.5px;
   text-align: right;
   font-variant-numeric: tabular-nums;
   outline: none;
   transition: all var(--transition-fast);
-  min-width: 85px;
+  min-width: 80px;
+  height: 26px;
   box-sizing: border-box;
 }
 
@@ -1154,9 +1158,19 @@ td.editable input:focus {
   border-left: 1px solid var(--border-subtle);
 }
 
+.data-table .prior-cost-col {
+  min-width: 130px;
+  border-left: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
+}
+
 .data-table.months-collapsed .month-group:not(.total-toggle-th),
 .data-table.months-collapsed .month-col {
   display: none;
+}
+
+.data-table.months-collapsed .prior-cost-col {
+  display: table-cell !important;
 }
 
 /* ─── Total column click-to-collapse ─── */
@@ -1466,10 +1480,31 @@ tr.exp-breakdown-row td {
 
 .modal-fullscreen,
 .modal-full {
-  width: 96vw !important;
-  max-width: 96vw !important;
-  height: 93vh !important;
-  max-height: 93vh !important;
+  width: 98vw !important;
+  max-width: 98vw !important;
+  height: 96vh !important;
+  max-height: 96vh !important;
+  border-radius: var(--radius-lg);
+}
+
+.modal-fullscreen-toggle {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 16px;
+  transition: all var(--transition-fast);
+}
+
+.modal-fullscreen-toggle:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
 }
 
 .modal-lg { max-width: 1100px; width: 95%; }
@@ -1681,11 +1716,134 @@ tr.exp-breakdown-row td {
 .config-list-item .item-actions {
   display: flex;
   gap: var(--space-xs);
-  opacity: 0;
-  transition: opacity var(--transition-fast);
+  flex-wrap: wrap;
+  align-items: center;
 }
 
-.config-list-item:hover .item-actions { opacity: 1; }
+.entity-status-box {
+  transition: all var(--transition-fast);
+}
+
+.budget-cycle-header-bar {
+  border-radius: var(--radius-md);
+  padding: 6px 10px;
+  margin: -6px -10px;
+  transition: background var(--transition-fast);
+}
+
+.budget-cycle-header-bar:hover {
+  background: var(--bg-table-row-hover);
+}
+
+/* ─── Entity Workflow Status Matrix Table ─── */
+.entity-matrix-wrapper {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.entity-matrix-header {
+  padding: 12px 18px;
+  background: var(--bg-secondary);
+  border-bottom: 1.5px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  transition: background var(--transition-fast);
+}
+
+.entity-matrix-header.is-clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.entity-matrix-header.is-clickable:hover {
+  background: var(--bg-elevated);
+}
+
+.entity-matrix-toggle-btn {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  transition: all var(--transition-fast);
+}
+
+.entity-matrix-toggle-btn:hover {
+  background: var(--bg-elevated);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.entity-matrix-body {
+  transition: all 0.2s ease-in-out;
+}
+
+.entity-matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+}
+
+.entity-matrix-table th {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-weight: 700;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 11px 16px;
+  border-bottom: 1.5px solid var(--border-subtle);
+  text-align: left;
+}
+
+.entity-matrix-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+
+.entity-matrix-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.entity-matrix-table tbody tr:hover {
+  background: var(--bg-table-row-hover);
+}
+
+.entity-status-matrix-select {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  width: auto;
+  min-width: 175px;
+  transition: all var(--transition-fast);
+}
+
+.entity-status-matrix-select.is-active {
+  border: 1.5px solid rgba(16, 185, 129, 0.5);
+  background: rgba(16, 185, 129, 0.06);
+  color: #065f46;
+}
+
+.entity-status-matrix-select.is-locked {
+  border: 1.5px solid rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.05);
+  color: #991b1b;
+}
 
 /* ─── Budget Entry Toolbar ─── */
 .budget-toolbar {

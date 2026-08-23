@@ -10,17 +10,39 @@ const Auth = {
   _lockStatusCache: {},
 
   CATEGORIES: [
-    { key: 'salaries', label: 'Salaries & Wages', icon: '💼', group: 'Payroll' },
-    { key: 'other-staff', label: 'Other Staff Expenses', icon: '👥', group: 'Payroll' },
-    { key: 'gratuity', label: 'Gratuity & Bonus', icon: '🎁', group: 'Payroll' },
-    { key: 'eha', label: 'EHA Consultants', icon: '🤝', group: 'Payroll' },
-    { key: 'fixed-assets', label: 'Fixed Assets (CapEx)', icon: '💻', group: 'Fixed Assets' },
-    { key: 'other-costs', label: 'Other Operating Costs', icon: '📑', group: 'Operations' },
-    { key: 'total-dept-cost', label: 'Total Dept Cost Rollup', icon: '📊', group: 'Summary' },
-    { key: 'imp-tot-rates', label: 'IMP ToT Rates & Programs', icon: '🎯', group: 'Programs' },
-    { key: 'prior-period', label: 'Prior Period Actuals', icon: '⏳', group: 'Reference' },
-    { key: 'reports', label: 'Financial Reports', icon: '📈', group: 'Reports' },
-    { key: 'config', label: 'System Configuration', icon: '⚙️', group: 'Admin' }
+    // ─── 1. Parent Expense Accounts (High-Level COA Groups) ───
+    { key: 'salaries', label: 'Salaries and Wages', icon: '💼', group: 'Parent Accounts', isParentAccount: true },
+    { key: 'gratuity', label: 'Health & Retirement Benefits (Gratuity & Bonus)', icon: '🎁', group: 'Parent Accounts', isParentAccount: true },
+    { key: 'other-staff', label: 'Other Staff Expenses', icon: '👥', group: 'Parent Accounts', isParentAccount: true },
+    { key: 'eha', label: 'Resource Persons (Direct Consultants / EHA)', icon: '🤝', group: 'Parent Accounts', isParentAccount: true },
+    { key: 'fixed-assets', label: 'Fixed Assets (CapEx)', icon: '💻', group: 'Parent Accounts', isParentAccount: true },
+    { key: 'travel', label: 'Travel & Lodging Expenses', icon: '✈️', group: 'Parent Accounts', isParentAccount: true },
+    { key: 'supplies', label: 'Supplies & Printing', icon: '🖨️', group: 'Parent Accounts', isParentAccount: true },
+    { key: 'communication', label: 'Communication Expenses', icon: '📡', group: 'Parent Accounts', isParentAccount: true },
+    { key: 'office', label: 'Office Expenses', icon: '🏢', group: 'Parent Accounts', isParentAccount: true },
+    { key: 'professional', label: 'Professional Charges', icon: '💼', group: 'Parent Accounts', isParentAccount: true },
+    { key: 'other-costs', label: 'Other Operating Expenses', icon: '📑', group: 'Parent Accounts', isParentAccount: true },
+    { key: 'imp-tot-rates', label: 'ToT Program Budget (IMP)', icon: '🎯', group: 'Parent Accounts', isParentAccount: true },
+    { key: 'total-dept-cost', label: 'Master Department Total Rollup', icon: '📊', group: 'Parent Accounts', isParentAccount: true },
+
+    // ─── 2. Employee Master ───
+    { key: 'employees', label: 'Employee Master & Personnel Records', icon: '🧑‍💼', group: 'Employee Master', isParentAccount: false },
+
+    // ─── 3. Prior Period Costs ───
+    { key: 'prior-period', label: 'Prior Period Costs (View / Edit / Upload)', icon: '⏳', group: 'Prior Period Costs', isParentAccount: false },
+
+    // ─── 4. Reports Settings & Analytics ───
+    { key: 'reports', label: 'Reports Settings & Financial Analytics', icon: '📈', group: 'Reports Settings', isParentAccount: false },
+
+    // ─── 5. System Configurations ───
+    { key: 'config', label: 'All Other Configurations (Entities, Depts, Rates, Dimensions)', icon: '⚙️', group: 'All Other Configurations', isParentAccount: false }
+  ],
+
+  SYSTEM_MODULES: [
+    { key: 'employees', label: 'Employee Master & Personnel Records', icon: '🧑‍💼', desc: 'Controls permissions to view, add, edit, delete, and import employee records, salary bands, and designations' },
+    { key: 'prior-period', label: 'Prior Period Costs Access & Upload Settings', icon: '⏳', desc: 'Controls permissions to view, edit, bulk upload, and manage prior year historical reference costs' },
+    { key: 'reports', label: 'Financial Reports & Analytical Settings', icon: '📈', desc: 'Controls access to master department rollups, multi-entity consolidated reports, donor analytics, and exports' },
+    { key: 'config', label: 'All Other System Configurations', icon: '⚙️', desc: 'Controls access to entity setup, department directories, budget cycle deadlines/locks, exchange rates, and dimensions' }
   ],
 
   OPERATIONS: [
@@ -50,6 +72,7 @@ const Auth = {
     await db.ready;
     this._users = await db.getUsers();
     this._roles = await db.getRoles();
+    await this.refreshAllLockStatuses();
 
     const storedUserId = typeof localStorage !== 'undefined'
       ? (localStorage.getItem('noora_active_user_id') || 'user-admin')
@@ -145,17 +168,34 @@ const Auth = {
   },
 
   getCategoryForLineItem(lineItem) {
-    if (!lineItem) return 'other-costs';
+    if (!lineItem) return null;
+    if (typeof lineItem === 'string') {
+      const s = lineItem.toLowerCase();
+      if (this.CATEGORIES.some(c => c.key === s)) return s;
+    }
+    if (lineItem.category && this.CATEGORIES.some(c => c.key === lineItem.category)) {
+      return lineItem.category;
+    }
+
     const parent = String(lineItem.parentAccount || '').toLowerCase();
-    const glDesc = String(lineItem.glDescription || '').toLowerCase();
+    const glDesc = String(lineItem.glDescription || lineItem.itemName || '').toLowerCase();
     const ledger = String(lineItem.ledgerCode || '').trim();
+
+    if (!parent && !glDesc && !ledger) {
+      return lineItem.category || null;
+    }
 
     if (parent.includes('salaries') || glDesc.includes('salaries') || glDesc.includes('wages') || ledger.startsWith('911')) return 'salaries';
     if (parent.includes('other staff') || parent.includes('training') || glDesc.includes('training') || glDesc.includes('development') || ledger.startsWith('913')) return 'other-staff';
-    if (parent.includes('gratuity') || parent.includes('bonus') || glDesc.includes('gratuity') || glDesc.includes('bonus') || ledger.startsWith('912')) return 'gratuity';
+    if (parent.includes('gratuity') || parent.includes('bonus') || parent.includes('retirement') || glDesc.includes('gratuity') || glDesc.includes('bonus') || ledger.startsWith('912')) return 'gratuity';
     if (parent.includes('resource') || parent.includes('eha') || glDesc.includes('consultant') || glDesc.includes('eha') || ledger.startsWith('921')) return 'eha';
-    if (parent.includes('fixed asset') || parent.includes('asset') || parent.includes('capex') || glDesc.includes('laptop') || glDesc.includes('printer')) return 'fixed-assets';
+    if (parent.includes('fixed asset') || parent.includes('asset') || parent.includes('capex') || glDesc.includes('laptop') || glDesc.includes('printer') || ledger.startsWith('113')) return 'fixed-assets';
     if (parent.includes('tot') || glDesc.includes('tot') || glDesc.includes('program')) return 'imp-tot-rates';
+    if (parent.includes('travel') || glDesc.includes('travel') || glDesc.includes('lodging') || glDesc.includes('hotel') || glDesc.includes('air fare') || ledger.startsWith('931')) return 'travel';
+    if (parent.includes('supplies') || parent.includes('printing') || glDesc.includes('printing') || ledger.startsWith('932')) return 'supplies';
+    if (parent.includes('communication') || glDesc.includes('internet') || glDesc.includes('telecommunication') || ledger.startsWith('933')) return 'communication';
+    if (parent.includes('office') || glDesc.includes('software') || glDesc.includes('stationery') || ledger.startsWith('934')) return 'office';
+    if (parent.includes('professional') || glDesc.includes('consultan') || glDesc.includes('consultant') || ledger.startsWith('937')) return 'professional';
     return 'other-costs';
   },
 
@@ -233,46 +273,53 @@ const Auth = {
     const ledgerCode = context?.ledgerCode ? String(context.ledgerCode).trim() : (typeof context === 'string' ? context : null);
     const glDescSlug = context?.glDescription ? Utils.slugify(context.glDescription) : null;
     const directKey = context?.lineKey || ledgerCode || glDescSlug;
+    const targetCat = category || (context ? this.getCategoryForLineItem(context) : null);
+    const userOverrides = this._currentUser?.categoryOverrides || {};
+    const userLineOverrides = this._currentUser?.lineItemOverrides || {};
 
     for (const a of assignments) {
-      // 1. User Line Item Overrides
-      if (a.lineItemOverrides) {
-        const lineOverride = (directKey && a.lineItemOverrides[directKey]) ||
-                             (ledgerCode && a.lineItemOverrides[ledgerCode]) ||
-                             (glDescSlug && a.lineItemOverrides[glDescSlug]);
+      // 1. User Line Item Overrides (Merged user-level and assignment-level overrides)
+      const lineOverrides = { ...userLineOverrides, ...(a.lineItemOverrides || {}) };
+      if (directKey && lineOverrides[directKey]) {
+        const lineOverride = lineOverrides[directKey] ||
+                             (ledgerCode && lineOverrides[ledgerCode]) ||
+                             (glDescSlug && lineOverrides[glDescSlug]);
         if (lineOverride && typeof lineOverride[operation] === 'boolean') {
-          if (lineOverride[operation]) return true;
+          return lineOverride[operation];
         }
       }
 
-      // 2. User Category Overrides
-      if (category && a.categoryOverrides && a.categoryOverrides[category]) {
-        const catOverride = a.categoryOverrides[category];
-        if (typeof catOverride[operation] === 'boolean') {
-          if (catOverride[operation]) return true;
+      // 2. User Category Overrides (Merged user-level and assignment-level overrides)
+      const catOverrides = { ...userOverrides, ...(a.categoryOverrides || {}) };
+      if (targetCat && catOverrides[targetCat]) {
+        if (typeof catOverrides[targetCat][operation] === 'boolean') {
+          return catOverrides[targetCat][operation];
         }
       }
 
-      // 3. Role-Level Permissions
+      // 3. Role-Level Permissions (Defined in Role Hierarchy / Setup: Parent Accounts & Modules)
       const role = this._roles.find(r => r.id === a.roleId);
       if (role) {
-        // 3a. Role Line Item Permissions
-        if (role.lineItemPermissions) {
-          const roleLinePerm = (directKey && role.lineItemPermissions[directKey]) ||
+        // 3a. Role Line Item Permissions (Configured via Granular Line-Item Matrix)
+        if (role.lineItemPermissions && directKey) {
+          const roleLinePerm = role.lineItemPermissions[directKey] ||
                                (ledgerCode && role.lineItemPermissions[ledgerCode]) ||
                                (glDescSlug && role.lineItemPermissions[glDescSlug]);
           if (roleLinePerm && typeof roleLinePerm[operation] === 'boolean') {
-            if (roleLinePerm[operation]) return true;
+            return roleLinePerm[operation];
           }
         }
 
-        // 3b. Role Category Permissions
+        // 3b. Role Parent Account & Module Permissions
         if (role.permissions) {
-          if (category && role.permissions[category]) {
-            if (role.permissions[category][operation] === true) return true;
+          if (targetCat && role.permissions[targetCat] && typeof role.permissions[targetCat][operation] === 'boolean') {
+            return role.permissions[targetCat][operation];
           }
-          if (context?.parentAccount && role.permissions[context.parentAccount]) {
-            if (role.permissions[context.parentAccount][operation] === true) return true;
+          if (category === 'other-costs' && !directKey && (role.permissions['other-costs']?.[operation] === true || role.permissions['travel']?.[operation] === true || role.permissions['supplies']?.[operation] === true || role.permissions['communication']?.[operation] === true || role.permissions['office']?.[operation] === true || role.permissions['professional']?.[operation] === true)) {
+            return true;
+          }
+          if (context?.parentAccount && role.permissions[context.parentAccount] && typeof role.permissions[context.parentAccount][operation] === 'boolean') {
+            return role.permissions[context.parentAccount][operation];
           }
         }
       }
@@ -280,24 +327,85 @@ const Auth = {
     return false;
   },
 
-  async refreshLockStatus(yearId) {
+  async refreshAllLockStatuses() {
+    try {
+      this._lockStatusCache = {};
+      const lockRecs = await db.getAll(STORES.budgetLockStatus);
+      lockRecs.forEach(l => {
+        if (l.yearId && l.status) {
+          this._lockStatusCache[String(l.yearId)] = l.status;
+          if (l.entityId) {
+            this._lockStatusCache[`${l.yearId}_${l.entityId}`] = l.status;
+          }
+        }
+        if (l.id && l.status) {
+          this._lockStatusCache[String(l.id)] = l.status;
+        }
+      });
+      const years = await db.getAll(STORES.budgetYears);
+      years.forEach(y => {
+        const s = y.status || 'draft';
+        this._lockStatusCache[String(y.id)] = s;
+        if (y.year) this._lockStatusCache[String(y.year)] = s;
+        if (y.entityStatuses && typeof y.entityStatuses === 'object') {
+          Object.entries(y.entityStatuses).forEach(([entId, stat]) => {
+            if (stat) {
+              this._lockStatusCache[`${y.id}_${entId}`] = stat;
+              if (y.year) this._lockStatusCache[`${y.year}_${entId}`] = stat;
+            }
+          });
+        }
+      });
+    } catch (e) {
+      console.warn('[Auth] refreshAllLockStatuses error:', e);
+    }
+  },
+
+  async refreshLockStatus(yearId, entityId = null) {
     if (!yearId) return;
     try {
+      if (entityId) {
+        const entityRec = await db.getLockStatus(yearId, entityId);
+        const eStat = entityRec ? entityRec.status : 'draft';
+        this._lockStatusCache[`${yearId}_${entityId}`] = eStat;
+      }
       const lockRec = await db.getLockStatus(yearId);
-      this._lockStatusCache[String(yearId)] = lockRec ? lockRec.status : 'draft';
+      const status = lockRec ? lockRec.status : 'draft';
+      this._lockStatusCache[String(yearId)] = status;
+      if (lockRec?.year) this._lockStatusCache[String(lockRec.year)] = status;
     } catch (e) {
       console.warn('Could not refresh lock status for year ' + yearId, e);
       this._lockStatusCache[String(yearId)] = 'draft';
     }
   },
 
-  getYearStatus(yearId) {
+  getYearStatus(yearId, entityId = null) {
     const yId = String(yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026'));
-    return this._lockStatusCache[yId] || 'active';
+    const numOnly = yId.replace(/[^0-9]/g, '');
+
+    // 1. Check entity-scoped status first if entityId provided
+    if (entityId) {
+      const eKey = `${yId}_${entityId}`;
+      if (this._lockStatusCache[eKey]) {
+        return this._lockStatusCache[eKey];
+      }
+      if (numOnly && this._lockStatusCache[`${numOnly}_${entityId}`]) {
+        return this._lockStatusCache[`${numOnly}_${entityId}`];
+      }
+    }
+
+    // 2. Fall back to year base status
+    if (this._lockStatusCache[yId]) {
+      return this._lockStatusCache[yId];
+    }
+    if (numOnly && this._lockStatusCache[numOnly]) {
+      return this._lockStatusCache[numOnly];
+    }
+    return 'active';
   },
 
-  getYearStatusLabel(yearId) {
-    const status = this.getYearStatus(yearId);
+  getYearStatusLabel(yearId, entityId = null) {
+    const status = this.getYearStatus(yearId, entityId);
     const map = {
       'draft': 'Draft (In Progress)',
       'active': 'Active (Open for Budgeting)',
@@ -309,21 +417,21 @@ const Auth = {
     return map[status] || status;
   },
 
-  isYearEditable(yearId) {
-    const status = this.getYearStatus(yearId);
-    // User Directive: When status is active or draft, only then additions/edits are permitted!
+  isYearEditable(yearId, entityId = null) {
+    const status = this.getYearStatus(yearId, entityId);
+    // Strict Business Rule: ONLY active or draft statuses allow any additions, cell edits, or modifications
     return status === 'draft' || status === 'active';
   },
 
-  isYearLocked(yearId) {
-    // When status changes to anything else (under-review, finance-approved, finalized-locked, closed), additions are NOT permitted!
-    return !this.isYearEditable(yearId);
+  isYearLocked(yearId, entityId = null) {
+    return !this.isYearEditable(yearId, entityId);
   },
 
   _isLockedOperation(operation, context) {
-    const yearId = context && context.yearId ? context.yearId : (typeof App !== 'undefined' ? App.selectedYear : null);
+    const yearId = context && context.yearId ? context.yearId : (typeof App !== 'undefined' ? App.selectedYear : (typeof BudgetEntryModule !== 'undefined' ? BudgetEntryModule._yearId : null));
+    const entityId = context && context.entityId ? context.entityId : (typeof BudgetEntryModule !== 'undefined' ? BudgetEntryModule.currentEntityId : null);
     if (!yearId) return false;
-    if (this.isYearLocked(yearId)) {
+    if (this.isYearLocked(yearId, entityId)) {
       const writeOps = ['add', 'edit', 'delete', 'approve', 'finalize', 'upload', 'import', 'save'];
       return writeOps.includes(operation);
     }
@@ -472,29 +580,35 @@ const Auth = {
 
   enforceCategoryUI(container, context) {
     if (!container) return;
-    const canAdd = this.hasPermission('add', context);
-    const canEdit = this.hasPermission('edit', context);
-    const canDelete = this.hasPermission('delete', context);
+    context = context || {};
+    const yearId = context.yearId || (typeof App !== 'undefined' ? App.selectedYear : (typeof BudgetEntryModule !== 'undefined' ? BudgetEntryModule._yearId : null));
+    const isLocked = yearId ? !this.isYearEditable(yearId) : false;
 
-    if (!canAdd) {
-      container.querySelectorAll('.btn-add-row, button[onclick*="addRow"], button[onclick*="autoPopulate"], button[onclick*="showExpenseInputWizard"], button[onclick*="showExpenseLauncherModal"], button[onclick*="showTravelPackageWizard"], button[onclick*="saveAnnualMatrix"], #btnEmptyNewTrip').forEach(b => {
+    const canAdd = !isLocked && this.hasPermission('add', context);
+    const canEdit = !isLocked && this.hasPermission('edit', context);
+    const canDelete = !isLocked && this.hasPermission('delete', context);
+
+    if (!canAdd || isLocked) {
+      container.querySelectorAll('.btn-add-row, button[onclick*="addRow"], button[onclick*="autoPopulate"], button[onclick*="showExpenseInputWizard"], button[onclick*="showExpenseLauncherModal"], button[onclick*="showTravelPackageWizard"], button[onclick*="saveAnnualMatrix"], #btnEmptyNewTrip, #btnQuickNewExpense, #btnNewTravelPkg').forEach(b => {
         b.style.display = 'none';
       });
     }
-    if (!canEdit) {
+    if (!canEdit || isLocked) {
       container.querySelectorAll('input:not([readonly]), select:not([disabled])').forEach(el => {
         if (!el.classList.contains('filter-control') && !el.closest('.toolbar-selectors') && !el.classList.contains('year-status-selector')) {
           el.setAttribute('disabled', 'true');
+          el.setAttribute('readonly', 'true');
           el.style.pointerEvents = 'none';
           el.style.cursor = 'not-allowed';
           el.style.opacity = '0.85';
+          el.style.background = 'var(--bg-tertiary)';
         }
       });
       container.querySelectorAll('button[onclick*="editExpenseItem"], button[onclick*="editTravelPackage"]').forEach(b => {
         b.style.display = 'none';
       });
     }
-    if (!canDelete) {
+    if (!canDelete || isLocked) {
       container.querySelectorAll('.btn-delete-row, button[onclick*="deleteRow"], button[onclick*="deleteExpenseItem"], button[onclick*="deleteTravelPackage"], button[onclick*="deleteEvent"]').forEach(b => {
         b.style.display = 'none';
       });

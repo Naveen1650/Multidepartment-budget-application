@@ -323,11 +323,21 @@ const Utils = {
     const modal = this.createElement('div', { className: `modal ${sizeClass}`.trim() }, [
       this.createElement('div', { className: 'modal-header' }, [
         this.createElement('h3', { textContent: title }),
-        this.createElement('button', {
-          className: 'modal-close',
-          textContent: '×',
-          onClick: () => overlay.remove()
-        })
+        this.createElement('div', { className: 'flex items-center gap-xs' }, [
+          this.createElement('button', {
+            className: 'modal-fullscreen-toggle',
+            title: 'Toggle Full Screen',
+            textContent: '⛶',
+            onClick: () => {
+              modal.classList.toggle('modal-full');
+            }
+          }),
+          this.createElement('button', {
+            className: 'modal-close',
+            textContent: '×',
+            onClick: () => overlay.remove()
+          })
+        ])
       ]),
       this.createElement('div', { className: 'modal-body' })
     ]);
