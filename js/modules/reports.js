@@ -10,6 +10,13 @@ const ReportsModule = {
   indiaSubTab: 'summary',  // summary | line-items
   entitySubTab: 'summary', // summary | line-items
 
+  isMonthsCollapsed() {
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem('noora_budget_months_collapsed') === 'true';
+    }
+    return false;
+  },
+
   async render(container) {
     const years = await db.getAll(STORES.budgetYears);
     const entities = await db.getAll(STORES.entities);
@@ -39,19 +46,32 @@ const ReportsModule = {
               ${years.map(y => `<option value="${y.id}" ${String(y.id) === String(activeYearObj.id) ? 'selected' : ''}>CY-${y.year}</option>`).join('')}
             </select>
           </div>
-          <button class="btn btn-secondary" onclick="ExcelIOModule.exportReportToExcel(ReportsModule.activeTab)">📥 Export Active Report</button>
-          <button class="btn btn-primary" id="exportFullBookBtn" style="display: ${this.activeTab === 'global-usd' ? 'inline-flex' : 'none'};" onclick="ExcelIOModule.exportReportToExcel('full-book')">📚 Export Full Budget Book (All Sheets)</button>
+          <button class="btn btn-secondary btn-sm flex items-center gap-xs" id="exportReportBtn">
+            <span>📥</span> Export Excel
+          </button>
+          <button class="btn btn-primary btn-sm flex items-center gap-xs" id="exportFullBookBtn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            <span>📗</span> Export Global Budget Book (All Sheets)
+          </button>
         </div>
       </div>
 
-      <div class="tabs" id="reportTabs">
-        <button class="tab ${this.activeTab === 'global-usd' ? 'active' : ''}" data-tab="global-usd">🌐 Global Consolidated (USD)</button>
-        <button class="tab ${this.activeTab === 'india-consolidated' ? 'active' : ''}" data-tab="india-consolidated">🇮🇳 India Consolidated (NHIPL + YAIF)</button>
-        <button class="tab ${this.activeTab === 'entity-summary' ? 'active' : ''}" data-tab="entity-summary">🏢 Single Entity Summary</button>
-        <button class="tab ${this.activeTab === 'dept-summary' ? 'active' : ''}" data-tab="dept-summary">🏛️ Department Summary</button>
-        <button class="tab ${this.activeTab === 'dimensions' ? 'active' : ''}" data-tab="dimensions">🧭 5D Dimension Reports</button>
+      <!-- Report Tabs -->
+      <div class="tabs mb-lg" id="reportTabs">
+        <button class="tab ${this.activeTab === 'global-usd' ? 'active' : ''}" data-tab="global-usd">
+          🌍 Global USD Consolidated
+        </button>
+        <button class="tab ${this.activeTab === 'india-consolidated' ? 'active' : ''}" data-tab="india-consolidated">
+          🇮🇳 India Consolidated (INR)
+        </button>
+        <button class="tab ${this.activeTab === 'entity-summary' ? 'active' : ''}" data-tab="entity-summary">
+          🏢 Entity Summary
+        </button>
+        <button class="tab ${this.activeTab === 'dept-summary' ? 'active' : ''}" data-tab="dept-summary">
+          🏛️ Department Summary
+        </button>
       </div>
 
+      <!-- Report Content Area -->
       <div id="reportContainer"></div>
     `;
 
@@ -79,6 +99,12 @@ const ReportsModule = {
           if (!table) return;
           table.classList.toggle('months-collapsed');
           const isCollapsed = table.classList.contains('months-collapsed');
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('noora_budget_months_collapsed', isCollapsed ? 'true' : 'false');
+          }
+          if (typeof BudgetEntryModule !== 'undefined') {
+            BudgetEntryModule._monthsCollapsedState = isCollapsed;
+          }
           const arrow = th.querySelector('.months-toggle-arrow');
           if (arrow) arrow.innerHTML = isCollapsed ? '&#9654;' : '&#9664;';
           th.title = isCollapsed ? 'Click to expand monthly columns (Jan–Dec)' : 'Click to collapse monthly columns (Jan–Dec)';
@@ -379,14 +405,14 @@ const ReportsModule = {
             </div>
 
             <div class="table-container">
-              <table class="data-table">
+              <table class="data-table ${this.isMonthsCollapsed() ? 'months-collapsed' : ''}">
                 <thead>
                   <tr>
                     <th class="sticky-col">Entity</th>
                     <th>Currency</th>
                     <th class="num">Exchange Rate</th>
                     <th class="num">Total Budget (Local Currency)</th>
-                    <th class="num font-bold total-toggle-th month-group" data-toggle-months title="Click to collapse/expand monthly columns">Total (USD) <span class="months-toggle-arrow">&#9664;</span></th>
+                    <th class="num font-bold total-toggle-th month-group" data-toggle-months title="${this.isMonthsCollapsed() ? 'Click to expand monthly columns (Jan–Dec)' : 'Click to collapse monthly columns (Jan–Dec)'}">Total (USD) <span class="months-toggle-arrow">${this.isMonthsCollapsed() ? '&#9654;' : '&#9664;'}</span></th>
                     ${SEED_DATA.months.map(m => `<th class="num month-group">${m} (USD)</th>`).join('')}
                   </tr>
                 </thead>
@@ -443,14 +469,14 @@ const ReportsModule = {
             </div>
 
             <div class="table-container">
-              <table class="data-table">
+              <table class="data-table ${this.isMonthsCollapsed() ? 'months-collapsed' : ''}">
                 <thead>
                   <tr>
                     <th class="sticky-col-1">Parent Account</th>
                     <th class="sticky-col-2">GL Line Item Description</th>
                     <th>Ledger Code</th>
                     <th>Linked Input Source</th>
-                    <th class="num font-bold total-toggle-th month-group" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${yearObj.year} (USD $) <span class="months-toggle-arrow">&#9664;</span></th>
+                    <th class="num font-bold total-toggle-th month-group" data-toggle-months title="${this.isMonthsCollapsed() ? 'Click to expand monthly columns (Jan–Dec)' : 'Click to collapse monthly columns (Jan–Dec)'}">Total CY-${yearObj.year} (USD $) <span class="months-toggle-arrow">${this.isMonthsCollapsed() ? '&#9654;' : '&#9664;'}</span></th>
                     ${SEED_DATA.months.map(m => `<th class="num month-group">${m}-${yearObj.year} (USD)</th>`).join('')}
                   </tr>
                 </thead>
@@ -561,11 +587,11 @@ const ReportsModule = {
             </div>
 
             <div class="table-container">
-              <table class="data-table">
+              <table class="data-table ${this.isMonthsCollapsed() ? 'months-collapsed' : ''}">
                 <thead>
                   <tr>
                     <th class="sticky-col">India Entity</th>
-                    <th class="num font-bold total-toggle-th month-group" data-toggle-months title="Click to collapse/expand monthly columns">Total (INR ₹) <span class="months-toggle-arrow">&#9664;</span></th>
+                    <th class="num font-bold total-toggle-th month-group" data-toggle-months title="${this.isMonthsCollapsed() ? 'Click to expand monthly columns (Jan–Dec)' : 'Click to collapse monthly columns (Jan–Dec)'}">Total (INR ₹) <span class="months-toggle-arrow">${this.isMonthsCollapsed() ? '&#9654;' : '&#9664;'}</span></th>
                     <th class="num font-bold">Total (USD $)</th>
                     ${SEED_DATA.months.map(m => `<th class="num month-group">${m} (INR ₹)</th>`).join('')}
                   </tr>
@@ -619,14 +645,14 @@ const ReportsModule = {
             </div>
 
             <div class="table-container">
-              <table class="data-table">
+              <table class="data-table ${this.isMonthsCollapsed() ? 'months-collapsed' : ''}">
                 <thead>
                   <tr>
                     <th class="sticky-col-1">Parent Account</th>
                     <th class="sticky-col-2">GL Line Item Description</th>
                     <th>Ledger Code</th>
                     <th>Linked Input Source</th>
-                    <th class="num font-bold total-toggle-th month-group" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${yearObj.year} (INR ₹ & USD $) <span class="months-toggle-arrow">&#9664;</span></th>
+                    <th class="num font-bold total-toggle-th month-group" data-toggle-months title="${this.isMonthsCollapsed() ? 'Click to expand monthly columns (Jan–Dec)' : 'Click to collapse monthly columns (Jan–Dec)'}">Total CY-${yearObj.year} (INR ₹ & USD $) <span class="months-toggle-arrow">${this.isMonthsCollapsed() ? '&#9654;' : '&#9664;'}</span></th>
                     ${SEED_DATA.months.map(m => `<th class="num month-group">${m}-${yearObj.year} (INR ₹)</th>`).join('')}
                   </tr>
                 </thead>
@@ -841,14 +867,14 @@ const ReportsModule = {
             </div>
 
             <div class="table-container">
-              <table class="data-table">
+              <table class="data-table ${this.isMonthsCollapsed() ? 'months-collapsed' : ''}">
                 <thead>
                   <tr>
                     <th class="sticky-col-1">Parent Account</th>
                     <th class="sticky-col-2">GL Line Item Description</th>
                     <th>Ledger Code</th>
                     <th>Linked Input Source</th>
-                    <th class="num font-bold total-toggle-th month-group" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${activeYearObj.year} (${entity.currency} & USD) <span class="months-toggle-arrow">&#9664;</span></th>
+                    <th class="num font-bold total-toggle-th month-group" data-toggle-months title="${this.isMonthsCollapsed() ? 'Click to expand monthly columns (Jan–Dec)' : 'Click to collapse monthly columns (Jan–Dec)'}">Total CY-${activeYearObj.year} (${entity.currency} & USD) <span class="months-toggle-arrow">${this.isMonthsCollapsed() ? '&#9654;' : '&#9664;'}</span></th>
                     ${SEED_DATA.months.map(m => `<th class="num month-group">${m}-${activeYearObj.year}</th>`).join('')}
                   </tr>
                 </thead>
@@ -1229,7 +1255,7 @@ const ReportsModule = {
           </div>
 
           <div class="table-container">
-            <table class="data-table">
+            <table class="data-table ${this.isMonthsCollapsed() ? 'months-collapsed' : ''}">
               <thead>
                 <tr>
                   <th class="sticky-col-1">Parent Account</th>
@@ -1237,7 +1263,7 @@ const ReportsModule = {
                   <th>Ledger Code</th>
                   <th>Linked Input Source</th>
                   <th style="min-width: 130px;">Basis of Expense</th>
-                  <th class="num font-bold total-toggle-th month-group" data-toggle-months title="Click to collapse/expand monthly columns">Total CY-${budgetYear} (${entity.currency} & USD) <span class="months-toggle-arrow">&#9664;</span></th>
+                  <th class="num font-bold total-toggle-th month-group" data-toggle-months title="${this.isMonthsCollapsed() ? 'Click to expand monthly columns (Jan–Dec)' : 'Click to collapse monthly columns (Jan–Dec)'}">Total CY-${budgetYear} (${entity.currency} & USD) <span class="months-toggle-arrow">${this.isMonthsCollapsed() ? '&#9654;' : '&#9664;'}</span></th>
                   ${SEED_DATA.months.map(m => `<th class="num month-group">${m}-${budgetYear}</th>`).join('')}
                   <th class="num font-bold prior-cost-col" style="min-width: 140px; background: #e2e8f0; color: var(--accent-primary);">Prior Period Cost (${entity.currency})</th>
                   <th style="min-width: 180px;">Remarks & Tasks</th>

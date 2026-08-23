@@ -15,6 +15,11 @@ const App = {
     await db.ready;
     await db.seedIfEmpty();
 
+    // Apply custom column width styles if configured
+    if (typeof Utils !== 'undefined' && Utils.ColumnWidths) {
+      Utils.ColumnWidths.applyStyles();
+    }
+
     // Initialize Auth & Active User Session
     if (typeof Auth !== 'undefined') {
       await Auth.init();

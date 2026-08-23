@@ -757,7 +757,272 @@ const Utils = {
         sampleMath: sampleMath
       };
     }
+  },
+
+  // ─── Super Admin Dynamic Column Width System ───
+  ColumnWidths: {
+    STORAGE_KEY: 'noora_custom_column_widths_v1',
+
+    DEFAULT_WIDTHS: {
+      stickyStatus: 110,
+      stickyEmp: 180,
+      stickyCol1: 220,
+      stickyCol2: 240,
+      monthCol: 82,
+      totalCol: 115,
+      remarksCol: 150,
+      basisCol: 140,
+      tagCol: 130
+    },
+
+    getWidths() {
+      try {
+        if (typeof localStorage !== 'undefined') {
+          const stored = localStorage.getItem(this.STORAGE_KEY);
+          if (stored) {
+            return { ...this.DEFAULT_WIDTHS, ...JSON.parse(stored) };
+          }
+        }
+      } catch (e) {
+        console.warn('Error reading custom column widths:', e);
+      }
+      return { ...this.DEFAULT_WIDTHS };
+    },
+
+    setWidths(newWidths) {
+      const merged = { ...this.DEFAULT_WIDTHS, ...newWidths };
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(merged));
+      }
+      this.applyStyles();
+      return merged;
+    },
+
+    resetWidths() {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(this.STORAGE_KEY);
+      }
+      this.applyStyles();
+      return { ...this.DEFAULT_WIDTHS };
+    },
+
+    applyStyles() {
+      if (typeof document === 'undefined') return;
+      const w = this.getWidths();
+      let styleEl = document.getElementById('dynamic-column-widths-style');
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = 'dynamic-column-widths-style';
+        document.head.appendChild(styleEl);
+      }
+
+      const empLeft = w.stickyStatus;
+      const col2Left = w.stickyCol1;
+
+      styleEl.innerHTML = `
+        .data-table th.sticky-col-status,
+        .data-table td.sticky-col-status {
+          width: ${w.stickyStatus}px !important;
+          min-width: ${Math.max(80, w.stickyStatus - 10)}px !important;
+          max-width: ${w.stickyStatus + 15}px !important;
+          left: 0 !important;
+        }
+        .data-table th.sticky-col-emp,
+        .data-table td.sticky-col-emp {
+          width: ${w.stickyEmp}px !important;
+          min-width: ${Math.max(120, w.stickyEmp - 15)}px !important;
+          max-width: ${w.stickyEmp + 20}px !important;
+          left: ${empLeft}px !important;
+        }
+        .data-table th.sticky-col,
+        .data-table td.sticky-col,
+        .data-table th.sticky-col-1,
+        .data-table td.sticky-col-1 {
+          width: ${w.stickyCol1}px !important;
+          min-width: ${Math.max(140, w.stickyCol1 - 15)}px !important;
+          max-width: ${w.stickyCol1 + 20}px !important;
+          left: 0 !important;
+        }
+        .data-table th.sticky-col-2,
+        .data-table td.sticky-col-2 {
+          width: ${w.stickyCol2}px !important;
+          min-width: ${Math.max(150, w.stickyCol2 - 15)}px !important;
+          max-width: ${w.stickyCol2 + 20}px !important;
+          left: ${col2Left}px !important;
+        }
+        .data-table th.month-group,
+        .data-table td.month-col {
+          width: ${w.monthCol}px !important;
+          min-width: ${Math.max(60, w.monthCol - 5)}px !important;
+        }
+        .data-table th.total-toggle-th,
+        .data-table .prior-cost-col {
+          min-width: ${w.totalCol}px !important;
+        }
+        .remarks-cell,
+        td.remarks-cell,
+        .data-table td.remarks-cell,
+        td.editable .field-remarks {
+          width: ${w.remarksCol}px !important;
+          max-width: ${w.remarksCol}px !important;
+          min-width: ${Math.max(90, w.remarksCol - 20)}px !important;
+        }
+        .basis-cell,
+        td.basis-cell,
+        .data-table td.basis-cell,
+        td.editable .field-basis {
+          width: ${w.basisCol}px !important;
+          max-width: ${w.basisCol}px !important;
+          min-width: ${Math.max(80, w.basisCol - 20)}px !important;
+        }
+        .tag-cell,
+        .data-table td.tag-cell,
+        .data-table td select.field-location,
+        .data-table td select.field-donor,
+        .data-table td select.field-activity,
+        .data-table td select.field-condition {
+          min-width: ${w.tagCol}px !important;
+        }
+      `;
+    },
+
+    openSettingsModal() {
+      const w = this.getWidths();
+      const existing = document.getElementById('colWidthsModal');
+      if (existing) existing.remove();
+
+      const modal = document.createElement('div');
+      modal.className = 'modal-backdrop';
+      modal.id = 'colWidthsModal';
+      modal.innerHTML = `
+        <div class="modal card" style="max-width: 580px; width: 95%; background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: 0 20px 45px rgba(0,0,0,0.25);">
+          <div class="modal-header flex justify-between items-center" style="padding: 14px 18px; border-bottom: 1px solid var(--border-subtle);">
+            <div class="flex items-center gap-sm">
+              <span style="font-size: 1.5rem;">📐</span>
+              <div>
+                <h3 class="modal-title" style="margin:0; font-size: 15px; font-weight: 700; color: var(--text-primary);">Adjust Column Widths</h3>
+                <p class="text-tertiary" style="margin: 2px 0 0; font-size: 11px;">Fine-tune table column widths across all pages</p>
+              </div>
+            </div>
+            <button class="modal-close" style="background:none; border:none; font-size: 20px; cursor:pointer; color: var(--text-secondary);" onclick="document.getElementById('colWidthsModal')?.remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 16px 20px; max-height: 65vh; overflow-y: auto;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+              <div class="form-group" style="margin:0;">
+                <label class="form-label font-bold" style="font-size: 11.5px; display: flex; justify-content: space-between;">
+                  <span>Employee Name (Sticky):</span>
+                  <span id="valStickyEmp" class="font-mono text-primary font-bold">${w.stickyEmp}px</span>
+                </label>
+                <input type="range" class="form-range w-full" id="inpStickyEmp" min="130" max="300" step="5" value="${w.stickyEmp}" oninput="document.getElementById('valStickyEmp').textContent = this.value + 'px'">
+              </div>
+
+              <div class="form-group" style="margin:0;">
+                <label class="form-label font-bold" style="font-size: 11.5px; display: flex; justify-content: space-between;">
+                  <span>Status Column (Sticky):</span>
+                  <span id="valStickyStatus" class="font-mono text-primary font-bold">${w.stickyStatus}px</span>
+                </label>
+                <input type="range" class="form-range w-full" id="inpStickyStatus" min="85" max="160" step="5" value="${w.stickyStatus}" oninput="document.getElementById('valStickyStatus').textContent = this.value + 'px'">
+              </div>
+
+              <div class="form-group" style="margin:0;">
+                <label class="form-label font-bold" style="font-size: 11.5px; display: flex; justify-content: space-between;">
+                  <span>Account / Category (Col 1):</span>
+                  <span id="valStickyCol1" class="font-mono text-primary font-bold">${w.stickyCol1}px</span>
+                </label>
+                <input type="range" class="form-range w-full" id="inpStickyCol1" min="150" max="320" step="5" value="${w.stickyCol1}" oninput="document.getElementById('valStickyCol1').textContent = this.value + 'px'">
+              </div>
+
+              <div class="form-group" style="margin:0;">
+                <label class="form-label font-bold" style="font-size: 11.5px; display: flex; justify-content: space-between;">
+                  <span>Line Item Name (Col 2):</span>
+                  <span id="valStickyCol2" class="font-mono text-primary font-bold">${w.stickyCol2}px</span>
+                </label>
+                <input type="range" class="form-range w-full" id="inpStickyCol2" min="160" max="340" step="5" value="${w.stickyCol2}" oninput="document.getElementById('valStickyCol2').textContent = this.value + 'px'">
+              </div>
+
+              <div class="form-group" style="margin:0;">
+                <label class="form-label font-bold" style="font-size: 11.5px; display: flex; justify-content: space-between;">
+                  <span>12 Monthly Columns:</span>
+                  <span id="valMonthCol" class="font-mono text-primary font-bold">${w.monthCol}px</span>
+                </label>
+                <input type="range" class="form-range w-full" id="inpMonthCol" min="65" max="130" step="2" value="${w.monthCol}" oninput="document.getElementById('valMonthCol').textContent = this.value + 'px'">
+              </div>
+
+              <div class="form-group" style="margin:0;">
+                <label class="form-label font-bold" style="font-size: 11.5px; display: flex; justify-content: space-between;">
+                  <span>Total CY Column:</span>
+                  <span id="valTotalCol" class="font-mono text-primary font-bold">${w.totalCol}px</span>
+                </label>
+                <input type="range" class="form-range w-full" id="inpTotalCol" min="90" max="180" step="5" value="${w.totalCol}" oninput="document.getElementById('valTotalCol').textContent = this.value + 'px'">
+              </div>
+
+              <div class="form-group" style="margin:0;">
+                <label class="form-label font-bold" style="font-size: 11.5px; display: flex; justify-content: space-between;">
+                  <span>Remarks Column:</span>
+                  <span id="valRemarksCol" class="font-mono text-primary font-bold">${w.remarksCol}px</span>
+                </label>
+                <input type="range" class="form-range w-full" id="inpRemarksCol" min="100" max="250" step="5" value="${w.remarksCol}" oninput="document.getElementById('valRemarksCol').textContent = this.value + 'px'">
+              </div>
+
+              <div class="form-group" style="margin:0;">
+                <label class="form-label font-bold" style="font-size: 11.5px; display: flex; justify-content: space-between;">
+                  <span>Basis of Expense Column:</span>
+                  <span id="valBasisCol" class="font-mono text-primary font-bold">${w.basisCol}px</span>
+                </label>
+                <input type="range" class="form-range w-full" id="inpBasisCol" min="100" max="250" step="5" value="${w.basisCol}" oninput="document.getElementById('valBasisCol').textContent = this.value + 'px'">
+              </div>
+
+              <div class="form-group" style="margin:0; grid-column: span 2;">
+                <label class="form-label font-bold" style="font-size: 11.5px; display: flex; justify-content: space-between;">
+                  <span>5D Tagging Columns (Location, Donor, Activity, Condition):</span>
+                  <span id="valTagCol" class="font-mono text-primary font-bold">${w.tagCol}px</span>
+                </label>
+                <input type="range" class="form-range w-full" id="inpTagCol" min="95" max="200" step="5" value="${w.tagCol}" oninput="document.getElementById('valTagCol').textContent = this.value + 'px'">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer flex justify-between items-center" style="padding: 12px 18px; border-top: 1px solid var(--border-subtle); background: var(--bg-tertiary);">
+            <button class="btn btn-secondary btn-sm" onclick="Utils.ColumnWidths.resetWidths(); Utils.showToast('Column widths reset to defaults!', 'info'); document.getElementById('colWidthsModal')?.remove();">
+              🔄 Reset to Defaults
+            </button>
+            <div class="flex gap-sm">
+              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('colWidthsModal')?.remove()">Cancel</button>
+              <button class="btn btn-primary btn-sm font-bold" id="btnSaveColWidths">💾 Save & Apply Widths</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+
+      modal.querySelector('#btnSaveColWidths').addEventListener('click', () => {
+        const updated = {
+          stickyEmp: parseInt(document.getElementById('inpStickyEmp').value, 10),
+          stickyStatus: parseInt(document.getElementById('inpStickyStatus').value, 10),
+          stickyCol1: parseInt(document.getElementById('inpStickyCol1').value, 10),
+          stickyCol2: parseInt(document.getElementById('inpStickyCol2').value, 10),
+          monthCol: parseInt(document.getElementById('inpMonthCol').value, 10),
+          totalCol: parseInt(document.getElementById('inpTotalCol').value, 10),
+          remarksCol: parseInt(document.getElementById('inpRemarksCol').value, 10),
+          basisCol: parseInt(document.getElementById('inpBasisCol').value, 10),
+          tagCol: parseInt(document.getElementById('inpTagCol').value, 10)
+        };
+
+        Utils.ColumnWidths.setWidths(updated);
+        Utils.showToast('✓ Custom column widths saved and applied permanently!', 'success');
+        modal.remove();
+      });
+    }
   }
 };
 
-window.Utils = Utils;
+// Initialize styles on load if in browser
+if (typeof document !== 'undefined') {
+  try {
+    Utils.ColumnWidths.applyStyles();
+  } catch (e) {}
+}
+
+if (typeof window !== 'undefined') {
+  window.Utils = Utils;
+}
