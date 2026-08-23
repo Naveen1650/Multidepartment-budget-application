@@ -12,7 +12,12 @@ const Utils = {
     const num = typeof value === 'string' ? parseFloat(value.replace(/,/g, '')) : value;
     if (isNaN(num)) return '';
 
-    const symbols = { USD: '$', INR: '₹', BDT: '৳', IDR: 'Rp', NPR: 'रू' };
+    const symbols = {
+      USD: '$', INR: '₹', BDT: '৳', IDR: 'Rp', NPR: 'रू',
+      KES: 'KSh ', PHP: '₱', GBP: '£', EUR: '€', SGD: 'S$',
+      CAD: 'CA$', AUD: 'A$', NGN: '₦', AED: 'AED ', SAR: 'SAR ',
+      JPY: '¥', MYR: 'RM ', ZAR: 'R ', BRL: 'R$', MXN: '$'
+    };
     const symbol = showSymbol ? (symbols[currency] || currency + ' ') : '';
 
     // Indian number formatting for INR

@@ -48,37 +48,53 @@ const ConfigModule = {
     Utils.$('#addEntityBtn').addEventListener('click', () => this.showEntityForm());
   },
 
-  showEntityForm(entity = null) {
+  async showEntityForm(entity = null) {
     const isEdit = !!entity;
+    const budgetYears = await db.getAll(STORES.budgetYears);
+    const firstYear = budgetYears[0];
+    const defaultRateMap = { INR: 83.5, BDT: 117.0, IDR: 16200, NPR: 133.5, KES: 130.0, PHP: 58.0, GBP: 0.78, EUR: 0.92, SGD: 1.35, CAD: 1.38, AUD: 1.52, NGN: 1600 };
+    const existingRate = entity?.currency ? (firstYear?.conversionRates?.[entity.currency] || defaultRateMap[entity.currency] || 1.0) : 83.5;
+
     const content = `
       <form id="entityForm">
-        <div class="form-group">
-          <label class="form-label">Full Entity Name</label>
-          <input type="text" class="form-input" id="entityName" value="${entity?.name || ''}" placeholder="e.g. Noora Health India Private Limited" required>
+        <div class="form-group mb-sm">
+          <label class="form-label font-bold">Full Entity Name</label>
+          <input type="text" class="form-input" id="entityName" value="${entity?.name || ''}" placeholder="e.g. Noora Health Kenya" required>
         </div>
-        <div class="form-row">
+        <div class="form-row mb-sm">
           <div class="form-group">
-            <label class="form-label">Short Name / Entity</label>
-            <input type="text" class="form-input" id="entityShort" value="${entity?.shortName || ''}" placeholder="e.g. NHIPL" required>
+            <label class="form-label font-bold">Short Name / Entity Code</label>
+            <input type="text" class="form-input" id="entityShort" value="${entity?.shortName || ''}" placeholder="e.g. NH Kenya" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Country Code (Dept Prefix)</label>
-            <input type="text" class="form-input" id="entityPrefix" value="${entity?.deptPrefix || ''}" placeholder="e.g. IN" required>
+            <label class="form-label font-bold">Country Code (Dept Prefix)</label>
+            <input type="text" class="form-input" id="entityPrefix" value="${entity?.deptPrefix || ''}" placeholder="e.g. KE" required>
           </div>
         </div>
-        <div class="form-row">
+        <div class="form-row mb-sm">
           <div class="form-group">
-            <label class="form-label">Country</label>
-            <input type="text" class="form-input" id="entityCountry" value="${entity?.country || ''}" placeholder="e.g. India" required>
+            <label class="form-label font-bold">Country</label>
+            <input type="text" class="form-input" id="entityCountry" value="${entity?.country || ''}" placeholder="e.g. Kenya" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Local Currency</label>
-            <input type="text" class="form-input" id="entityCurrency" value="${entity?.currency || ''}" placeholder="e.g. INR" required>
+            <label class="form-label font-bold">Local Currency</label>
+            <input type="text" class="form-input" id="entityCurrency" value="${entity?.currency || ''}" placeholder="e.g. KES" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Flag Emoji</label>
-            <input type="text" class="form-input" id="entityFlag" value="${entity?.flag || '🏳️'}" placeholder="e.g. 🇮🇳">
+            <label class="form-label font-bold">Flag Emoji</label>
+            <input type="text" class="form-input" id="entityFlag" value="${entity?.flag || '🇰🇪'}" placeholder="e.g. 🇰🇪">
           </div>
+        </div>
+        <div class="form-group" style="background: var(--bg-surface); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-top: 8px;">
+          <label class="form-label font-bold" style="color: var(--accent-primary);">💱 Pre-Approved USD Exchange Rate (1 USD = ? Local Currency)</label>
+          <div class="flex items-center gap-sm">
+            <span style="font-weight: 700; font-size: 13px;">1 USD =</span>
+            <input type="number" step="any" class="form-input" id="entityExchangeRate" value="${existingRate}" placeholder="e.g. 130.0" required style="font-family: monospace; font-weight: 700; max-width: 180px;">
+            <span id="rateCurrencyLabel" style="font-weight: 700; color: var(--text-secondary);">${entity?.currency || 'Local Currency'}</span>
+          </div>
+          <small class="text-tertiary" style="font-size: 11px; display: block; margin-top: 4px;">
+            This exchange rate is automatically synchronized across all existing and future budget cycles.
+          </small>
         </div>
       </form>
     `;
@@ -92,20 +108,72 @@ const ConfigModule = {
           className: 'btn btn-primary',
           textContent: isEdit ? 'Save Changes' : 'Add Entity',
           onClick: async () => {
+            const currency = Utils.$('#entityCurrency').value.trim().toUpperCase();
+            const rateNum = parseFloat(Utils.$('#entityExchangeRate').value) || 1.0;
             const data = {
               id: entity?.id || Utils.slugify(Utils.$('#entityShort').value),
-              name: Utils.$('#entityName').value,
-              shortName: Utils.$('#entityShort').value,
-              deptPrefix: Utils.$('#entityPrefix').value.toUpperCase(),
-              countryCode: Utils.$('#entityPrefix').value.toUpperCase(),
-              country: Utils.$('#entityCountry').value,
-              currency: Utils.$('#entityCurrency').value.toUpperCase(),
-              flag: Utils.$('#entityFlag').value || '🏳️'
+              name: Utils.$('#entityName').value.trim(),
+              shortName: Utils.$('#entityShort').value.trim(),
+              deptPrefix: Utils.$('#entityPrefix').value.trim().toUpperCase(),
+              countryCode: Utils.$('#entityPrefix').value.trim().toUpperCase(),
+              country: Utils.$('#entityCountry').value.trim(),
+              currency: currency,
+              flag: Utils.$('#entityFlag').value.trim() || '🏳️'
             };
+
             await db.put(STORES.entities, data);
-            Utils.showToast(`Entity ${data.shortName} saved!`, 'success');
+
+            // 1. Synchronize currency conversion rates across all budget years
+            const allYears = await db.getAll(STORES.budgetYears);
+            for (const y of allYears) {
+              if (!y.conversionRates) y.conversionRates = { USD: 1.0 };
+              y.conversionRates[currency] = rateNum;
+              await db.put(STORES.budgetYears, y);
+            }
+
+            // 2. Automatically initialize department mappings for the new entity
+            const departments = await db.getAll(STORES.departments);
+            for (const y of allYears) {
+              for (const dept of departments) {
+                const configKey = `${y.id}_${data.id}_${dept.id}`;
+                const existing = await db.get(STORES.entityDeptConfig, configKey);
+                if (!existing) {
+                  await db.put(STORES.entityDeptConfig, {
+                    id: configKey,
+                    yearId: String(y.id),
+                    entityId: data.id,
+                    deptId: dept.id,
+                    isActive: true
+                  });
+                }
+              }
+            }
+
+            // 3. Initialize default location & donor for the new entity if missing
+            const locs = await db.getAll(STORES.locations);
+            if (!locs.some(l => l.entityId === data.id)) {
+              await db.add(STORES.locations, { entityId: data.id, name: `${data.country} — National / HQ Office` });
+            }
+            const donors = await db.getAll(STORES.donors);
+            if (!donors.some(d => d.entityId === data.id)) {
+              await db.add(STORES.donors, { entityId: data.id, name: 'Unrestricted General Fund' });
+            }
+
+            // 4. Audit Log
+            await db.logAudit({
+              category: 'config',
+              action: isEdit ? 'UPDATE_ENTITY' : 'CREATE_ENTITY',
+              recordId: data.id,
+              description: `${isEdit ? 'Updated' : 'Created'} entity "${data.name}" (${data.shortName}) with currency ${data.currency} @ rate ${rateNum}/USD`,
+              changes: { ...data, exchangeRate: rateNum }
+            });
+
+            Utils.showToast(`Entity "${data.shortName}" (${data.currency} @ ${rateNum}/USD) saved & synchronized everywhere!`, 'success');
             close();
-            App.renderCurrentPage();
+            if (typeof App !== 'undefined') {
+              if (App.populateGlobalSelectors) await App.populateGlobalSelectors();
+              if (App.renderCurrentPage) await App.renderCurrentPage();
+            }
           }
         }));
       }
@@ -114,14 +182,35 @@ const ConfigModule = {
 
   async editEntity(id) {
     const entity = await db.get(STORES.entities, id);
-    if (entity) this.showEntityForm(entity);
+    if (entity) await this.showEntityForm(entity);
   },
 
   async deleteEntity(id) {
-    if (await Utils.confirm('Are you sure you want to delete this entity?')) {
+    const entity = await db.get(STORES.entities, id);
+    if (!entity) return;
+    if (await Utils.confirm(`Are you sure you want to delete entity "${entity.shortName}"? This will also remove associated department mappings.`)) {
       await db.delete(STORES.entities, id);
-      Utils.showToast('Entity deleted', 'info');
-      App.renderCurrentPage();
+
+      // Clean up entityDeptConfig for this entity
+      const allConfigs = await db.getAll(STORES.entityDeptConfig);
+      for (const cfg of allConfigs) {
+        if (cfg.entityId === id) {
+          await db.delete(STORES.entityDeptConfig, cfg.id);
+        }
+      }
+
+      await db.logAudit({
+        category: 'config',
+        action: 'DELETE_ENTITY',
+        recordId: id,
+        description: `Deleted entity "${entity.shortName}" (${entity.name})`
+      });
+
+      Utils.showToast(`Entity "${entity.shortName}" deleted`, 'info');
+      if (typeof App !== 'undefined') {
+        if (App.populateGlobalSelectors) await App.populateGlobalSelectors();
+        if (App.renderCurrentPage) await App.renderCurrentPage();
+      }
     }
   },
 
@@ -219,15 +308,43 @@ const ConfigModule = {
           onClick: async () => {
             const data = {
               id: dept?.id || Utils.slugify(Utils.$('#deptCode').value),
-              number: Utils.$('#deptNum').value,
-              codeTemplate: Utils.$('#deptCode').value,
-              name: Utils.$('#deptName').value,
+              number: Utils.$('#deptNum').value.trim(),
+              codeTemplate: Utils.$('#deptCode').value.trim(),
+              name: Utils.$('#deptName').value.trim(),
               scope: Utils.$('#deptScope').value
             };
             await db.put(STORES.departments, data);
-            Utils.showToast(`Department saved!`, 'success');
+
+            // Automatically activate this new department across all budget cycles and entities
+            const allYears = await db.getAll(STORES.budgetYears);
+            const allEntities = await db.getAll(STORES.entities);
+            for (const y of allYears) {
+              for (const ent of allEntities) {
+                const configKey = `${y.id}_${ent.id}_${data.id}`;
+                const existing = await db.get(STORES.entityDeptConfig, configKey);
+                if (!existing) {
+                  await db.put(STORES.entityDeptConfig, {
+                    id: configKey,
+                    yearId: String(y.id),
+                    entityId: ent.id,
+                    deptId: data.id,
+                    isActive: true
+                  });
+                }
+              }
+            }
+
+            await db.logAudit({
+              category: 'config',
+              action: isEdit ? 'UPDATE_DEPT' : 'CREATE_DEPT',
+              recordId: data.id,
+              description: `${isEdit ? 'Updated' : 'Created'} department template "${data.name}" (<code>${data.codeTemplate}</code>) across ${allEntities.length} entities`,
+              changes: data
+            });
+
+            Utils.showToast(`Department "${data.name}" saved & activated across all entities!`, 'success');
             close();
-            App.renderCurrentPage();
+            if (typeof App !== 'undefined' && App.renderCurrentPage) await App.renderCurrentPage();
           }
         }));
       }
@@ -657,8 +774,70 @@ const ConfigModule = {
     });
   },
 
-  showBudgetYearForm() {
+  // ─── Dynamic Currency Rate Inputs Helper ───
+  buildCurrencyRateInputs(entities, currentRates = {}) {
+    const currencyMap = new Map();
+    entities.forEach(e => {
+      const cur = (e.currency || 'USD').toUpperCase();
+      if (cur !== 'USD') {
+        if (!currencyMap.has(cur)) {
+          currencyMap.set(cur, {
+            currency: cur,
+            entities: [e],
+            flag: e.flag || '🏳️',
+            country: e.country || e.shortName
+          });
+        } else {
+          currencyMap.get(cur).entities.push(e);
+        }
+      }
+    });
+
+    if (currencyMap.size === 0) {
+      return `<div class="p-sm text-secondary" style="font-size: 12px; background: var(--bg-surface); border-radius: var(--radius-md);">All configured entities operate in USD base currency. No conversion rates required.</div>`;
+    }
+
+    const defaultPresets = { INR: 83.5, BDT: 117.0, IDR: 16200, NPR: 133.5, KES: 130.0, PHP: 58.0, GBP: 0.78, EUR: 0.92, SGD: 1.35, CAD: 1.38, AUD: 1.52, NGN: 1600 };
+    const items = Array.from(currencyMap.values());
+
+    return `
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+        ${items.map(item => {
+          const cur = item.currency;
+          const rateVal = currentRates[cur] !== undefined ? currentRates[cur] : (defaultPresets[cur] || 1.0);
+          const entNames = item.entities.map(e => e.shortName).join(', ');
+          const flags = item.entities.map(e => e.flag).filter((v, i, a) => a.indexOf(v) === i).join(' ');
+
+          return `
+            <div class="form-group" style="margin: 0; background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 10px; border-radius: var(--radius-md);">
+              <label class="form-label" style="font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                <span>${flags} 1 USD = <strong>${cur}</strong></span>
+                <span class="badge badge-subtle" style="font-size: 10px;">${entNames}</span>
+              </label>
+              <input type="number" step="any" class="form-input dynamic-currency-rate-input" data-currency="${cur}" value="${rateVal}" placeholder="e.g. ${defaultPresets[cur] || 1.0}" required style="font-family: monospace; font-weight: 700;">
+              <span style="font-size: 11px; color: var(--text-tertiary); display: block; margin-top: 2px;">${item.country}</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  },
+
+  extractDynamicRates(container) {
+    const rates = { USD: 1.0 };
+    container.querySelectorAll('.dynamic-currency-rate-input').forEach(input => {
+      const cur = input.getAttribute('data-currency');
+      const val = parseFloat(input.value);
+      if (cur) {
+        rates[cur] = isNaN(val) || val <= 0 ? 1.0 : val;
+      }
+    });
+    return rates;
+  },
+
+  async showBudgetYearForm() {
     const currentYear = Utils.getCurrentYear();
+    const entities = await db.getAll(STORES.entities);
     const content = `
       <form id="yearForm">
         <div class="form-row mb-sm">
@@ -691,26 +870,9 @@ const ConfigModule = {
           </select>
         </div>
 
-        <h4 class="mt-md mb-md">Approved Currency Exchange Rates to USD (Fixed for the Year)</h4>
-        <div class="form-row mb-sm">
-          <div class="form-group">
-            <label class="form-label">1 USD = INR (India)</label>
-            <input type="number" step="0.01" class="form-input" id="rateINR" value="83.50">
-          </div>
-          <div class="form-group">
-            <label class="form-label">1 USD = BDT (Bangladesh)</label>
-            <input type="number" step="0.01" class="form-input" id="rateBDT" value="117.00">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">1 USD = IDR (Indonesia)</label>
-            <input type="number" step="1" class="form-input" id="rateIDR" value="16200">
-          </div>
-          <div class="form-group">
-            <label class="form-label">1 USD = NPR (Nepal)</label>
-            <input type="number" step="0.01" class="form-input" id="rateNPR" value="133.50">
-          </div>
+        <h4 class="mt-md mb-sm" style="font-size: 13px; text-transform: uppercase;">Approved Currency Exchange Rates to USD (Fixed for the Year)</h4>
+        <div id="dynamicYearRatesBox" class="mb-md">
+          ${this.buildCurrencyRateInputs(entities)}
         </div>
       </form>
     `;
@@ -724,6 +886,8 @@ const ConfigModule = {
             const yearVal = Utils.$('#yearNum').value;
             const priorYearVal = Utils.$('#priorYearNum')?.value || String(parseInt(yearVal) - 1);
             const yearId = yearVal.toString();
+            const modalEl = document.querySelector('.modal-body') || document;
+            const conversionRates = ConfigModule.extractDynamicRates(modalEl);
 
             const yearObj = {
               id: yearId,
@@ -731,21 +895,13 @@ const ConfigModule = {
               priorYear: parseInt(priorYearVal) || (parseInt(yearVal) - 1),
               status: Utils.$('#yearStatus').value,
               actualsThroughMonth: Utils.$('#actualsThroughMonth').value,
-              conversionRates: {
-                USD: 1.0,
-                INR: parseFloat(Utils.$('#rateINR').value) || 83.5,
-                BDT: parseFloat(Utils.$('#rateBDT').value) || 117.0,
-                IDR: parseFloat(Utils.$('#rateIDR').value) || 16200,
-                NPR: parseFloat(Utils.$('#rateNPR').value) || 133.5
-              }
+              conversionRates
             };
 
             await db.put(STORES.budgetYears, yearObj);
 
             // Automatically activate all departments for all entities by default
-            const entities = await db.getAll(STORES.entities);
             const departments = await db.getAll(STORES.departments);
-
             for (const entity of entities) {
               for (const dept of departments) {
                 await db.put(STORES.entityDeptConfig, {
@@ -758,10 +914,20 @@ const ConfigModule = {
               }
             }
 
-            Utils.showToast(`Budget Year ${yearVal} created!`, 'success');
+            await db.logAudit({
+              category: 'config',
+              action: 'CREATE_BUDGET_YEAR',
+              recordId: yearId,
+              description: `Created budget year CY-${yearVal} with conversion rates for ${Object.keys(conversionRates).join(', ')}`,
+              changes: yearObj
+            });
+
+            Utils.showToast(`Budget Year ${yearVal} created with ${Object.keys(conversionRates).length} active currency rates!`, 'success');
             close();
-            App.populateGlobalSelectors();
-            App.renderCurrentPage();
+            if (typeof App !== 'undefined') {
+              if (App.populateGlobalSelectors) await App.populateGlobalSelectors();
+              if (App.renderCurrentPage) await App.renderCurrentPage();
+            }
           }
         }));
       }
@@ -772,30 +938,14 @@ const ConfigModule = {
     const year = await db.get(STORES.budgetYears, yearId);
     if (!year) return;
 
-    const rates = year.conversionRates || { USD: 1, INR: 83.5, BDT: 117, IDR: 16200, NPR: 133.5 };
+    const entities = await db.getAll(STORES.entities);
+    const rates = year.conversionRates || { USD: 1.0 };
 
     const content = `
       <form id="ratesForm">
-        <p class="mb-md">Set the pre-approved annual conversion rates to USD for <strong>CY-${year.year}</strong>:</p>
-        <div class="form-row mb-sm">
-          <div class="form-group">
-            <label class="form-label">1 USD = INR (India)</label>
-            <input type="number" step="0.01" class="form-input" id="rateINR" value="${rates.INR}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">1 USD = BDT (Bangladesh)</label>
-            <input type="number" step="0.01" class="form-input" id="rateBDT" value="${rates.BDT}">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">1 USD = IDR (Indonesia)</label>
-            <input type="number" step="1" class="form-input" id="rateIDR" value="${rates.IDR}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">1 USD = NPR (Nepal)</label>
-            <input type="number" step="0.01" class="form-input" id="rateNPR" value="${rates.NPR}">
-          </div>
+        <p class="mb-md">Set the pre-approved annual conversion rates to USD for <strong>CY-${year.year}</strong> across all active entity currencies:</p>
+        <div id="dynamicYearRatesBox" class="mb-md">
+          ${this.buildCurrencyRateInputs(entities, rates)}
         </div>
       </form>
     `;
@@ -806,17 +956,21 @@ const ConfigModule = {
         footer.appendChild(Utils.createElement('button', {
           className: 'btn btn-primary', textContent: 'Save Rates',
           onClick: async () => {
-            year.conversionRates = {
-              USD: 1.0,
-              INR: parseFloat(Utils.$('#rateINR').value) || 83.5,
-              BDT: parseFloat(Utils.$('#rateBDT').value) || 117.0,
-              IDR: parseFloat(Utils.$('#rateIDR').value) || 16200,
-              NPR: parseFloat(Utils.$('#rateNPR').value) || 133.5
-            };
+            const modalEl = document.querySelector('.modal-body') || document;
+            year.conversionRates = ConfigModule.extractDynamicRates(modalEl);
+
             await db.put(STORES.budgetYears, year);
-            Utils.showToast('Rates updated successfully!', 'success');
+            await db.logAudit({
+              category: 'config',
+              action: 'UPDATE_EXCHANGE_RATES',
+              recordId: String(yearId),
+              description: `Updated exchange rates for CY-${year.year}: ${Object.entries(year.conversionRates).map(([k, v]) => `${k}=${v}`).join(', ')}`,
+              changes: year.conversionRates
+            });
+
+            Utils.showToast(`Exchange rates for CY-${year.year} updated successfully!`, 'success');
             close();
-            App.renderCurrentPage();
+            if (typeof App !== 'undefined' && App.renderCurrentPage) await App.renderCurrentPage();
           }
         }));
       }
