@@ -481,6 +481,9 @@ const BudgetEntryModule = {
       .filter(e => (!e.entityId || e.entityId === entity.id) && e.status !== 'Inactive')
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
+    this._masterEmployees = masterEmployees;
+    this._deptEmployees = deptEmployees;
+
     // Filter records for the active subtab AND line-item view permission
     const records = allRecords.filter(r => {
       const isSubMatch = subTab === 'salaries-wages' ? (!r.subCategory || r.subCategory === 'salaries-wages') : (r.subCategory === subTab);
@@ -734,18 +737,19 @@ const BudgetEntryModule = {
       optsHtml = (masterEmployees || []).map(renderEmpOption).join('');
     }
 
-    const lockStyle = isLocked ? 'disabled style="padding: 2px 4px; font-size: 11px; font-weight: 600; cursor: not-allowed; opacity: 0.85; background: var(--bg-tertiary);"' : 'style="padding: 2px 4px; font-size: 11px; font-weight: 600;"';
-    const lockManual = isLocked ? 'disabled readonly style="padding: 2px 4px; font-size: 11px; cursor: not-allowed; opacity: 0.85; background: var(--bg-tertiary);"' : 'style="padding: 2px 4px; font-size: 11px;"';
+    const lockSelectAttr = isLocked ? 'disabled' : '';
+    const lockManualAttr = isLocked ? 'disabled readonly' : '';
+    const lockExtraCss = isLocked ? 'cursor: not-allowed; opacity: 0.85; background: var(--bg-tertiary);' : '';
 
     return `
       <div class="emp-name-cell" style="min-width: 170px; display: flex; flex-direction: column; gap: 3px;">
-        <select class="form-select field-name ${cssClass}" ${lockStyle} ${extraAttrs}>
+        <select class="form-select field-name ${cssClass}" ${lockSelectAttr} ${extraAttrs} style="padding: 2px 4px; font-size: 11px; font-weight: 600; width: 100%; ${lockExtraCss}">
           <option value="">— Select Employee —</option>
           ${optsHtml}
           <option value="__manual__"${showManual ? ' selected' : ''}>✏️ Manual Entry…</option>
         </select>
-        <input type="text" class="field-name-manual" value="${showManual ? savedName : ''}" placeholder="Type name…"
-          ${lockManual} ${showManual ? '' : 'style="display: none;"'}>
+        <input type="text" class="field-name-manual" value="${showManual ? Utils.escapeHtml(savedName) : ''}" placeholder="Type name…"
+          ${lockManualAttr} style="padding: 2px 4px; font-size: 11px; width: 100%; ${lockExtraCss} ${showManual ? 'display: block;' : 'display: none;'}">
       </div>
     `;
   },
@@ -1028,9 +1032,16 @@ const BudgetEntryModule = {
           '.field-new-ctc', '.field-inc-pct', '.field-location'
         ];
 
+        const nameCell = row.querySelector('.sticky-col-emp');
+        const curName = this.getEmpNameFromRow(row);
+        const curCode = row.querySelector('.field-emp-code')?.value || '';
+
         if (isNew) {
           row.classList.add('row-status-new');
           row.classList.remove('row-status-existing');
+          if (nameCell) {
+            nameCell.innerHTML = `<input type="text" class="field-name" value="${Utils.escapeHtml(curName)}" placeholder="New Employee Name" style="padding: 2px 4px; font-size: 11px; width: 100%;">`;
+          }
           if (currentCtcInput) {
             currentCtcInput.disabled = true;
             currentCtcInput.style.background = 'var(--bg-tertiary)';
@@ -1056,6 +1067,16 @@ const BudgetEntryModule = {
         } else {
           row.classList.remove('row-status-new');
           row.classList.add('row-status-existing');
+          if (nameCell) {
+            nameCell.innerHTML = this.buildEmpNameCell(
+              { name: curName, employeeCode: curCode },
+              this._masterEmployees || [],
+              this._deptEmployees || [],
+              dept?.name || '',
+              'mandatory-field',
+              'required'
+            );
+          }
           if (currentCtcInput) {
             currentCtcInput.disabled = false;
             currentCtcInput.style.background = '';
@@ -4219,6 +4240,10 @@ const BudgetEntryModule = {
 
     if (this.activeTab === 'personnel') {
       newRecord.subCategory = this.activePersonnelSubTab || 'salaries-wages';
+      newRecord.employeeStatus = 'New';
+      newRecord.name = '';
+      newRecord.employeeCode = '';
+      newRecord.department = Utils.getDeptName(this._dept, this._entity?.deptPrefix) || '';
     } else if (this.activeTab === 'other-costs' || this.activeTab === 'non-payroll') {
       newRecord.subGroup = 'Operational Costs';
       newRecord.parentAccount = 'Other Expenses';
