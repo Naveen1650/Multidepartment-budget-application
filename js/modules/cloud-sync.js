@@ -3,6 +3,15 @@
 // Modular synchronization engine supporting Supabase / PostgreSQL
 // ============================================================
 
+// Default cloud database configuration (applied automatically for all users on any device)
+const DEFAULT_CLOUD_CONFIG = {
+  enabled: true,
+  url: 'https://bvippstctbtpvrdhxvwk.supabase.co',
+  anonKey: 'sb_publishable_Ax6asJzLrxX58onAlOhGcQ_ftqqDEy6',
+  autoSync: true,
+  provider: 'supabase'
+};
+
 const CloudSyncModule = {
   _client: null,
   _config: {
@@ -28,6 +37,11 @@ const CloudSyncModule = {
 
   loadConfig() {
     try {
+      // Apply built-in default config first (so other users connect automatically)
+      if (DEFAULT_CLOUD_CONFIG.url && DEFAULT_CLOUD_CONFIG.anonKey) {
+        this._config = { ...this._config, ...DEFAULT_CLOUD_CONFIG, enabled: true };
+      }
+      // Apply browser-specific user overrides if saved
       const saved = localStorage.getItem('noora_cloud_sync_config');
       if (saved) {
         this._config = { ...this._config, ...JSON.parse(saved) };
