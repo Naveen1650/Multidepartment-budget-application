@@ -26,6 +26,7 @@ const CloudSyncModule = {
   _lastError: null,
   _syncQueue: [],
   _isSyncing: false,
+  _initialSyncDone: false,
 
   init() {
     this.loadConfig();
@@ -56,8 +57,13 @@ const CloudSyncModule = {
 
   saveConfig(newConfig) {
     this._config = { ...this._config, ...newConfig };
-    localStorage.setItem('noora_cloud_sync_config', JSON.stringify(this._config));
+    try {
+      localStorage.setItem('noora_cloud_sync_config', JSON.stringify(this._config));
+    } catch (e) {
+      console.warn('Could not save cloud sync config:', e);
+    }
     if (this._config.enabled && this._config.url && this._config.anonKey) {
+      this._client = null; // reset client to re-connect with new credentials
       this.connect();
     } else {
       this.disconnect();
@@ -69,6 +75,10 @@ const CloudSyncModule = {
     if (!this._config.url || !this._config.anonKey) {
       this._status = 'local';
       this.updateNavbarBadge();
+      return;
+    }
+
+    if (this._client && this._status === 'connected') {
       return;
     }
 
@@ -85,7 +95,6 @@ const CloudSyncModule = {
       // Test connectivity by checking server ping / budget_years table
       const { data, error } = await this._client.from('budget_years').select('id').limit(1);
       if (error && error.code !== 'PGRST116') {
-        // Table might not exist yet, check connection
         console.warn('Cloud connection warning:', error.message);
       }
 
@@ -94,14 +103,15 @@ const CloudSyncModule = {
       this.updateNavbarBadge();
       this.subscribeRealtime();
 
-      // If auto-sync is enabled, pull remote data into local storage on connect and refresh active view
-      if (this._config.autoSync) {
+      // One-time initial background sync on app load (without infinite loop)
+      if (this._config.autoSync && !this._initialSyncDone) {
+        this._initialSyncDone = true;
         this.downloadAllFromCloud().then(() => {
           if (typeof App !== 'undefined' && App.renderCurrentPage) {
             App.renderCurrentPage();
           }
         }).catch(err => {
-          console.warn('Auto cloud sync download warning:', err);
+          console.warn('Initial cloud sync download warning:', err);
         });
       }
     } catch (err) {
@@ -128,9 +138,7 @@ const CloudSyncModule = {
       if (typeof Utils !== 'undefined' && Utils.showToast) {
         Utils.showToast('🔄 Syncing latest data from Cloud Database...', 'info');
       }
-      await this.downloadAllFromCloud((msg) => {
-        console.log('[CloudSync]', msg);
-      });
+      await this.downloadAllFromCloud();
       if (typeof Utils !== 'undefined' && Utils.showToast) {
         Utils.showToast('✓ Cloud data successfully synchronized!', 'success');
       }
@@ -191,7 +199,9 @@ const CloudSyncModule = {
   // ─── Cloud Sync Operations ───
   async uploadAllToCloud(progressCb = () => {}) {
     if (!this._client) throw new Error('Cloud client is not connected');
+    if (this._isSyncing) return { skipped: true };
 
+    this._isSyncing = true;
     this._status = 'syncing';
     this.updateNavbarBadge();
 
@@ -219,7 +229,6 @@ const CloudSyncModule = {
         progressCb(`Uploading ${table} (${i + 1}/${stores.length})...`);
         const records = await db.getAll(store);
         if (records && records.length > 0) {
-          // Format records for SQL column compatibility (camelCase to snake_case)
           const formatted = records.map(r => this._toSnakeCase(r));
           const { error } = await this._client.from(table).upsert(formatted);
           if (error) console.warn(`Error uploading table ${table}:`, error.message);
@@ -227,22 +236,27 @@ const CloudSyncModule = {
       }
 
       this._config.lastSyncTimestamp = new Date().toISOString();
-      this.saveConfig({ lastSyncTimestamp: this._config.lastSyncTimestamp });
+      try {
+        localStorage.setItem('noora_cloud_sync_config', JSON.stringify(this._config));
+      } catch (e) {}
       this._status = 'connected';
-      this.updateNavbarBadge();
       progressCb('Upload to cloud completed successfully!');
       return { success: true };
     } catch (err) {
       this._status = 'error';
       this._lastError = err.message;
-      this.updateNavbarBadge();
       throw err;
+    } finally {
+      this._isSyncing = false;
+      this.updateNavbarBadge();
     }
   },
 
   async downloadAllFromCloud(progressCb = () => {}) {
     if (!this._client) throw new Error('Cloud client is not connected');
+    if (this._isSyncing) return { skipped: true };
 
+    this._isSyncing = true;
     this._status = 'syncing';
     this.updateNavbarBadge();
 
@@ -278,16 +292,19 @@ const CloudSyncModule = {
       }
 
       this._config.lastSyncTimestamp = new Date().toISOString();
-      this.saveConfig({ lastSyncTimestamp: this._config.lastSyncTimestamp });
+      try {
+        localStorage.setItem('noora_cloud_sync_config', JSON.stringify(this._config));
+      } catch (e) {}
       this._status = 'connected';
-      this.updateNavbarBadge();
       progressCb('Download from cloud completed successfully!');
       return { success: true };
     } catch (err) {
       this._status = 'error';
       this._lastError = err.message;
-      this.updateNavbarBadge();
       throw err;
+    } finally {
+      this._isSyncing = false;
+      this.updateNavbarBadge();
     }
   },
 
