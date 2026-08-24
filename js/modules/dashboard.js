@@ -102,20 +102,7 @@ const DashboardModule = {
           <h2>Executive Budget Dashboard</h2>
           <p>Consolidated country and entity totals aggregated from <strong>Total Dept Costs</strong> for <strong>${yearLabel}</strong></p>
         </div>
-        <div class="flex items-center gap-sm">
-          ${typeof CloudSyncModule !== 'undefined' && CloudSyncModule._status === 'connected' ? `
-            <button class="btn btn-secondary" onclick="CloudSyncModule.syncNow()" title="Cloud database is connected. Click to refresh latest cloud data." style="display: inline-flex; align-items: center; gap: 6px; border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.08); color: #047857; font-weight: 600;">
-              <span>🟢</span> <span>Cloud Connected</span> <span style="font-size: 11px; opacity: 0.8; margin-left: 2px;">(🔄 Sync Now)</span>
-            </button>
-          ` : typeof CloudSyncModule !== 'undefined' && (CloudSyncModule._status === 'syncing' || CloudSyncModule._status === 'connecting') ? `
-            <button class="btn btn-secondary" disabled style="display: inline-flex; align-items: center; gap: 6px; border-color: rgba(59, 130, 246, 0.4); color: #2563eb;">
-              <span>🔄</span> <span>Connecting Cloud...</span>
-            </button>
-          ` : `
-            <button class="btn btn-secondary" onclick="App.navigateTo('config-cloud-sync')" title="Running in local storage. Click to configure Supabase cloud sync." style="display: inline-flex; align-items: center; gap: 6px; border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.06); color: #b45309; font-weight: 600;">
-              <span>☁️</span> <span>Local Mode</span> <span style="font-size: 11px; opacity: 0.8; margin-left: 2px;">(⚙️ Link Cloud)</span>
-            </button>
-          `}
+        <div>
           <button class="btn btn-primary" onclick="App.navigateTo('budget-entry')">✏️ Enter Budget Data</button>
         </div>
       </div>

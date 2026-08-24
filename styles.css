@@ -2364,62 +2364,66 @@ tr.exp-breakdown-row td {
    ════════════════════════════════════════════════════════════ */
 
 .cloud-sync-badge-container {
-  display: flex;
-  align-items: center;
-}
-
-.cloud-sync-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 9999px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
+  margin-right: 4px;
+}
+
+.cloud-blip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: transparent;
   border: 1px solid transparent;
+  cursor: pointer;
+  position: relative;
   transition: all var(--transition-fast);
+  padding: 0;
+  opacity: 0.85;
+}
+
+.cloud-blip-btn:hover {
+  opacity: 1;
   background: var(--bg-tertiary);
-  color: var(--text-secondary);
+  border-color: var(--border-color);
 }
 
-.cloud-sync-pill:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+.cloud-blip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  transition: all var(--transition-fast);
+  display: inline-block;
 }
 
-.cloud-badge-local {
-  background: rgba(245, 158, 11, 0.12);
-  border-color: rgba(245, 158, 11, 0.3);
-  color: #d97706;
+.cloud-blip-dot.connected {
+  background-color: #10b981;
+  box-shadow: 0 0 4px rgba(16, 185, 129, 0.4);
 }
 
-.cloud-badge-connected {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.3);
-  color: #059669;
+.cloud-blip-dot.local {
+  background-color: #94a3b8;
+  opacity: 0.6;
 }
 
-.cloud-badge-syncing, .cloud-badge-connecting {
-  background: rgba(59, 130, 246, 0.12);
-  border-color: rgba(59, 130, 246, 0.3);
-  color: #2563eb;
+.cloud-blip-dot.syncing, .cloud-blip-dot.connecting {
+  background-color: #3b82f6;
+  box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+  animation: blipPulse 1.5s infinite;
 }
 
-.cloud-badge-error {
-  background: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.3);
-  color: #dc2626;
+.cloud-blip-dot.error {
+  background-color: #ef4444;
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.4);
 }
 
-.cloud-pill-icon {
-  font-size: 13px;
-  line-height: 1;
-}
-
-.cloud-pill-text {
-  font-size: 11.5px;
-  letter-spacing: 0.2px;
+@keyframes blipPulse {
+  0% { transform: scale(0.9); opacity: 0.5; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.5; }
 }
 
 .cloud-settings-card {

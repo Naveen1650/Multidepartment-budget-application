@@ -347,37 +347,26 @@ const CloudSyncModule = {
     const container = document.getElementById('cloud-sync-badge-container');
     if (!container) return;
 
-    let badgeClass = 'cloud-badge-local';
-    let icon = '☁️';
-    let label = 'Trial / Local Mode';
-    let tooltip = 'Running with instant browser storage. Click to connect cloud database.';
+    let dotClass = 'local';
+    let tooltip = 'Storage: Local Offline Mode (Click to configure cloud)';
 
     if (this._status === 'connecting') {
-      badgeClass = 'cloud-badge-connecting';
-      icon = '🔄';
-      label = 'Connecting Cloud...';
-      tooltip = 'Attempting connection to cloud instance...';
+      dotClass = 'connecting';
+      tooltip = 'Cloud Database: Connecting...';
     } else if (this._status === 'connected') {
-      badgeClass = 'cloud-badge-connected';
-      icon = '🟢';
-      label = 'Cloud Synced';
-      tooltip = `Connected to cloud (${this._config.url}). Real-time sync active.`;
+      dotClass = 'connected';
+      tooltip = 'Cloud Database: Connected & Synced (Supabase)';
     } else if (this._status === 'syncing') {
-      badgeClass = 'cloud-badge-syncing';
-      icon = '🔄';
-      label = 'Syncing...';
-      tooltip = 'Synchronizing changes with cloud database...';
+      dotClass = 'syncing';
+      tooltip = 'Cloud Database: Synchronizing...';
     } else if (this._status === 'error') {
-      badgeClass = 'cloud-badge-error';
-      icon = '⚠️';
-      label = 'Cloud Disconnected';
-      tooltip = `Error: ${this._lastError || 'Could not reach cloud database. Working in offline trial mode.'}`;
+      dotClass = 'error';
+      tooltip = `Cloud Database: Offline (${this._lastError || 'Disconnected'})`;
     }
 
     container.innerHTML = `
-      <button type="button" class="cloud-sync-pill ${badgeClass}" onclick="ConfigModule.openSettingsModal('cloud-sync')" title="${tooltip}">
-        <span class="cloud-pill-icon">${icon}</span>
-        <span class="cloud-pill-text">${label}</span>
+      <button type="button" class="cloud-blip-btn" onclick="ConfigModule.openSettingsModal('cloud-sync')" title="${tooltip}" aria-label="${tooltip}">
+        <span class="cloud-blip-dot ${dotClass}"></span>
       </button>
     `;
   }
