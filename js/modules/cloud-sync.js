@@ -41,10 +41,13 @@ const CloudSyncModule = {
       if (DEFAULT_CLOUD_CONFIG.url && DEFAULT_CLOUD_CONFIG.anonKey) {
         this._config = { ...this._config, ...DEFAULT_CLOUD_CONFIG, enabled: true };
       }
-      // Apply browser-specific user overrides if saved
+      // Apply browser-specific user overrides if saved and valid
       const saved = localStorage.getItem('noora_cloud_sync_config');
       if (saved) {
-        this._config = { ...this._config, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.url && parsed.anonKey) {
+          this._config = { ...this._config, ...parsed };
+        }
       }
     } catch (e) {
       console.warn('Failed to load cloud sync config:', e);
