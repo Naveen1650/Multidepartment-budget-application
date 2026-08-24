@@ -354,6 +354,11 @@ const App = {
       Utils.TableResizer.init(content);
     }
 
+    // Refresh cloud sync badge on navbar
+    if (typeof CloudSyncModule !== 'undefined') {
+      CloudSyncModule.updateNavbarBadge();
+    }
+
     // Refresh notification badge on every page render
     await this.updateNotificationBadge();
   },

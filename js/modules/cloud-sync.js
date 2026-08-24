@@ -76,11 +76,54 @@ const CloudSyncModule = {
       this._lastError = null;
       this.updateNavbarBadge();
       this.subscribeRealtime();
+
+      // If auto-sync is enabled, pull remote data into local storage on connect and refresh active view
+      if (this._config.autoSync) {
+        this.downloadAllFromCloud().then(() => {
+          if (typeof App !== 'undefined' && App.renderCurrentPage) {
+            App.renderCurrentPage();
+          }
+        }).catch(err => {
+          console.warn('Auto cloud sync download warning:', err);
+        });
+      }
     } catch (err) {
       console.error('Cloud connection failed:', err);
       this._status = 'error';
       this._lastError = err.message || 'Connection failed';
       this.updateNavbarBadge();
+    }
+  },
+
+  async syncNow() {
+    if (!this._client) {
+      if (this._config.url && this._config.anonKey) {
+        await this.connect();
+      } else {
+        if (typeof Utils !== 'undefined' && Utils.showToast) {
+          Utils.showToast('Cloud database is not configured. Please enter your credentials in Cloud Settings.', 'warning');
+        }
+        if (typeof App !== 'undefined') App.navigateTo('config-cloud-sync');
+        return;
+      }
+    }
+    try {
+      if (typeof Utils !== 'undefined' && Utils.showToast) {
+        Utils.showToast('🔄 Syncing latest data from Cloud Database...', 'info');
+      }
+      await this.downloadAllFromCloud((msg) => {
+        console.log('[CloudSync]', msg);
+      });
+      if (typeof Utils !== 'undefined' && Utils.showToast) {
+        Utils.showToast('✓ Cloud data successfully synchronized!', 'success');
+      }
+      if (typeof App !== 'undefined' && App.renderCurrentPage) {
+        App.renderCurrentPage();
+      }
+    } catch (err) {
+      if (typeof Utils !== 'undefined' && Utils.showToast) {
+        Utils.showToast(`Sync failed: ${err.message}`, 'danger');
+      }
     }
   },
 
