@@ -1946,6 +1946,7 @@ const BudgetEntryModule = {
       return;
     }
 
+    await this.ensureTemplateSyncsClean(yearId, entity.id, dept.id);
     let records = await db.getBudgetData(STORES.nonPayrollCost, yearId, entity.id, dept.id);
     const coa = await db.getAll(STORES.chartOfAccounts);
     const travelPackagesRaw = await db.getBudgetData(STORES.travelPackages, yearId, entity.id, dept.id);
@@ -3302,6 +3303,23 @@ const BudgetEntryModule = {
       return;
     }
 
+    const item = await db.get(STORES.nonPayrollCost, id);
+    if (!item) return;
+
+    if (item.isTravelPackage && item.travelPackageId) {
+      if (await Utils.confirm('Delete this Travel Package item and all its associated category lines?')) {
+        await db.delete(STORES.travelPackages, item.travelPackageId);
+        const existingNp = await db.getBudgetData(STORES.nonPayrollCost, yearId, this._entity.id, this._dept.id);
+        const matchingNp = existingNp.filter(r => r.travelPackageId === item.travelPackageId);
+        for (const r of matchingNp) {
+          await db.delete(STORES.nonPayrollCost, r.id);
+        }
+        Utils.showToast('Travel package deleted', 'info');
+        await this.renderGrid(this._entity, this._dept, this._budgetYear, this._actualsMonth);
+      }
+      return;
+    }
+
     if (await Utils.confirm('Delete this expense line item?')) {
       await db.delete(STORES.nonPayrollCost, id);
       Utils.showToast('Expense item deleted', 'info');
@@ -3592,42 +3610,12 @@ const BudgetEntryModule = {
             } else {
               savedPkgId = await db.add(STORES.travelPackages, pkgRecord);
             }
+            pkgRecord.id = savedPkgId;
 
-            // Save / Update corresponding 1-liner month-wise budget row in STORES.nonPayrollCost
-            const existingNonPayroll = await db.getBudgetData(STORES.nonPayrollCost, yearId, entity.id, dept.id);
-            let npRow = existingNonPayroll.find(r => r.travelPackageId === savedPkgId || (isEdit && r.travelPackageId === existingPackage.id));
+            // Sync itemized COA line records to STORES.nonPayrollCost
+            await BudgetEntryModule.syncTravelPackageToNonPayroll(pkgRecord);
 
-            const nonPayrollData = {
-              ...(npRow || {}),
-              yearId,
-              entityId: entity.id,
-              deptId: dept.id,
-              isTravelPackage: true,
-              travelPackageId: savedPkgId,
-              categoryKey: 'travel',
-              subGroup: 'Direct Cost',
-              parentAccount: 'Travel & Lodging Expenses',
-              glDescription: `Travel & Lodging — ${employeeName} (${destinationLocation})`,
-              ledgerCode: '93100',
-              employeeName,
-              itemName: travelDetails,
-              basisOfExpense: basisSummary,
-              monthlyValues,
-              totalCY,
-              activity,
-              location,
-              donor,
-              conditionArea,
-              remarks
-            };
-
-            if (npRow?.id) {
-              await db.put(STORES.nonPayrollCost, nonPayrollData);
-            } else {
-              await db.add(STORES.nonPayrollCost, nonPayrollData);
-            }
-
-            Utils.showToast(isEdit ? 'Travel package updated!' : 'Travel package saved & linked as 1-liner budget!', 'success');
+            Utils.showToast(isEdit ? 'Travel package updated!' : 'Travel package saved & linked to respective budget line items!', 'success');
             close();
 
             // Re-render
@@ -3781,6 +3769,95 @@ const BudgetEntryModule = {
     this.showTravelPackageWizard(this._yearId, this._entity, this._dept, this._locations, this._donors, this._activities, this._conditionAreas, pkg);
   },
 
+  // Synchronize Travel Package itemized costs into nonPayrollCost so they automatically flow into standard COA line items (93101, 93102, 93103, 93104, 93105)
+  async syncTravelPackageToNonPayroll(pkgRecord) {
+    const yearId = String(pkgRecord.yearId);
+    const entityId = pkgRecord.entityId;
+    const deptId = pkgRecord.deptId;
+    const pkgId = pkgRecord.id;
+
+    const existingNonPayroll = await db.getBudgetData(STORES.nonPayrollCost, yearId, entityId, deptId);
+    // Delete all existing non-payroll records linked to this travel package
+    const existingLinked = existingNonPayroll.filter(r => r.travelPackageId === pkgId || (r.isTravelPackage && r.travelPackageId === pkgId));
+    for (const r of existingLinked) {
+      await db.delete(STORES.nonPayrollCost, r.id);
+    }
+
+    const itemMeta = [
+      { id: 'hotel', label: '🏨 Hotel Accommodation', unit: 'Days / Nights', rateKey: 'hotelPerDay', glDesc: 'Hotel Accommodation', code: '93101' },
+      { id: 'food', label: '🍽️ Food Expenses', unit: 'Days', rateKey: 'foodPerDay', glDesc: 'Food Expenses', code: '93102' },
+      { id: 'cab', label: '🚕 Local Cab / Auto', unit: 'Days', rateKey: 'cabPerDay', glDesc: 'Cab/Auto', code: '93104' },
+      { id: 'airfare', label: '✈️ Air Fare', unit: 'Flights / Tickets', rateKey: 'airfarePerTrip', glDesc: 'Air fare', code: '93103' },
+      { id: 'bustrain', label: '🚆 Bus / Train', unit: 'Trips', rateKey: 'busTrainPerTrip', glDesc: 'Bus/Train', code: '93105' }
+    ];
+
+    const matrix = pkgRecord.unitMatrix || [];
+    const activeRate = pkgRecord.activeRate || {};
+
+    for (let rIdx = 0; rIdx < itemMeta.length; rIdx++) {
+      const item = itemMeta[rIdx];
+      const rate = activeRate[item.rateKey] || 0;
+      const rowUnits = matrix[rIdx] || Array(12).fill(0);
+
+      const monthlyValues = {};
+      let itemTotal = 0;
+      let totalUnits = 0;
+
+      for (let m = 0; m < 12; m++) {
+        const qty = Utils.parseNumber(rowUnits[m]) || 0;
+        const val = qty * rate;
+        monthlyValues[m] = val;
+        itemTotal += val;
+        totalUnits += qty;
+      }
+
+      if (itemTotal > 0) {
+        const glInfo = Utils.getGlInfo(item.code);
+        const nonPayrollData = {
+          yearId,
+          entityId,
+          deptId,
+          isTravelPackage: true,
+          travelPackageId: pkgId,
+          travelItemKey: item.id,
+          categoryKey: 'travel',
+          subGroup: 'Direct Cost',
+          parentAccount: glInfo.parent || 'Travel & Lodging Expenses',
+          glDescription: glInfo.desc || item.glDesc,
+          ledgerCode: item.code,
+          employeeName: pkgRecord.employeeName || 'Staff',
+          itemName: `${pkgRecord.travelDetails || 'Travel'} — ${item.glDesc}`,
+          basisOfExpense: `${pkgRecord.employeeName} (${pkgRecord.destinationLocation}): ${totalUnits} ${item.unit} @ ${Utils.formatCurrency(rate, 'INR')}`,
+          monthlyValues,
+          totalCY: itemTotal,
+          activity: pkgRecord.activity,
+          location: pkgRecord.location || pkgRecord.destinationLocation,
+          donor: pkgRecord.donor,
+          conditionArea: pkgRecord.conditionArea,
+          remarks: `[Travel Pkg: ${pkgRecord.travelDetails || 'Trip'}] ${pkgRecord.employeeName} (${pkgRecord.destinationLocation}) - ${item.glDesc} (${totalUnits} ${item.unit})`
+        };
+
+        await db.add(STORES.nonPayrollCost, nonPayrollData);
+      }
+    }
+  },
+
+  // Auto-heal / migrate any legacy travel package entries that had synthetic 93100
+  async ensureTemplateSyncsClean(yearId, entityId, deptId) {
+    try {
+      const allNp = await db.getBudgetData(STORES.nonPayrollCost, yearId, entityId, deptId);
+      const legacyTravel = allNp.filter(r => r.isTravelPackage && (r.ledgerCode === '93100' || !r.travelItemKey));
+      if (legacyTravel.length > 0) {
+        const allPkgs = await db.getBudgetData(STORES.travelPackages, yearId, entityId, deptId);
+        for (const pkg of allPkgs) {
+          await this.syncTravelPackageToNonPayroll(pkg);
+        }
+      }
+    } catch (e) {
+      console.warn('Could not auto-heal template syncs:', e);
+    }
+  },
+
   async deleteTravelPackage(id) {
     const yearId = this._yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026');
     if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
@@ -3788,14 +3865,14 @@ const BudgetEntryModule = {
       return;
     }
 
-    if (await Utils.confirm('Delete this Travel Package and its 1-liner budget?')) {
+    if (await Utils.confirm('Delete this Travel Package and its budget lines?')) {
       await db.delete(STORES.travelPackages, id);
 
-      // Also delete the associated non-payroll row
+      // Also delete all associated non-payroll rows
       const existingNp = await db.getBudgetData(STORES.nonPayrollCost, this._yearId, this._entity.id, this._dept.id);
-      const matchingNp = existingNp.find(r => r.travelPackageId === id);
-      if (matchingNp?.id) {
-        await db.delete(STORES.nonPayrollCost, matchingNp.id);
+      const matchingNp = existingNp.filter(r => r.travelPackageId === id || (r.isTravelPackage && r.travelPackageId === id));
+      for (const r of matchingNp) {
+        await db.delete(STORES.nonPayrollCost, r.id);
       }
 
       Utils.showToast('Travel package deleted', 'info');
@@ -3805,6 +3882,7 @@ const BudgetEntryModule = {
 
   // ─── Total Dept Cost Grid (Master Summary Linked from Input Sheets) ───
   async renderTotalCostGrid(container, yearId, entity, dept, budgetYear) {
+    await this.ensureTemplateSyncsClean(yearId, entity.id, dept.id);
     const coa = await db.getAll(STORES.chartOfAccounts);
 
     // Fetch all input records for this department & year

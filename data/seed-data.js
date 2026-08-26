@@ -213,6 +213,7 @@ const SEED_DATA = {
     { subGroup: 'Direct Cost', parentAccount: 'Office Expenses', glDescription: 'Office Equipment Expense', ledgerCode: '93405' },
 
     // Non-Payroll — Indirect Cost
+    { subGroup: 'Indirect Cost', parentAccount: 'Professional & Consultancy Charges', glDescription: 'Professional Charges', ledgerCode: '93701' },
     { subGroup: 'Indirect Cost', parentAccount: 'Professional & Consultancy Charges', glDescription: 'Admin Consultants', ledgerCode: '93703' },
 
     // Fixed Assets

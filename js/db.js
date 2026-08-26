@@ -468,6 +468,16 @@ class BudgetDB {
       if (SEED_DATA.samplePersonnel) {
         await this.putMany(STORES.payrollPersonnel, SEED_DATA.samplePersonnel);
       }
+    } else {
+      // Ensure any newly added standard COA accounts (e.g. 93701) are present
+      if (this.db.objectStoreNames.contains(STORES.chartOfAccounts)) {
+        const existingCoa = await this.getAll(STORES.chartOfAccounts);
+        for (const account of (SEED_DATA.chartOfAccounts || [])) {
+          if (!existingCoa.some(c => String(c.ledgerCode).trim() === String(account.ledgerCode).trim())) {
+            await this.add(STORES.chartOfAccounts, account);
+          }
+        }
+      }
     }
 
     // Always ensure travelRates and employeesMaster are populated if empty

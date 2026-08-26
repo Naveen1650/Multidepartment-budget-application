@@ -2499,9 +2499,14 @@ const ImpTotModule = {
 
   // Synchronize ToT Event costs into nonPayrollCost so they automatically flow into Other Costs & Total Dept Cost
   async syncEventToNonPayroll(eventObj) {
-    const allNonPayroll = await db.getBudgetData(STORES.nonPayrollCost, eventObj.yearId, eventObj.entityId, eventObj.deptId);
+    const yearId = String(eventObj.yearId);
+    const entityId = eventObj.entityId;
+    const deptId = eventObj.deptId;
+    const eventId = eventObj.id;
+
+    const allNonPayroll = await db.getBudgetData(STORES.nonPayrollCost, yearId, entityId, deptId);
     // Remove existing linked records for this event
-    const existingLinked = allNonPayroll.filter(r => r.impTotEventId === eventObj.id);
+    const existingLinked = allNonPayroll.filter(r => r.impTotEventId === eventId || (r.isImpTot && r.impTotEventId === eventId));
     for (const r of existingLinked) {
       await db.delete(STORES.nonPayrollCost, r.id);
     }
@@ -2513,17 +2518,18 @@ const ImpTotModule = {
       if (line.isSelected === false || !line.amount || line.amount <= 0) return;
 
       const code = line.ledgerCode || '93201';
+      const glInfo = Utils.getGlInfo(code);
       if (!coaGroups[code]) {
         coaGroups[code] = {
           ledgerCode: code,
-          parentAccount: line.parentAccount || 'Other Costs',
-          glDescription: line.description.replace(/^[^\s]+\s/, ''), // Remove leading emoji
+          parentAccount: glInfo.parent || 'Supplies & Printing Costs',
+          glDescription: glInfo.desc || 'Other Direct Expenses',
           totalAmount: 0,
           remarks: []
         };
       }
       coaGroups[code].totalAmount += line.amount;
-      coaGroups[code].remarks.push(`${line.description}: ${Utils.formatCurrency(line.amount, 'INR')}`);
+      coaGroups[code].remarks.push(`${line.description || glInfo.desc}: ${Utils.formatCurrency(line.amount, 'INR')}`);
     });
 
     // Create nonPayrollCost row for each GL code with amount in the scheduled month
@@ -2533,9 +2539,9 @@ const ImpTotModule = {
       monthlyValues[eventObj.monthIdx] = g.totalAmount;
 
       const nonPayrollItem = {
-        yearId: eventObj.yearId,
-        entityId: eventObj.entityId,
-        deptId: eventObj.deptId,
+        yearId: yearId,
+        entityId: entityId,
+        deptId: deptId,
         parentAccount: g.parentAccount,
         glDescription: g.glDescription,
         ledgerCode: g.ledgerCode,
@@ -2545,11 +2551,12 @@ const ImpTotModule = {
         location: eventObj.location,
         donor: eventObj.donor,
         conditionArea: eventObj.conditionArea,
+        basisOfExpense: `[IMP ToT ${SEED_DATA.months[eventObj.monthIdx]}] ${eventObj.scaleSummary} — ${g.glDescription}`,
         remarks: `[IMP ToT ${SEED_DATA.months[eventObj.monthIdx]}] ${eventObj.scaleSummary} (${g.remarks.join(', ')})`,
         monthlyValues: monthlyValues,
         totalCY: g.totalAmount,
         isImpTot: true,
-        impTotEventId: eventObj.id
+        impTotEventId: eventId
       };
 
       await db.add(STORES.nonPayrollCost, nonPayrollItem);
@@ -2581,20 +2588,24 @@ const ImpTotModule = {
   },
 
   async deleteEvent(eventId) {
-    const yearId = this._yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026');
-    const entityId = this._entity?.id;
+    const existing = await db.get(STORES.impTotEvents, eventId);
+    const yearId = existing?.yearId || this._yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026');
+    const entityId = existing?.entityId || this._entity?.id;
+    const deptId = existing?.deptId || this._dept?.id;
+
     if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entityId)) {
       Utils.showToast(`🔒 Deletions are disabled: Entity status is "${Auth.getYearStatusLabel(yearId, entityId)}". Only Draft or Active statuses permit modifications.`, 'warning');
       return;
     }
 
-    if (!confirm('Are you sure you want to delete this training event? It will also remove the linked budget lines from Other Costs.')) {
-      return;
-    }
+    const confirmed = typeof Utils !== 'undefined' && Utils.confirm 
+      ? await Utils.confirm('Are you sure you want to delete this training event? It will also remove the linked budget lines from Other Costs.')
+      : (typeof confirm !== 'undefined' ? confirm('Are you sure you want to delete this training event? It will also remove the linked budget lines from Other Costs.') : true);
+    if (!confirmed) return;
 
     // Delete linked nonPayroll rows
-    const allNonPayroll = await db.getBudgetData(STORES.nonPayrollCost, this._yearId, this._entity.id, this._dept.id);
-    const existingLinked = allNonPayroll.filter(r => r.impTotEventId === eventId);
+    const allNonPayroll = await db.getBudgetData(STORES.nonPayrollCost, yearId, entityId, deptId);
+    const existingLinked = allNonPayroll.filter(r => r.impTotEventId === eventId || (r.isImpTot && r.impTotEventId === eventId));
     for (const r of existingLinked) {
       await db.delete(STORES.nonPayrollCost, r.id);
     }
@@ -2607,7 +2618,7 @@ const ImpTotModule = {
         await BudgetEntryModule.renderGrid(BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._budgetYear, BudgetEntryModule._actualsMonth || 'Oct');
       }
     } else if (this._container) {
-      await this.render(this._container, this._yearId, this._entity, this._dept, this._budgetYear, this._locations, this._donors, this._activities, this._conditionAreas);
+      await this.render(this._container, yearId, this._entity, this._dept, this._budgetYear, this._locations, this._donors, this._activities, this._conditionAreas);
     }
   }
 };
