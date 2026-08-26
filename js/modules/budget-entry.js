@@ -2549,57 +2549,58 @@ const BudgetEntryModule = {
     }
 
     const content = `
-      <div style="font-size: var(--font-size-sm); padding: 8px;">
+      <div style="font-size: var(--font-size-sm); padding: 8px 4px;">
         <p class="text-secondary mb-lg" style="font-size: 13px;">Select an expense category below to open its full-screen structured input format with employee assignment, 12-month calculation schedule, and justification remarks.</p>
 
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;">
           <!-- 1. Travel & Lodging -->
-          <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); transition: all 0.2s;" onclick="Utils.closeModal(); BudgetEntryModule.showTravelPackageWizard('${yearId}', BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._locations, BudgetEntryModule._donors, BudgetEntryModule._activities, BudgetEntryModule._conditionAreas);">
-            <div style="font-size: 2.2rem; margin-bottom: 8px;">✈️</div>
-            <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.1rem;">Travel & Lodging Package</h3>
-            <p class="text-secondary" style="font-size: 12px; line-height: 1.5;">Hotel, Food, Cab, Airfare, and Train trips with automated location benchmark rates.</p>
+          <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); background: var(--bg-card); display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; min-height: 185px; border-radius: var(--radius-lg); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: var(--shadow-sm);" onclick="Utils.closeModal(); BudgetEntryModule.showTravelPackageWizard('${yearId}', BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._locations, BudgetEntryModule._donors, BudgetEntryModule._activities, BudgetEntryModule._conditionAreas);">
+            <div style="font-size: 2.8rem; margin-bottom: 10px; line-height: 1;">✈️</div>
+            <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.05rem;">Travel &amp; Lodging</h3>
+            <p class="text-secondary" style="font-size: 11.5px; line-height: 1.4; margin: 0;">Hotel, Food, Cab, Airfare, and Train benchmark trips.</p>
           </div>
 
           <!-- 2. Supplies & Printing -->
-          <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); transition: all 0.2s;" onclick="Utils.closeModal(); BudgetEntryModule.showExpenseInputWizard('supplies');">
-            <div style="font-size: 2.2rem; margin-bottom: 8px;">🖨️</div>
-            <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.1rem;">Supplies & Printing Costs</h3>
-            <p class="text-secondary" style="font-size: 12px; line-height: 1.5;">Training kits, booklets, banners, leaflets, and project operating materials.</p>
+          <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); background: var(--bg-card); display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; min-height: 185px; border-radius: var(--radius-lg); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: var(--shadow-sm);" onclick="Utils.closeModal(); BudgetEntryModule.showExpenseInputWizard('supplies');">
+            <div style="font-size: 2.8rem; margin-bottom: 10px; line-height: 1;">🖨️</div>
+            <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.05rem;">Supplies &amp; Printing</h3>
+            <p class="text-secondary" style="font-size: 11.5px; line-height: 1.4; margin: 0;">Training kits, booklets, banners, leaflets, and project supplies.</p>
           </div>
 
           <!-- 3. Communication Cost -->
-          <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); transition: all 0.2s;" onclick="Utils.closeModal(); BudgetEntryModule.showExpenseInputWizard('communication');">
-            <div style="font-size: 2.2rem; margin-bottom: 8px;">📡</div>
-            <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.1rem;">Communication Expenses</h3>
-            <p class="text-secondary" style="font-size: 12px; line-height: 1.5;">Broadband internet, courier/postage, mobile SIMs, and bulk messaging APIs.</p>
+          <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); background: var(--bg-card); display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; min-height: 185px; border-radius: var(--radius-lg); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: var(--shadow-sm);" onclick="Utils.closeModal(); BudgetEntryModule.showExpenseInputWizard('communication');">
+            <div style="font-size: 2.8rem; margin-bottom: 10px; line-height: 1;">📡</div>
+            <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.05rem;">Communication</h3>
+            <p class="text-secondary" style="font-size: 11.5px; line-height: 1.4; margin: 0;">Broadband internet, courier/postage, mobile SIMs, and messaging.</p>
           </div>
 
           <!-- 4. Office Expenses -->
-          <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); transition: all 0.2s;" onclick="Utils.closeModal(); BudgetEntryModule.showExpenseInputWizard('office');">
-            <div style="font-size: 2.2rem; margin-bottom: 8px;">🏢</div>
-            <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.1rem;">Office Expenses</h3>
-            <p class="text-secondary" style="font-size: 12px; line-height: 1.5;">Software subscriptions, stationery, equipment maintenance, and facility expenses.</p>
+          <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); background: var(--bg-card); display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; min-height: 185px; border-radius: var(--radius-lg); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: var(--shadow-sm);" onclick="Utils.closeModal(); BudgetEntryModule.showExpenseInputWizard('office');">
+            <div style="font-size: 2.8rem; margin-bottom: 10px; line-height: 1;">🏢</div>
+            <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.05rem;">Office Expenses</h3>
+            <p class="text-secondary" style="font-size: 11.5px; line-height: 1.4; margin: 0;">Software licenses, stationery, equipment maintenance, and facility.</p>
           </div>
 
           <!-- 5. Professional & Consultancy -->
-          <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); transition: all 0.2s;" onclick="Utils.closeModal(); BudgetEntryModule.showExpenseInputWizard('professional');">
-            <div style="font-size: 2.2rem; margin-bottom: 8px;">💼</div>
-            <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.1rem;">Professional & Consulting</h3>
-            <p class="text-secondary" style="font-size: 12px; line-height: 1.5;">Admin advisors, legal/audit counsel, translation agencies, and creative design scopes.</p>
+          <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); background: var(--bg-card); display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; min-height: 185px; border-radius: var(--radius-lg); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: var(--shadow-sm);" onclick="Utils.closeModal(); BudgetEntryModule.showExpenseInputWizard('professional');">
+            <div style="font-size: 2.8rem; margin-bottom: 10px; line-height: 1;">💼</div>
+            <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.05rem;">Professional &amp; Consulting</h3>
+            <p class="text-secondary" style="font-size: 11.5px; line-height: 1.4; margin: 0;">Admin advisors, legal/audit, translators, and creative design.</p>
           </div>
 
           <!-- 6. Custom / Other -->
-          <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); transition: all 0.2s;" onclick="Utils.closeModal(); BudgetEntryModule.showExpenseInputWizard('other');">
-            <div style="font-size: 2.2rem; margin-bottom: 8px;">📑</div>
-            <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.1rem;">Other Expense Lines</h3>
-            <p class="text-secondary" style="font-size: 12px; line-height: 1.5;">Any other general or custom non-payroll operating line items.</p>
+          <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); background: var(--bg-card); display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; min-height: 185px; border-radius: var(--radius-lg); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: var(--shadow-sm);" onclick="Utils.closeModal(); BudgetEntryModule.showExpenseInputWizard('other');">
+            <div style="font-size: 2.8rem; margin-bottom: 10px; line-height: 1;">📑</div>
+            <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.05rem;">Other Expense Lines</h3>
+            <p class="text-secondary" style="font-size: 11.5px; line-height: 1.4; margin: 0;">Any other general or custom non-payroll operating line items.</p>
           </div>
 
           ${(typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(dept)) ? `
             <!-- 7. 🎯 ToT Program Budget / Training Package -->
-            <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); transition: all 0.2s;" onclick="Utils.closeModal(); BudgetEntryModule.activeTab = 'other-costs'; BudgetEntryModule.activeOtherCostSubTab = 'tot'; BudgetEntryModule.renderGrid(BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._budgetYear, BudgetEntryModule._actualsMonth);">
-              <div style="font-size: 2.2rem; margin-bottom: 8px;">🎯</div>
-              <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.1rem;">ToT Program Training Matrix</h3>
-              <p class="text-secondary" style="font-size: 12px; line-height: 1.5;">Annual Batch Matrix Planner for State ToTs, Refresher Trainings, MO Trainings, HWC District ToTs, Facility Launches, and Supervision visits.</p>
+            <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); background: var(--bg-card); display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; min-height: 185px; border-radius: var(--radius-lg); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: var(--shadow-sm);" onclick="Utils.closeModal(); BudgetEntryModule.activeTab = 'other-costs'; BudgetEntryModule.activeOtherCostSubTab = 'tot'; BudgetEntryModule.renderGrid(BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._budgetYear, BudgetEntryModule._actualsMonth);">
+              <div style="font-size: 2.8rem; margin-bottom: 10px; line-height: 1;">🎯</div>
+              <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.05rem;">ToT Program Matrix</h3>
+              <p class="text-secondary" style="font-size: 11.5px; line-height: 1.4; margin: 0;">Annual Batch Matrix Planner for State ToTs, Refresher, MO Trainings.</p>
             </div>
           ` : ''}
         </div>
@@ -2607,8 +2608,8 @@ const BudgetEntryModule = {
     `;
 
     Utils.showModal('➕ Add New Expense Item', content, {
-      size: 'full',
-      modalWidth: '92vw',
+      size: 'lg',
+      modalWidth: '880px',
       footer: (footer, close) => {
         footer.appendChild(Utils.createElement('button', { className: 'btn btn-ghost', textContent: 'Close (Esc)', onClick: close }));
       }
