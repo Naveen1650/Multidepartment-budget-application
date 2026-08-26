@@ -1196,6 +1196,110 @@ const Utils = {
         Utils.showToast(`Reset column width to default (${def}px)`, 'info');
       }
     }
+  },
+
+  // ─── Prioritized Employee Options Builder (Department Staff on Top, followed by All Other Staff) ───
+  buildEmployeeSelectOptionsHtml({
+    allEmployees = [],
+    currentDept = null,
+    currentPersonnel = [],
+    selectedName = '',
+    placeholder = 'Select Employee...',
+    allowCustom = true,
+    customLabel = '✏️ Manual Entry / Custom Name...'
+  } = {}) {
+    const clean = s => String(s || '').trim().toLowerCase();
+    const selClean = clean(selectedName);
+
+    const currentDeptId = currentDept?.id || (typeof currentDept === 'string' ? currentDept : '');
+    const currentDeptName = typeof currentDept === 'object' && currentDept?.name ? currentDept.name : '';
+
+    // Collect department employee names & IDs from personnel and active dept
+    const deptEmpIds = new Set();
+    const deptEmpNames = new Set();
+
+    (currentPersonnel || []).forEach(p => {
+      if (p.name) deptEmpNames.add(clean(p.name));
+      if (p.employeeId) deptEmpIds.add(String(p.employeeId));
+    });
+
+    const deptEmployees = [];
+    const otherEmployees = [];
+    const seenNames = new Set();
+
+    (allEmployees || []).forEach(e => {
+      if (!e || !e.name) return;
+      const eNameClean = clean(e.name);
+      if (seenNames.has(eNameClean)) return;
+      seenNames.add(eNameClean);
+
+      const isDept = (currentDeptId && (clean(e.deptId) === clean(currentDeptId) || clean(e.dept) === clean(currentDeptId))) ||
+                     (currentDeptName && clean(e.department) === clean(currentDeptName)) ||
+                     deptEmpIds.has(String(e.id)) ||
+                     deptEmpNames.has(eNameClean);
+
+      const empItem = {
+        name: e.name,
+        designation: e.designation || '',
+        department: e.department || e.deptId || '',
+        isDept
+      };
+
+      if (isDept) {
+        deptEmployees.push(empItem);
+      } else {
+        otherEmployees.push(empItem);
+      }
+    });
+
+    // Also include any personnel in currentPersonnel that were not in allEmployees
+    (currentPersonnel || []).forEach(p => {
+      if (!p || !p.name) return;
+      const pNameClean = clean(p.name);
+      if (!seenNames.has(pNameClean)) {
+        seenNames.add(pNameClean);
+        deptEmployees.push({
+          name: p.name,
+          designation: p.designation || '',
+          department: currentDeptName,
+          isDept: true
+        });
+      }
+    });
+
+    // Sort alphabetically within each group
+    deptEmployees.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    otherEmployees.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    const renderOption = (e, isDept) => {
+      const isSel = selClean && clean(e.name) === selClean;
+      const subInfo = e.designation ? ` (${e.designation})` : (!isDept && e.department ? ` (${e.department})` : '');
+      return `<option value="${Utils.escapeHtml(e.name)}" ${isSel ? 'selected' : ''}>👤 ${Utils.escapeHtml(e.name)}${subInfo}</option>`;
+    };
+
+    let html = placeholder ? `<option value="">${placeholder}</option>` : '';
+
+    if (deptEmployees.length > 0) {
+      const label = currentDeptName ? `── Department Staff (${currentDeptName}) ──` : `── Department Staff (${deptEmployees.length}) ──`;
+      html += `<optgroup label="${label}">
+        ${deptEmployees.map(e => renderOption(e, true)).join('')}
+      </optgroup>`;
+    }
+
+    if (otherEmployees.length > 0) {
+      html += `<optgroup label="── Other Department Staff (${otherEmployees.length}) ──">
+        ${otherEmployees.map(e => renderOption(e, false)).join('')}
+      </optgroup>`;
+    } else if (deptEmployees.length === 0) {
+      html += `<option value="Staff">👤 Staff</option>`;
+    }
+
+    if (allowCustom) {
+      const isCustom = selClean && !seenNames.has(selClean) && selClean !== '__custom__';
+      html += `<option value="__CUSTOM__" ${isCustom ? 'selected' : ''}>${customLabel}</option>`;
+    }
+
+    return html;
   }
 };
 

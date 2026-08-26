@@ -1728,8 +1728,9 @@ const BudgetEntryModule = {
 
     const totalCost = records.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
 
-    // Load entity-scoped employees for name dropdown
+    // Load entity-scoped employees for name dropdown with department employees prioritized
     const allMasterEmps = await db.getEmployeesMaster();
+    const deptEmployees = allMasterEmps.filter(e => e.entityId === entity.id && (e.deptId === dept.id || e.dept === dept.id) && e.status !== 'Inactive');
     const masterEmps = allMasterEmps
       .filter(e => e.entityId === entity.id && e.status !== 'Inactive')
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
@@ -1798,7 +1799,7 @@ const BudgetEntryModule = {
             ` : `
               ${records.map(r => `
                 <tr data-id="${r.id}">
-                  <td class="sticky-col-1">${this.buildEmpNameCell({ name: r.employeeName || r.name || '' }, masterEmps, [], '', '', '', isLocked)}</td>
+                  <td class="sticky-col-1">${this.buildEmpNameCell({ name: r.employeeName || r.name || '' }, masterEmps, deptEmployees, deptDisplayName, '', '', isLocked)}</td>
                   <td class="sticky-col-2 editable"><input type="text" class="field-asset" value="${r.assetType || ''}" placeholder="Laptop/Printer" ${lockAttr}></td>
                   <td class="editable"><input type="text" class="field-model" value="${r.model || ''}" placeholder="Macbook Air/Pro/Lenovo" ${lockAttr}></td>
                   <td class="num font-bold field-total-cy">${Utils.formatNumber(r.totalCY || 0)}</td>
@@ -2690,7 +2691,6 @@ const BudgetEntryModule = {
       }
     });
   },
-
   // ─── Universal Multi-Line Structured Expense Input Wizard ───
   async showExpenseInputWizard(categoryKey = 'supplies', existingRecord = null, defaultCoa = null) {
     const isEdit = !!existingRecord;
@@ -2702,17 +2702,24 @@ const BudgetEntryModule = {
 
     const entity = this._entity;
     const dept = this._dept;
+    const isImpDept = typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(dept);
     const locations = this._locations || await db.getLocationsForEntity(entity.id);
     const donors = this._donors || await db.getDonorsForEntity(entity.id);
     const activities = this._activities || await db.getAll(STORES.activities);
     const conditionAreas = this._conditionAreas || await db.getAll(STORES.conditionAreas);
 
-    const masterEmployees = await db.getEmployeesMaster(entity.id);
+    const allMasterEmployees = await db.getEmployeesMaster(entity.id);
     const personnel = await db.getBudgetData(STORES.payrollPersonnel, yearId, entity.id, dept.id);
-    const employeeNames = Array.from(new Set([
-      ...masterEmployees.map(e => e.name),
-      ...personnel.map(p => p.name)
-    ].filter(Boolean))).sort();
+    const initialEmp = existingRecord?.employeeName || '';
+    const empOptionsHtml = Utils.buildEmployeeSelectOptionsHtml({
+      allEmployees: allMasterEmployees,
+      currentDept: dept,
+      currentPersonnel: personnel,
+      selectedName: initialEmp,
+      placeholder: '👤 Staff (General / Non-Specific)',
+      allowCustom: true,
+      customLabel: '✏️ Custom Name...'
+    });
 
     const coaRaw = await db.getAll(STORES.chartOfAccounts);
     // Filter strictly to Other Costs operating accounts (exclude payroll, benefits, EHA consultants, and fixed assets)
@@ -2727,7 +2734,6 @@ const BudgetEntryModule = {
     };
 
     const meta = titles[categoryKey] || titles.other;
-    const initialEmp = existingRecord?.employeeName || employeeNames[0] || '';
 
     // Group Chart of Accounts by Parent Account for organized dropdown selection
     const coaGroups = {};
@@ -2820,88 +2826,97 @@ const BudgetEntryModule = {
           <!-- Line Item Header Bar -->
           <div class="flex justify-between items-center mb-sm" style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
             <div class="flex items-center gap-sm">
-              <span class="badge badge-primary font-bold" style="font-size: 11px;">Line Item #${index + 1} (Editing)</span>
-              <span class="font-bold exp-line-header-title" style="color: var(--text-primary); font-size: 13px;">${item.glDescription || 'New Line Item'}</span>
-              <span class="text-tertiary font-mono" style="font-size: 11px;">(${item.ledgerCode || 'COA'})</span>
+              <span class="badge badge-primary font-bold" style="font-size: 11px;">Line Item #${index + 1}</span>
+              <strong class="exp-line-header-title" style="color: var(--text-primary); font-size: 13px;">${item.glDescription || 'Expense Line'}</strong>
             </div>
             <div class="flex items-center gap-sm">
-              <span class="badge badge-subtle exp-line-total-badge" style="font-size: 12px; font-weight: 700; color: var(--accent-secondary);">Total: ${Utils.formatCurrency(item.totalCY || 0, entity.currency)}</span>
               ${!isEdit && lineItems.length > 1 ? `
-                <button type="button" class="btn btn-ghost btn-sm btn-collapse-line" data-index="${index}" title="Reduce to single line summary">▲ Collapse</button>
-                <button type="button" class="btn btn-ghost btn-sm text-danger btn-delete-line" data-index="${index}" title="Remove this line item">🗑️ Remove</button>
+                <button type="button" class="btn btn-ghost btn-sm text-danger btn-delete-line" data-index="${index}" title="Delete this line">🗑️ Remove</button>
               ` : ''}
+              <button type="button" class="btn btn-secondary btn-sm btn-collapse-line" data-index="${index}" title="Minimize line card">▲ Collapse</button>
             </div>
           </div>
 
-          <!-- 2-Column: COA Selection & Specific Purpose -->
-          <div style="display: grid; grid-template-columns: 1.2fr 1.2fr; gap: 14px;" class="mb-sm">
-            <div class="form-group mb-none">
-              <label class="form-label font-bold" style="font-size: 12px;">Chart of Accounts Line <span style="color: var(--danger);">*</span></label>
-              <select class="form-select exp-coa-select" data-index="${index}" style="font-size: 12px;">
+          <!-- Line Item Metadata Grid -->
+          <div class="form-row mb-sm" style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
+            <div class="form-group mb-xs">
+              <label class="form-label font-bold" style="font-size: 11px;">GL Account / Ledger Line <span style="color: var(--danger);">*</span></label>
+              <select class="form-select exp-coa-select" style="font-size: 12px;">
                 ${renderCoaOptionsHtml(item.ledgerCode, item.glDescription)}
               </select>
-              <div class="custom-coa-inputs mt-xs" data-index="${index}" style="display: ${item.ledgerCode === '__CUSTOM_COA__' || (!coaAll.some(c => c.ledgerCode === item.ledgerCode) && item.ledgerCode) ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr; gap: 8px;">
-                <input type="text" class="form-input exp-custom-parent" placeholder="Parent Account (e.g. Supplies)" value="${item.parentAccount || ''}">
-                <input type="text" class="form-input exp-custom-gl" placeholder="GL Description" value="${item.glDescription || ''}">
-              </div>
             </div>
-
-            <div class="form-group mb-none">
-              <label class="form-label font-bold" style="font-size: 12px;">Item Name / Specific Purpose <span style="color: var(--danger);">*</span></label>
-              <input type="text" class="form-input exp-item-name" data-index="${index}" placeholder="e.g. Patient Counseling Leaflets (10,000 Copies), Figma License" value="${item.itemName || ''}" required>
+            <div class="form-group mb-xs">
+              <label class="form-label font-bold" style="font-size: 11px;">Line Item Name / Specific Details <span style="color: var(--danger);">*</span></label>
+              <input type="text" class="form-input exp-item-name" placeholder="e.g. Training Handouts for District Batches" value="${item.itemName || ''}" required style="font-size: 12px;">
             </div>
           </div>
 
-          <!-- Line Remarks & Calculation Mode Selector -->
-          <div style="display: grid; grid-template-columns: 1.3fr 1.1fr; gap: 14px;" class="mb-sm">
-            <div class="form-group mb-none">
-              <label class="form-label" style="font-size: 11px;">Remarks for Amount Addition / Justification</label>
-              <input type="text" class="form-input exp-line-remarks" data-index="${index}" placeholder="Explain project requirement, headcount basis, or vendor quotation..." value="${item.remarks || ''}">
+          <!-- Custom COA Input Fields (Visible when custom option selected) -->
+          <div class="form-row mb-sm custom-coa-inputs" style="display: ${item.ledgerCode === '93999' && !coaAll.some(c => c.ledgerCode === item.ledgerCode) ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group mb-xs">
+              <label class="form-label" style="font-size: 11px;">Custom Parent Account</label>
+              <input type="text" class="form-input exp-custom-parent" value="${item.parentAccount || meta.defaultParent}" placeholder="e.g. Other Operating Expenses" style="font-size: 12px;">
             </div>
+            <div class="form-group mb-xs">
+              <label class="form-label" style="font-size: 11px;">Custom GL Description</label>
+              <input type="text" class="form-input exp-custom-gl" value="${item.glDescription || meta.defaultGl}" placeholder="e.g. Special Project Supplies" style="font-size: 12px;">
+            </div>
+          </div>
 
-            <div class="form-group mb-none flex items-center justify-end gap-sm" style="margin-top: 18px;">
-              <label class="form-radio" style="font-size: 11px; cursor: pointer;">
-                <input type="radio" name="calcMode_${index}" value="schedule" class="exp-calc-mode" data-index="${index}" ${item.calcMode !== 'unit' ? 'checked' : ''}>
-                <span>📅 Direct Monthly Amounts</span>
+          <!-- Remarks / Justification -->
+          <div class="form-group mb-sm">
+            <label class="form-label font-bold" style="font-size: 11px;">Remarks for Amount Addition / Justification <span style="color: var(--danger);">*</span></label>
+            <input type="text" class="form-input exp-line-remarks" placeholder="Provide justification or basis for budgeting this line item..." value="${item.remarks || ''}" required style="font-size: 12px;">
+          </div>
+
+          <!-- Calculation Mode Switcher -->
+          <div class="p-xs px-sm mb-sm flex items-center justify-between" style="background: rgba(139, 92, 246, 0.05); border: 1px solid rgba(139, 92, 246, 0.15); border-radius: 6px;">
+            <span class="font-bold text-secondary" style="font-size: 11px;">Calculation Basis:</span>
+            <div class="flex items-center gap-md">
+              <label class="flex items-center gap-xs cursor-pointer" style="font-size: 11px;">
+                <input type="radio" name="calcMode_${index}" value="schedule" class="exp-calc-mode" ${item.calcMode === 'schedule' ? 'checked' : ''}>
+                <span>📅 Direct Monthly Amount (${entity.currency}/Month)</span>
               </label>
-              <label class="form-radio" style="font-size: 11px; cursor: pointer;">
-                <input type="radio" name="calcMode_${index}" value="unit" class="exp-calc-mode" data-index="${index}" ${item.calcMode === 'unit' ? 'checked' : ''}>
-                <span>🔢 Unit Rate × Monthly Qty</span>
+              <label class="flex items-center gap-xs cursor-pointer" style="font-size: 11px;">
+                <input type="radio" name="calcMode_${index}" value="unit" class="exp-calc-mode" ${item.calcMode === 'unit' ? 'checked' : ''}>
+                <span>🔢 Unit Rate &times; Monthly Quantity</span>
               </label>
             </div>
           </div>
 
-          <!-- Unit Rate Row (Visible in Unit Mode) -->
-          <div class="unit-rate-config-row mb-sm" data-index="${index}" style="display: ${item.calcMode === 'unit' ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr; gap: 14px; background: var(--bg-tertiary); padding: 8px 12px; border-radius: 6px;">
-            <div class="form-group mb-none">
-              <label class="form-label" style="font-size: 11px;">Unit Name / Measure</label>
-              <input type="text" class="form-input exp-unit-name" data-index="${index}" placeholder="e.g. Copies, Packs, Licenses, Months, Hours" value="${item.unitName || 'Units'}">
+          <!-- Unit Rate Config Row (Visible when unit mode selected) -->
+          <div class="form-row mb-sm unit-rate-config-row" style="display: ${item.calcMode === 'unit' ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr; gap: 12px; background: #faf5ff; padding: 8px 12px; border-radius: 6px; border: 1px solid #e9d5ff;">
+            <div class="form-group mb-xs">
+              <label class="form-label font-bold" style="font-size: 11px; color: #7e22ce;">Unit Name / Metric</label>
+              <input type="text" class="form-input exp-unit-name" value="${item.unitName || 'Units'}" placeholder="e.g. Kits, Licenses, Packages" style="font-size: 12px;">
             </div>
-            <div class="form-group mb-none">
-              <label class="form-label" style="font-size: 11px;">Rate Per Unit (${entity.currency})</label>
-              <input type="number" class="form-input font-mono font-bold exp-unit-rate" data-index="${index}" min="0" step="any" placeholder="0" value="${item.unitRate || 0}">
+            <div class="form-group mb-xs">
+              <label class="form-label font-bold" style="font-size: 11px; color: #7e22ce;">Unit Rate (${entity.currency})</label>
+              <input type="number" class="form-input exp-unit-rate" value="${item.unitRate || 0}" min="0" step="any" placeholder="0" style="font-size: 12px; font-weight: 700;">
             </div>
           </div>
 
-          <!-- 12-Month Input Matrix -->
-          <div class="table-container mb-none">
-            <table class="data-table" style="font-size: 11px; width: 100%;">
+          <!-- 12-Month Grid Table -->
+          <div class="table-container mb-xs" style="max-height: 220px;">
+            <table class="data-table" style="font-size: 11.5px;">
               <thead>
                 <tr>
-                  <th style="min-width: 120px;" class="exp-header-mode-label" data-index="${index}">${item.calcMode === 'unit' ? 'Monthly Qty' : 'Monthly Amount (' + entity.currency + ')'}</th>
-                  ${SEED_DATA.months.map(m => `<th class="text-center" style="min-width: 55px; padding: 4px 6px;">${m}</th>`).join('')}
-                  <th class="num font-bold" style="min-width: 110px;">Line Total</th>
+                  <th style="min-width: 140px;" class="exp-table-metric-th">${item.calcMode === 'unit' ? `Monthly Qty (${item.unitName || 'Units'})` : `Monthly Amount (${entity.currency})`}</th>
+                  ${SEED_DATA.months.map(m => `<th class="text-center" style="min-width: 50px; padding: 4px;">${m}</th>`).join('')}
+                  <th class="num font-bold" style="min-width: 90px;">Total Units</th>
+                  <th class="num font-bold" style="min-width: 100px;">Total (${entity.currency})</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td class="font-bold exp-row-mode-label" data-index="${index}">${item.calcMode === 'unit' ? 'Units / Mo' : 'Cost (' + entity.currency + ')'}</td>
+                  <td class="font-bold text-secondary exp-table-row-label">${item.calcMode === 'unit' ? 'Monthly Qty' : 'Amount'}</td>
                   ${SEED_DATA.months.map((m, mIdx) => `
                     <td class="editable" style="padding: 2px;">
-                      <input type="number" class="form-input text-right font-mono exp-month-input" data-line="${index}" data-month="${mIdx}" value="${item.calcMode === 'unit' ? (item.unitMatrix?.[mIdx] || 0) : (item.monthlyValues?.[mIdx] || 0)}" min="0" step="any" style="padding: 5px 6px; font-size: 11px; font-weight: 600;">
+                      <input type="number" class="form-input text-right font-mono exp-month-input" data-month="${mIdx}" value="${item.calcMode === 'unit' ? (item.unitMatrix?.[mIdx] || 0) : (item.monthlyValues?.[mIdx] || 0)}" min="0" step="any" style="padding: 3px 4px; font-size: 11px; height: 26px;">
                     </td>
                   `).join('')}
-                  <td class="num font-bold font-mono exp-row-total-cell" data-index="${index}" style="color: var(--accent-secondary); font-size: 13px;">${Utils.formatCurrency(item.totalCY || 0, entity.currency)}</td>
+                  <td class="num font-mono font-bold exp-row-total-units" style="font-size: 12px;">0</td>
+                  <td class="num font-mono font-bold exp-row-total-cost" style="color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(0, entity.currency)}</td>
                 </tr>
               </tbody>
             </table>
@@ -2911,11 +2926,12 @@ const BudgetEntryModule = {
     };
 
     const content = `
-      <div id="expenseInputWizardModal" style="font-size: var(--font-size-sm); display: flex; flex-direction: column; gap: 14px;">
-        ${(typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(dept)) ? `
-          <div class="card p-sm flex items-center justify-between" style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(99, 102, 241, 0.12)); border: 1px solid rgba(6, 182, 212, 0.35); border-radius: 8px;">
+      <div id="expenseInputWizardModal" style="font-size: var(--font-size-sm);">
+        ${isImpDept ? `
+          <!-- Helpful hint for Implementation department planners -->
+          <div class="p-sm px-md mb-md flex items-center justify-between" style="background: linear-gradient(135deg, rgba(2, 132, 199, 0.08), rgba(99, 102, 241, 0.08)); border: 1px solid rgba(2, 132, 199, 0.25); border-radius: 8px;">
             <div class="flex items-center gap-sm">
-              <span style="font-size: 1.3rem;">🎯</span>
+              <div style="font-size: 1.4rem;">🎯</div>
               <div>
                 <strong style="color: #0284c7; font-size: 12px;">Implementation Department Note:</strong>
                 <span class="text-secondary" style="font-size: 11.5px;">Planning training packages (ToTs, Kits, Models, Banners, Venues, or Supervision)?</span>
@@ -2934,11 +2950,9 @@ const BudgetEntryModule = {
             <div class="form-group mb-none">
               <label class="form-label font-bold" style="font-size: 12px;">Responsible Employee / Requestor</label>
               <select class="form-select" id="expEmployeeSelect" style="font-size: 12px; padding: 6px 8px;">
-                <option value="">👤 Staff (General / Non-Specific)</option>
-                ${employeeNames.map(name => `<option value="${name}" ${initialEmp === name ? 'selected' : ''}>👤 ${name}</option>`).join('')}
-                <option value="__CUSTOM__" ${initialEmp && !employeeNames.includes(initialEmp) ? 'selected' : ''}>✏️ Custom Name...</option>
+                ${empOptionsHtml}
               </select>
-              <input type="text" class="form-input mt-xs" id="expCustomEmployeeInput" placeholder="Enter Full Name" value="${initialEmp && !employeeNames.includes(initialEmp) ? initialEmp : ''}" style="display: ${initialEmp && !employeeNames.includes(initialEmp) ? 'block' : 'none'}; font-size: 12px;">
+              <input type="text" class="form-input mt-xs" id="expCustomEmployeeInput" placeholder="Enter Full Name" value="${initialEmp && !allMasterEmployees.some(e => e.name === initialEmp) ? initialEmp : ''}" style="display: ${initialEmp && !allMasterEmployees.some(e => e.name === initialEmp) ? 'block' : 'none'}; font-size: 12px;">
             </div>
 
             <!-- 5-Dimensional Tagging (Shared across all line items) -->
@@ -3409,10 +3423,15 @@ const BudgetEntryModule = {
     }
     const masterEmployees = await db.getEmployeesMaster(entity.id);
     const personnel = await db.getBudgetData(STORES.payrollPersonnel, yearId, entity.id, dept.id);
-    const employeeNames = Array.from(new Set([
-      ...masterEmployees.map(e => e.name),
-      ...personnel.map(p => p.name)
-    ].filter(Boolean))).sort();
+    const allMasterEmployees = await db.getEmployeesMaster();
+    const empOptionsHtml = Utils.buildEmployeeSelectOptionsHtml({
+      allEmployees: allMasterEmployees,
+      currentDept: dept,
+      currentPersonnel: personnel,
+      selectedName: existingPackage?.employeeName,
+      placeholder: 'Select Employee...',
+      allowCustom: true
+    });
     const travelRates = await db.getTravelRatesForEntity(entity.id);
 
     const defaultLoc = existingPackage?.destinationLocation || locations[0]?.name || 'India KA';
@@ -3473,11 +3492,9 @@ const BudgetEntryModule = {
             <div class="form-group mb-xs">
               <label class="form-label font-bold">Employee Name</label>
               <select class="form-select" id="pkgEmployeeSelect">
-                <option value="">Select Employee...</option>
-                ${employeeNames.map(name => `<option value="${name}" ${existingPackage?.employeeName === name ? 'selected' : ''}>👤 ${name}</option>`).join('')}
-                <option value="__CUSTOM__" ${existingPackage?.employeeName && !employeeNames.includes(existingPackage.employeeName) ? 'selected' : ''}>✏️ Manual Entry / Custom Name...</option>
+                ${empOptionsHtml}
               </select>
-              <input type="text" class="form-input mt-xs" id="pkgCustomEmployeeInput" placeholder="Enter Full Name" value="${existingPackage?.employeeName && !employeeNames.includes(existingPackage.employeeName) ? existingPackage.employeeName : ''}" style="display: ${existingPackage?.employeeName && !employeeNames.includes(existingPackage.employeeName) ? 'block' : 'none'};">
+              <input type="text" class="form-input mt-xs" id="pkgCustomEmployeeInput" placeholder="Enter Full Name" value="${existingPackage?.employeeName && !allMasterEmployees.some(e => e.name === existingPackage.employeeName) ? existingPackage.employeeName : ''}" style="display: ${existingPackage?.employeeName && !allMasterEmployees.some(e => e.name === existingPackage.employeeName) ? 'block' : 'none'};">
             </div>
 
             <div class="form-group mb-xs">

@@ -427,9 +427,18 @@ const ImpTotModule = {
         }
       }
 
-      activityRowTotals[code] = { batches: rowBatches, cost: rowCost };
-      totalAnnualBatches += rowBatches;
-      totalAnnualCost += rowCost;
+      // Load master employees list with department staff prioritized for matrix planner
+    const allMasterEmployees = (await db.getEmployeesMaster())
+      .filter(e => e.entityId === entity.id && e.status !== 'Inactive');
+    const personnel = await db.getBudgetData(STORES.payrollPersonnel, this._yearId || '2026', entity.id, dept.id);
+    const leadOptionsHtml = Utils.buildEmployeeSelectOptionsHtml({
+      allEmployees: allMasterEmployees,
+      currentDept: dept,
+      currentPersonnel: personnel,
+      selectedName: 'State Program Team',
+      placeholder: '👥 State Program Team',
+      allowCustom: true,
+      customLabel: '✏️ Custom Lead Name...'
     });
 
     container.innerHTML = `
@@ -490,7 +499,9 @@ const ImpTotModule = {
             </div>
             <div class="form-group mb-none">
               <label class="form-label font-bold" style="font-size: 11px;">👤 Program Lead</label>
-              <input type="text" class="form-input font-bold" id="matrixLeadInput" value="State Program Team" placeholder="Lead Name...">
+              <select class="form-select font-bold" id="matrixLeadSelect" style="font-size: 12px;">
+                ${leadOptionsHtml}
+              </select>
             </div>
           </div>
         </div>
@@ -1257,7 +1268,7 @@ const ImpTotModule = {
 
       const conditionArea = document.getElementById('matrixConditionSelect')?.value || 'Maternal & Newborn Care';
       const donor = document.getElementById('matrixDonorSelect')?.value || 'Gates Foundation';
-      const lead = document.getElementById('matrixLeadInput')?.value || 'State Program Team';
+      const lead = document.getElementById('matrixLeadSelect')?.value || document.getElementById('matrixLeadInput')?.value || 'State Program Team';
 
       const matrixData = this.matrixState[activeLocation];
       if (!matrixData) return;
@@ -1652,21 +1663,29 @@ const ImpTotModule = {
     const actNames = this._activities.map(a => typeof a === 'string' ? a : (a.name || a.activityName || String(a)));
     const condNames = this._conditionAreas.map(c => typeof c === 'string' ? c : (c.name || c.areaName || String(c)));
 
-    // Load master employees list
-    const masterEmployees = (await db.getEmployeesMaster())
-      .filter(e => e.entityId === entity.id && e.status !== 'Inactive')
-      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
+    // Load master employees list with department staff prioritized
+    const allMasterEmployees = (await db.getEmployeesMaster())
+      .filter(e => e.entityId === entity.id && e.status !== 'Inactive');
+    const personnel = await db.getBudgetData(STORES.payrollPersonnel, this._yearId || '2026', entity.id, dept.id);
     let existingEvent = null;
     if (editEventId) {
       existingEvent = await db.get(STORES.impTotEvents, editEventId);
     }
+    const defaultEmployee = existingEvent?.employeeName || '';
+    const empOptionsHtml = Utils.buildEmployeeSelectOptionsHtml({
+      allEmployees: allMasterEmployees,
+      currentDept: dept,
+      currentPersonnel: personnel,
+      selectedName: defaultEmployee,
+      placeholder: '-- Select Staff Lead (Optional) --',
+      allowCustom: true,
+      customLabel: '✏️ Custom Lead Name...'
+    });
 
     const defaultMonth = existingEvent ? existingEvent.monthIdx : (this.activeMonthFilter !== 'all' ? this.activeMonthFilter : 0);
     const defaultLocation = existingEvent?.location || (this.activeLocationFilter !== 'all' ? this.activeLocationFilter : (locNames[0] || 'India KA'));
     const defaultDonor = existingEvent?.donor || donorNames[0] || 'Gates Foundation';
     const defaultCondition = existingEvent?.conditionArea || condNames[0] || 'Maternal & Newborn Care';
-    const defaultEmployee = existingEvent?.employeeName || masterEmployees[0]?.name || '';
     const defaultDetails = existingEvent?.details || '';
     const defaultActivity = existingEvent?.activity || comp.defaultActivity;
     const selectedActCode = this.extractActivityCode(defaultActivity, comp.code || '10.1');
@@ -1749,11 +1768,6 @@ const ImpTotModule = {
                     ${locNames.map(loc => `
                       <option value="${loc}" ${loc === defaultLocation ? 'selected' : ''}>${loc}</option>
                     `).join('')}
-                    ${!locNames.includes('India KA') ? '<option value="India KA">India KA</option>' : ''}
-                    ${!locNames.includes('India AP') ? '<option value="India AP">India AP</option>' : ''}
-                    ${!locNames.includes('India TS') ? '<option value="India TS">India TS</option>' : ''}
-                    ${!locNames.includes('India MH') ? '<option value="India MH">India MH</option>' : ''}
-                    ${!locNames.includes('India OD') ? '<option value="India OD">India OD</option>' : ''}
                   </select>
                 </div>
                 <div class="form-group mb-none">
@@ -1762,7 +1776,6 @@ const ImpTotModule = {
                     ${actNames.filter(a => a.startsWith('10.') || a.toLowerCase().includes('tot') || a.toLowerCase().includes('training') || a.toLowerCase().includes('launch') || a.toLowerCase().includes('supervision') || a.toLowerCase().includes('visit')).map(a => `
                       <option value="${a}" ${a === defaultActivity ? 'selected' : ''}>${a}</option>
                     `).join('')}
-                    ${!actNames.includes(comp.defaultActivity) ? `<option value="${comp.defaultActivity}" selected>${comp.defaultActivity}</option>` : ''}
                   </select>
                 </div>
                 <div class="form-group mb-none">
@@ -1779,16 +1792,12 @@ const ImpTotModule = {
                     ${donorNames.map(d => `
                       <option value="${d}" ${d === defaultDonor ? 'selected' : ''}>${d}</option>
                     `).join('')}
-                    ${!donorNames.includes('Gates Foundation') ? '<option value="Gates Foundation">Gates Foundation</option>' : ''}
                   </select>
                 </div>
                 <div class="form-group mb-none">
                   <label class="form-label font-bold" style="font-size: 11px;">👤 Responsible Program Lead</label>
                   <select class="form-select" id="impEmployeeSelect">
-                    <option value="">-- Select Staff Lead (Optional) --</option>
-                    ${masterEmployees.map(emp => `
-                      <option value="${emp.name}" ${emp.name === defaultEmployee ? 'selected' : ''}>👤 ${emp.name} (${emp.designation || emp.band || 'Staff'})</option>
-                    `).join('')}
+                    ${empOptionsHtml}
                   </select>
                 </div>
               </div>
