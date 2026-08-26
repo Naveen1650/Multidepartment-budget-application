@@ -99,6 +99,9 @@ const ImpTotModule = {
   // Switch View Mode: 'matrix' vs 'registry'
   setViewMode(mode) {
     this.activeViewMode = mode;
+    if (typeof BudgetEntryModule !== 'undefined' && BudgetEntryModule.updateToolbarActions) {
+      BudgetEntryModule.updateToolbarActions();
+    }
     return this.render(this._container, this._yearId, this._entity, this._dept, this._budgetYear, this._locations, this._donors, this._activities, this._conditionAreas);
   },
 
@@ -446,7 +449,7 @@ const ImpTotModule = {
             </div>
           </div>
 
-          <!-- View Mode Toggle Buttons -->
+          <!-- View Mode Toggle Buttons & Action Button -->
           <div class="flex items-center gap-sm">
             <div class="btn-group" style="display: flex; background: var(--bg-primary); padding: 3px; border-radius: 8px; border: 1px solid var(--border-default);">
               <button type="button" class="btn btn-sm ${this.activeViewMode === 'matrix' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="ImpTotModule.setViewMode('matrix')" style="font-size: 11.5px; padding: 5px 12px;">
@@ -456,8 +459,8 @@ const ImpTotModule = {
                 📋 2. Detailed Event Registry (${events.length})
               </button>
             </div>
-            <button class="btn btn-secondary btn-sm font-bold" onclick="App.navigateTo('config-imp-rates')">
-              ⚙️ Manage Benchmark Rates
+            <button class="btn btn-primary btn-sm font-bold" onclick="ImpTotModule.showEventWizard('bundled-tot')">
+              ➕ + Plan Single Event
             </button>
           </div>
         </div>
