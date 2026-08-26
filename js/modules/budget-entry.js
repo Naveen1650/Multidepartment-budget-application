@@ -224,16 +224,31 @@ const BudgetEntryModule = {
       </div>
 
       <!-- Other Costs Sub-Tabs (Visible when activeTab === 'other-costs') -->
-      <div class="sub-tabs" id="otherCostSubTabs" style="${this.activeTab === 'other-costs' ? '' : 'display: none;'}">
-        <button class="sub-tab ${this.activeOtherCostSubTab === 'grid' || this.activeOtherCostSubTab === 'all' ? 'active' : ''}" data-subtab="grid">📊 All Accounts Overview</button>
-        ${canViewTravel ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'travel' || this.activeOtherCostSubTab === 'travel-packages' ? 'active' : ''}" data-subtab="travel">✈️ Travel & Lodging</button>` : ''}
-        ${canViewSupplies ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'supplies' ? 'active' : ''}" data-subtab="supplies">🖨️ Supplies & Printing</button>` : ''}
-        ${canViewComm ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'communication' ? 'active' : ''}" data-subtab="communication">📡 Communication</button>` : ''}
-        ${canViewOffice ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'office' ? 'active' : ''}" data-subtab="office">🏢 Office Expenses</button>` : ''}
-        ${canViewProf ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'professional' ? 'active' : ''}" data-subtab="professional">💼 Professional Charges</button>` : ''}
-        ${canViewOtherLines ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'other' ? 'active' : ''}" data-subtab="other">📑 Other Expense Lines</button>` : ''}
-        ${(canViewTot && typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(selectedDept)) ? `
-          <button class="sub-tab ${this.activeOtherCostSubTab === 'tot' || this.activeOtherCostSubTab === 'imp-tot' ? 'active' : ''}" data-subtab="tot">🎯 ToT Program Budget (IMP)</button>
+      <div class="sub-tabs flex items-center justify-between" id="otherCostSubTabs" style="${this.activeTab === 'other-costs' ? '' : 'display: none;'} flex-wrap: wrap; gap: 8px;">
+        <div class="flex items-center gap-xs" style="flex-wrap: wrap;">
+          <button class="sub-tab ${this.activeOtherCostSubTab === 'grid' || this.activeOtherCostSubTab === 'all' ? 'active' : ''}" data-subtab="grid">📊 All Accounts Overview</button>
+          ${canViewTravel ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'travel' || this.activeOtherCostSubTab === 'travel-packages' ? 'active' : ''}" data-subtab="travel">✈️ Travel & Lodging</button>` : ''}
+          ${canViewSupplies ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'supplies' ? 'active' : ''}" data-subtab="supplies">🖨️ Supplies & Printing</button>` : ''}
+          ${canViewComm ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'communication' ? 'active' : ''}" data-subtab="communication">📡 Communication</button>` : ''}
+          ${canViewOffice ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'office' ? 'active' : ''}" data-subtab="office">🏢 Office Expenses</button>` : ''}
+          ${canViewProf ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'professional' ? 'active' : ''}" data-subtab="professional">💼 Professional Charges</button>` : ''}
+          ${canViewOtherLines ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'other' ? 'active' : ''}" data-subtab="other">📑 Other Expense Lines</button>` : ''}
+          ${(canViewTot && typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(selectedDept)) ? `
+            <button class="sub-tab ${this.activeOtherCostSubTab === 'tot' || this.activeOtherCostSubTab === 'imp-tot' ? 'active' : ''}" data-subtab="tot">🎯 ToT Program Budget (IMP)</button>
+          ` : ''}
+        </div>
+
+        ${(typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(selectedDept)) ? `
+          <!-- With ToT / Without ToT View Option -->
+          <div class="flex items-center gap-xs" style="background: var(--bg-secondary); padding: 3px 6px; border-radius: var(--radius-md); border: 1px solid var(--border-default); margin-left: auto;">
+            <span class="text-secondary font-bold" style="font-size: 11px; margin-right: 2px;">ToT View:</span>
+            <button type="button" class="btn btn-sm ${this.totFilterMode !== 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('with-tot')" style="font-size: 11px; padding: 2px 8px;">
+              🎯 With ToT
+            </button>
+            <button type="button" class="btn btn-sm ${this.totFilterMode === 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('without-tot')" style="font-size: 11px; padding: 2px 8px;">
+              🚫 Without ToT
+            </button>
+          </div>
         ` : ''}
       </div>
 
@@ -1927,6 +1942,12 @@ const BudgetEntryModule = {
     return false;
   },
 
+  // ─── ToT Costs Filter Mode Switcher ('with-tot' vs 'without-tot') ───
+  setTotFilterMode(mode) {
+    this.totFilterMode = mode;
+    this.renderGrid(this._entity, this._dept, this._budgetYear, this._actualsMonth || 'Oct');
+  },
+
   // ─── Non-Payroll Grid (Other Costs) ───
   async renderNonPayrollGrid(container, yearId, entity, dept, budgetYear, locations, donors, activities, conditionAreas) {
     const deptDisplayName = Utils.getDeptName(dept, entity.deptPrefix);
@@ -1979,18 +2000,33 @@ const BudgetEntryModule = {
 
     const cleanStr = (s) => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    // Category Counts
-    const travelRecords = travelPackages;
-    const suppliesRecords = records.filter(r => this.getOtherCostCategory(r) === 'supplies');
-    const commRecords = records.filter(r => this.getOtherCostCategory(r) === 'communication');
-    const officeRecords = records.filter(r => this.getOtherCostCategory(r) === 'office');
-    const profRecords = records.filter(r => this.getOtherCostCategory(r) === 'professional');
-    const otherRecords = records.filter(r => !r.isTravelPackage && this.getOtherCostCategory(r) === 'other');
+    this.totFilterMode = this.totFilterMode || 'with-tot';
+    const isImpDept = typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(dept);
+    const totRecordsCount = records.filter(r => r.isImpTot).length;
+    const hasTotLines = totRecordsCount > 0 || isImpDept;
 
-    const totalCost = records.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
+    // Apply With ToT / Without ToT filtering
+    const displayRecords = this.totFilterMode === 'without-tot'
+      ? records.filter(r => !r.isImpTot)
+      : records;
+
+    const displayTravelPackages = this.totFilterMode === 'without-tot'
+      ? travelPackages.filter(t => !t.isImpTot)
+      : travelPackages;
+
+    // Category Counts (combining direct items, Travel Packages, and ToT items)
+    const nonPayrollTravelLines = displayRecords.filter(r => this.getOtherCostCategory(r) === 'travel');
+    const combinedTravelRecords = [...displayTravelPackages, ...nonPayrollTravelLines];
+
+    const suppliesRecords = displayRecords.filter(r => this.getOtherCostCategory(r) === 'supplies');
+    const commRecords = displayRecords.filter(r => this.getOtherCostCategory(r) === 'communication');
+    const officeRecords = displayRecords.filter(r => this.getOtherCostCategory(r) === 'office');
+    const profRecords = displayRecords.filter(r => this.getOtherCostCategory(r) === 'professional');
+    const otherRecords = displayRecords.filter(r => !r.isTravelPackage && this.getOtherCostCategory(r) === 'other');
+
+    const totalCost = displayRecords.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
     const rate = this._conversionRates?.[entity.currency] || 1.0;
     const currentSubTab = this.activeOtherCostSubTab || 'grid';
-    const isImpDept = typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(dept);
     const isLocked = typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entity.id);
 
     // If ToT Program Budget sub-tab is active, delegate directly to ImpTotModule
@@ -2000,8 +2036,8 @@ const BudgetEntryModule = {
     }
 
     container.innerHTML = `
-      <div class="card p-md mb-md flex items-center justify-between" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.06), rgba(6, 182, 212, 0.06)); border-color: rgba(139, 92, 246, 0.2);">
-        <div class="flex items-center gap-lg">
+      <div class="card p-md mb-md flex items-center justify-between" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.06), rgba(6, 182, 212, 0.06)); border-color: rgba(139, 92, 246, 0.2); flex-wrap: wrap; gap: 12px;">
+        <div class="flex items-center gap-lg" style="flex-wrap: wrap;">
           <div>
             <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Total Other Costs Budget (${entity.currency})</div>
             <div id="bannerTotal" style="font-size: 1.5rem; font-weight: 700; color: var(--accent-secondary);">${Utils.formatCurrency(totalCost, entity.currency)}</div>
@@ -2011,12 +2047,26 @@ const BudgetEntryModule = {
           </div>
           <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
             <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Total Budgeted Items</div>
-            <div id="bannerCount" style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary);">${records.length} Item Entries</div>
+            <div id="bannerCount" style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary);">${displayRecords.length} Item Entries</div>
           </div>
           <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
             <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Department</div>
             <div style="font-size: 1rem; font-weight: 600; color: var(--text-secondary);">${deptDisplayName}</div>
           </div>
+
+          ${hasTotLines ? `
+            <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+              <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase; margin-bottom: 3px;">ToT Costs View</div>
+              <div class="flex items-center gap-xs" style="background: var(--bg-card); padding: 3px 6px; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+                <button type="button" class="btn btn-sm ${this.totFilterMode !== 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('with-tot')" style="font-size: 11px; padding: 3px 9px;">
+                  🎯 With ToT (${totRecordsCount})
+                </button>
+                <button type="button" class="btn btn-sm ${this.totFilterMode === 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('without-tot')" style="font-size: 11px; padding: 3px 9px;">
+                  🚫 Without ToT
+                </button>
+              </div>
+            </div>
+          ` : ''}
         </div>
 
         ${isLocked ? '' : `
@@ -2029,7 +2079,7 @@ const BudgetEntryModule = {
 
       <!-- Tab Content Area -->
       <div id="otherCostTabContent">
-        ${this.renderOtherCostSubTabContent(currentSubTab, nonPayrollCoa, records, travelRecords, suppliesRecords, commRecords, officeRecords, profRecords, otherRecords, yearId, entity, dept, budgetYear, rate, isLocked)}
+        ${this.renderOtherCostSubTabContent(currentSubTab, nonPayrollCoa, displayRecords, combinedTravelRecords, suppliesRecords, commRecords, officeRecords, profRecords, otherRecords, yearId, entity, dept, budgetYear, rate, isLocked)}
       </div>
     `;
 
@@ -2293,47 +2343,57 @@ const BudgetEntryModule = {
                   </tr>
                 </thead>
                 <tbody>
-                  ${travelRecords.map(pkg => `
+                  ${travelRecords.map(pkg => {
+                    const isTot = pkg.isImpTot;
+                    const rowId = pkg.id || (pkg.impTotEventId ? `tot-${pkg.impTotEventId}` : `item-${Math.random()}`);
+                    return `
                     <!-- Single-Line Main Row -->
-                    <tr class="exp-item-main-row" data-row-id="${pkg.id}">
+                    <tr class="exp-item-main-row" data-row-id="${rowId}">
                       <td style="text-align: center; width: 40px;">
-                        <button type="button" class="btn-expand-row" data-target="breakdown-travel-${pkg.id}" title="Click to expand/collapse monthly budget">▶</button>
+                        <button type="button" class="btn-expand-row" data-target="breakdown-travel-${rowId}" title="Click to expand/collapse monthly budget">▶</button>
                       </td>
                       <td class="sticky-col-1 font-bold">
-                        👤 ${pkg.employeeName || 'Staff'}
+                        👤 ${pkg.employeeName || (isTot ? 'Implementation Team' : 'Staff')}
                       </td>
                       <td class="sticky-col-2">
-                        <strong>${pkg.travelDetails || 'Trip'}</strong>
-                        <div class="text-tertiary" style="font-size: 11px;">📍 ${pkg.destinationLocation || ''}</div>
+                        <div class="flex items-center gap-xs">
+                          <strong>${pkg.travelDetails || pkg.itemName || pkg.glDescription || 'Trip'}</strong>
+                          ${isTot ? `<span class="badge badge-purple font-bold" style="font-size: 10px; padding: 1px 6px;">🎯 ToT Event</span>` : ''}
+                        </div>
+                        <div class="text-tertiary" style="font-size: 11px;">📍 ${pkg.destinationLocation || pkg.location || ''}</div>
                       </td>
                       <td>
-                        <span class="badge ${pkg.travelCategory === 'City' ? 'badge-cyan' : 'badge-subtle'}" style="font-size: 11px;">
-                          ${pkg.travelCategory === 'City' ? '🏙️ City' : '🌾 Non-City'}
+                        <span class="badge ${isTot ? 'badge-purple' : (pkg.travelCategory === 'City' ? 'badge-cyan' : 'badge-subtle')}" style="font-size: 11px;">
+                          ${isTot ? '🎯 ToT Training' : (pkg.travelCategory === 'City' ? '🏙️ City' : '🌾 Non-City')}
                         </span>
                       </td>
                       <td style="font-size: 11px;">${pkg.activity || '—'}</td>
                       <td style="font-size: 11px;">${pkg.donor || '—'}</td>
-                      <td class="remarks-cell" style="font-size: 11px; width: 180px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary);" title="${Utils.escapeHtml(pkg.remarks || pkg.travelDetails || '')}">
-                        ${pkg.remarks || pkg.travelDetails || '—'}
+                      <td class="remarks-cell" style="font-size: 11px; width: 180px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary);" title="${Utils.escapeHtml(pkg.remarks || pkg.travelDetails || pkg.basisOfExpense || '')}">
+                        ${pkg.remarks || pkg.travelDetails || pkg.basisOfExpense || '—'}
                       </td>
                       <td class="num font-bold" style="color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(pkg.totalCY || 0, entity.currency)}</td>
                       <td class="num font-bold" style="color: var(--accent-secondary); font-size: 13px;">≈ ${Utils.formatCurrency(Utils.convertToUSD(pkg.totalCY || 0, rate), 'USD')}</td>
                       <td style="white-space: nowrap;">
-                        ${isLocked ? '<span class="badge badge-subtle" style="font-size: 11px;">🔒 Read-only</span>' : `
-                          <button class="btn btn-ghost btn-sm" onclick="BudgetEntryModule.editTravelPackage(${pkg.id})">✏️ Edit</button>
-                          <button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteTravelPackage(${pkg.id})">🗑️</button>
-                        `}
+                        ${isLocked ? '<span class="badge badge-subtle" style="font-size: 11px;">🔒 Read-only</span>' : (
+                          isTot ? `
+                            <button class="btn btn-ghost btn-sm font-bold" style="color: var(--accent-primary);" onclick="BudgetEntryModule.activeOtherCostSubTab = 'tot'; BudgetEntryModule.renderGrid(BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._budgetYear, BudgetEntryModule._actualsMonth);">🎯 View in ToT</button>
+                          ` : `
+                            <button class="btn btn-ghost btn-sm" onclick="BudgetEntryModule.editTravelPackage(${pkg.id})">✏️ Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteTravelPackage(${pkg.id})">🗑️</button>
+                          `
+                        )}
                       </td>
                     </tr>
 
                     <!-- Expandable Monthly Schedule Sub-Row -->
-                    <tr class="exp-breakdown-row" id="breakdown-travel-${pkg.id}" style="display: none;">
+                    <tr class="exp-breakdown-row" id="breakdown-travel-${rowId}" style="display: none;">
                       <td colspan="10">
                         <div style="display: flex; flex-direction: column; gap: 8px;">
                           <div class="flex justify-between items-center">
                             <div class="flex items-center gap-sm">
                               <span class="badge badge-primary font-bold" style="font-size: 11px;">12-Month Travel Budget Breakdown</span>
-                              <span class="text-secondary font-bold" style="font-size: 12px;">${pkg.travelDetails || 'Trip'} (📍 ${pkg.destinationLocation || 'Destination'})</span>
+                              <span class="text-secondary font-bold" style="font-size: 12px;">${pkg.travelDetails || pkg.itemName || 'Trip'} (📍 ${pkg.destinationLocation || pkg.location || 'Destination'})</span>
                             </div>
                             <div class="text-tertiary font-mono" style="font-size: 11px;">
                               ${pkg.basisOfExpense || 'Calculated with Benchmark Travel Rates'}
@@ -2363,7 +2423,8 @@ const BudgetEntryModule = {
                         </div>
                       </td>
                     </tr>
-                  `).join('')}
+                    `;
+                  }).join('')}
                   <tr class="total-row">
                     <td colspan="2" class="sticky-col-1 font-bold">TOTAL TRAVEL BUDGET:</td>
                     <td class="sticky-col-2 font-bold text-right" style="padding-right: 16px;">(${entity.currency})</td>
@@ -2440,17 +2501,23 @@ const BudgetEntryModule = {
                 </tr>
               </thead>
               <tbody>
-                ${catRecords.map(r => `
+                ${catRecords.map(r => {
+                  const isTot = r.isImpTot;
+                  const rowId = r.id || (r.impTotEventId ? `tot-${r.impTotEventId}` : `item-${Math.random()}`);
+                  return `
                   <!-- Single-Line Main Row -->
-                  <tr class="exp-item-main-row" data-row-id="${r.id}">
+                  <tr class="exp-item-main-row" data-row-id="${rowId}">
                     <td style="text-align: center; width: 40px;">
-                      <button type="button" class="btn-expand-row" data-target="breakdown-${r.id}" title="Click to view 12-month budget schedule">▶</button>
+                      <button type="button" class="btn-expand-row" data-target="breakdown-${rowId}" title="Click to view 12-month budget schedule">▶</button>
                     </td>
                     <td class="sticky-col-1 font-bold">
-                      👤 ${r.employeeName || 'Staff Member'}
+                      👤 ${r.employeeName || (isTot ? 'Implementation Team' : 'Staff Member')}
                     </td>
                     <td class="sticky-col-2">
-                      <strong>${r.itemName || r.glDescription || 'Item'}</strong>
+                      <div class="flex items-center gap-xs">
+                        <strong>${r.itemName || r.glDescription || 'Item'}</strong>
+                        ${isTot ? `<span class="badge badge-purple font-bold" style="font-size: 10px; padding: 1px 6px;">🎯 ToT Event</span>` : ''}
+                      </div>
                       ${r.subGroup ? `<div class="text-tertiary" style="font-size: 10px;">${r.subGroup}</div>` : ''}
                     </td>
                     <td>
@@ -2467,15 +2534,19 @@ const BudgetEntryModule = {
                     <td class="num font-bold" style="color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(r.totalCY || 0, entity.currency)}</td>
                     <td class="num font-bold" style="color: var(--accent-secondary); font-size: 13px;">≈ ${Utils.formatCurrency(Utils.convertToUSD(r.totalCY || 0, rate), 'USD')}</td>
                     <td style="white-space: nowrap;">
-                      ${isLocked ? '<span class="badge badge-subtle" style="font-size: 11px;">🔒 Read-only</span>' : `
-                        <button class="btn btn-ghost btn-sm" onclick="BudgetEntryModule.editExpenseItem(${r.id})">✏️ Edit</button>
-                        <button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteExpenseItem(${r.id})">🗑️</button>
-                      `}
+                      ${isLocked ? '<span class="badge badge-subtle" style="font-size: 11px;">🔒 Read-only</span>' : (
+                        isTot ? `
+                          <button class="btn btn-ghost btn-sm font-bold" style="color: var(--accent-primary);" onclick="BudgetEntryModule.activeOtherCostSubTab = 'tot'; BudgetEntryModule.renderGrid(BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._budgetYear, BudgetEntryModule._actualsMonth);">🎯 View in ToT</button>
+                        ` : `
+                          <button class="btn btn-ghost btn-sm" onclick="BudgetEntryModule.editExpenseItem(${r.id})">✏️ Edit</button>
+                          <button class="btn btn-danger btn-sm" onclick="BudgetEntryModule.deleteExpenseItem(${r.id})">🗑️</button>
+                        `
+                      )}
                     </td>
                   </tr>
 
                   <!-- Expandable 12-Month Breakdown Sub-Row -->
-                  <tr class="exp-breakdown-row" id="breakdown-${r.id}" style="display: none;">
+                  <tr class="exp-breakdown-row" id="breakdown-${rowId}" style="display: none;">
                     <td colspan="12">
                       <div style="display: flex; flex-direction: column; gap: 8px;">
                         <div class="flex justify-between items-center">
@@ -2483,6 +2554,7 @@ const BudgetEntryModule = {
                             <span class="badge badge-primary font-bold" style="font-size: 11px;">12-Month Schedule Breakdown</span>
                             <span class="text-secondary font-bold" style="font-size: 12px;">${r.itemName || r.glDescription}</span>
                             ${r.calcMode === 'unit' ? `<span class="badge badge-subtle" style="font-size: 11px;">🔢 ${r.unitName || 'Units'} @ ${Utils.formatCurrency(r.unitRate || 0, entity.currency)}</span>` : ''}
+                            ${isTot ? `<span class="badge badge-purple font-bold" style="font-size: 10px;">🎯 ToT Event Line</span>` : ''}
                           </div>
                           <div class="text-tertiary font-mono" style="font-size: 11px;">
                             ${r.basisOfExpense || 'Manual Entry'}
@@ -2523,7 +2595,8 @@ const BudgetEntryModule = {
                       </div>
                     </td>
                   </tr>
-                `).join('')}
+                  `;
+                }).join('')}
                 <tr class="total-row">
                   <td colspan="2" class="sticky-col-1 font-bold">TOTAL ${catMeta.title.toUpperCase()}:</td>
                   <td class="sticky-col-2 font-bold text-right" style="padding-right: 16px;">(${entity.currency})</td>
