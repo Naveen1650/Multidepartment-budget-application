@@ -237,19 +237,6 @@ const BudgetEntryModule = {
             <button class="sub-tab ${this.activeOtherCostSubTab === 'tot' || this.activeOtherCostSubTab === 'imp-tot' ? 'active' : ''}" data-subtab="tot">🎯 ToT Program Budget (IMP)</button>
           ` : ''}
         </div>
-
-        ${(this.activeOtherCostSubTab !== 'grid' && this.activeOtherCostSubTab !== 'all' && this.activeOtherCostSubTab !== 'tot' && this.activeOtherCostSubTab !== 'imp-tot' && typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(selectedDept)) ? `
-          <!-- With ToT / Without ToT View Option (Available in category tabs only) -->
-          <div class="flex items-center gap-xs" style="background: var(--bg-secondary); padding: 3px 6px; border-radius: var(--radius-md); border: 1px solid var(--border-default); margin-left: auto;">
-            <span class="text-secondary font-bold" style="font-size: 11px; margin-right: 2px;">ToT Costs:</span>
-            <button type="button" class="btn btn-sm ${this.totFilterMode !== 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('with-tot')" style="font-size: 11px; padding: 2px 8px;">
-              🎯 With ToT
-            </button>
-            <button type="button" class="btn btn-sm ${this.totFilterMode === 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('without-tot')" style="font-size: 11px; padding: 2px 8px;">
-              🚫 Without ToT
-            </button>
-          </div>
-        ` : ''}
       </div>
 
       <!-- Tab Content Area -->
@@ -2002,27 +1989,30 @@ const BudgetEntryModule = {
 
     this.totFilterMode = this.totFilterMode || 'with-tot';
     const isImpDept = typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(dept);
-    const totRecordsCount = records.filter(r => r.isImpTot).length;
+
+    // Reliable ToT detection helper
+    const isTotItem = (r) => Boolean(r && (r.isImpTot === true || r.isImpTot === 'true' || r.impTotEventId || (typeof r.basisOfExpense === 'string' && r.basisOfExpense.startsWith('[IMP ToT'))));
+    const totRecordsCount = records.filter(isTotItem).length;
     const hasTotLines = totRecordsCount > 0 || isImpDept;
 
     // Apply With ToT / Without ToT filtering for category views (default: with-tot)
     const displayRecords = this.totFilterMode === 'without-tot'
-      ? records.filter(r => !r.isImpTot)
+      ? records.filter(r => !isTotItem(r))
       : records;
 
     const displayTravelPackages = this.totFilterMode === 'without-tot'
-      ? travelPackages.filter(t => !t.isImpTot)
+      ? travelPackages.filter(t => !isTotItem(t))
       : travelPackages;
 
-    // Category Counts (combining direct items, Travel Packages, and ToT items)
-    const nonPayrollTravelLines = displayRecords.filter(r => this.getOtherCostCategory(r) === 'travel');
+    // Category Counts (combining direct items, Travel Packages, and ToT items without duplicating travel package sublines)
+    const nonPayrollTravelLines = displayRecords.filter(r => this.getOtherCostCategory(r) === 'travel' && !r.isTravelPackage && !r.travelPackageId);
     const combinedTravelRecords = [...displayTravelPackages, ...nonPayrollTravelLines];
 
     const suppliesRecords = displayRecords.filter(r => this.getOtherCostCategory(r) === 'supplies');
     const commRecords = displayRecords.filter(r => this.getOtherCostCategory(r) === 'communication');
     const officeRecords = displayRecords.filter(r => this.getOtherCostCategory(r) === 'office');
     const profRecords = displayRecords.filter(r => this.getOtherCostCategory(r) === 'professional');
-    const otherRecords = displayRecords.filter(r => !r.isTravelPackage && this.getOtherCostCategory(r) === 'other');
+    const otherRecords = displayRecords.filter(r => !r.isTravelPackage && !r.travelPackageId && this.getOtherCostCategory(r) === 'other');
 
     const currentSubTab = this.activeOtherCostSubTab || 'grid';
     const isAllAccountsTab = currentSubTab === 'grid' || currentSubTab === 'all';
@@ -2057,20 +2047,6 @@ const BudgetEntryModule = {
             <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Department</div>
             <div style="font-size: 1rem; font-weight: 600; color: var(--text-secondary);">${deptDisplayName}</div>
           </div>
-
-          ${(!isAllAccountsTab && hasTotLines) ? `
-            <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
-              <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase; margin-bottom: 3px;">ToT Costs View</div>
-              <div class="flex items-center gap-xs" style="background: var(--bg-card); padding: 3px 6px; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
-                <button type="button" class="btn btn-sm ${this.totFilterMode !== 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('with-tot')" style="font-size: 11px; padding: 3px 9px;">
-                  🎯 With ToT (${totRecordsCount})
-                </button>
-                <button type="button" class="btn btn-sm ${this.totFilterMode === 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('without-tot')" style="font-size: 11px; padding: 3px 9px;">
-                  🚫 Without ToT
-                </button>
-              </div>
-            </div>
-          ` : ''}
         </div>
 
         ${isLocked ? '' : `
