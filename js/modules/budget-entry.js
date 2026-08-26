@@ -3469,7 +3469,7 @@ const BudgetEntryModule = {
       <div id="travelWizardModal" style="font-size: var(--font-size-sm);">
         <!-- Step 1: Trip & Dimension Info -->
         <div class="card p-md mb-md" style="background: var(--bg-card); border-color: var(--border-default);">
-          <div class="form-row mb-sm">
+          <div class="form-row mb-sm" style="display: grid; grid-template-columns: 1.1fr 1.5fr 1fr; gap: 12px;">
             <div class="form-group mb-xs">
               <label class="form-label font-bold">Employee Name</label>
               <select class="form-select" id="pkgEmployeeSelect">
@@ -3483,16 +3483,6 @@ const BudgetEntryModule = {
             <div class="form-group mb-xs">
               <label class="form-label font-bold">Purpose / Details of Travel <span style="color: var(--danger);">*</span></label>
               <input type="text" class="form-input" id="pkgPurposeInput" placeholder="e.g. Field visit for clinic training in Patna" value="${existingPackage?.travelDetails || ''}" required>
-            </div>
-          </div>
-
-          <div class="form-row mb-sm">
-            <div class="form-group mb-xs">
-              <label class="form-label font-bold">Destination Location</label>
-              <select class="form-select" id="pkgDestLocationSelect">
-                ${locations.map(l => `<option value="${l.name}" ${defaultLoc === l.name ? 'selected' : ''}>📍 ${l.name}</option>`).join('')}
-                <option value="Default (All Locations)" ${defaultLoc === 'Default (All Locations)' ? 'selected' : ''}>⭐ Default (All Locations)</option>
-              </select>
             </div>
 
             <div class="form-group mb-xs">
@@ -3510,7 +3500,7 @@ const BudgetEntryModule = {
           </div>
 
           <!-- 5 Dimensions -->
-          <div class="form-row">
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px;">
             <div class="form-group mb-xs">
               <label class="form-label" style="font-size: 11px;">Activity</label>
               <select class="form-select" id="pkgActivitySelect" style="font-size: 11px;">
@@ -3520,7 +3510,8 @@ const BudgetEntryModule = {
             <div class="form-group mb-xs">
               <label class="form-label" style="font-size: 11px;">Charging Location</label>
               <select class="form-select" id="pkgLocationSelect" style="font-size: 11px;">
-                ${locations.map(l => `<option value="${l.name}" ${existingPackage?.location === l.name ? 'selected' : ''}>${l.name}</option>`).join('')}
+                ${locations.map(l => `<option value="${l.name}" ${defaultLoc === l.name ? 'selected' : ''}>📍 ${l.name}</option>`).join('')}
+                <option value="Default (All Locations)" ${defaultLoc === 'Default (All Locations)' ? 'selected' : ''}>⭐ Default (All Locations)</option>
               </select>
             </div>
             <div class="form-group mb-xs">
@@ -3622,10 +3613,10 @@ const BudgetEntryModule = {
 
             const travelDetails = Utils.$('#pkgPurposeInput').value.trim() || 'Travel';
             const remarks = Utils.$('#pkgRemarksInput').value.trim() || travelDetails;
-            const destinationLocation = Utils.$('#pkgDestLocationSelect').value;
             const travelCategory = Utils.$('#pkgCategorySelect').value;
             const activity = Utils.$('#pkgActivitySelect').value;
             const location = Utils.$('#pkgLocationSelect').value;
+            const destinationLocation = location;
             const donor = Utils.$('#pkgDonorSelect').value;
             const conditionArea = Utils.$('#pkgConditionSelect').value;
 
@@ -3702,6 +3693,9 @@ const BudgetEntryModule = {
       const modal = document.querySelector('#travelWizardModal');
       if (!modal) return;
 
+      const selLoc = modal.querySelector('#pkgLocationSelect')?.value || defaultLoc;
+      const selCat = modal.querySelector('#pkgCategorySelect')?.value || defaultCat;
+
       // Update rate pills box in a single continuous line
       const rateBox = modal.querySelector('#pkgRatesDisplay');
       if (rateBox) {
@@ -3709,7 +3703,7 @@ const BudgetEntryModule = {
         rateBox.innerHTML = `
           <div class="flex items-center gap-xs" style="flex-shrink: 0;">
             <span class="text-tertiary font-bold" style="font-size: 11px; text-transform: uppercase; white-space: nowrap;">
-              📍 Rates for ${modal.querySelector('#pkgDestLocationSelect').value} (${modal.querySelector('#pkgCategorySelect').value}):
+              📍 Rates for ${selLoc} (${selCat}):
             </span>
             ${isFallback ? `<span class="badge badge-warning" style="font-size: 10px; white-space: nowrap;">⚠️ Default</span>` : `<span class="badge badge-emerald" style="font-size: 10px; white-space: nowrap;">✓ Standard</span>`}
           </div>
@@ -3801,17 +3795,17 @@ const BudgetEntryModule = {
         if (empSelect.value === '__CUSTOM__') empCustom.focus();
       });
 
-      // Destination / Category change &rarr; update activeRate
-      const destSelect = modalEl.querySelector('#pkgDestLocationSelect');
+      // Location / Category change &rarr; update activeRate
+      const locSelect = modalEl.querySelector('#pkgLocationSelect');
       const catSelect = modalEl.querySelector('#pkgCategorySelect');
 
       const onRateParamsChange = () => {
-        activeRate = getRate(destSelect.value, catSelect.value);
+        activeRate = getRate(locSelect.value, catSelect.value);
         refreshLiveModalCalculations();
       };
 
-      destSelect.addEventListener('change', onRateParamsChange);
-      catSelect.addEventListener('change', onRateParamsChange);
+      if (locSelect) locSelect.addEventListener('change', onRateParamsChange);
+      if (catSelect) catSelect.addEventListener('change', onRateParamsChange);
 
       // Matrix input changes
       const matrixTable = modalEl.querySelector('#pkgMatrixTable');
