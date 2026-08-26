@@ -27,8 +27,7 @@ const ImpTotModule = {
       title: 'State Level Bundled ToT (Master Trainers)',
       defaultActivity: '10.1-Bundled ToT- Master trainers',
       icon: '🏛️',
-      badgeClass: 'badge-indigo',
-      hasToolPackage: true
+      badgeClass: 'badge-indigo'
     },
     'non-bundled-tot': {
       id: 'non-bundled-tot',
@@ -36,8 +35,7 @@ const ImpTotModule = {
       title: 'State Level Non-Bundled ToT (Master Trainers)',
       defaultActivity: '10.2-Non-bundled ToTs-Master Trainers',
       icon: '🏛️',
-      badgeClass: 'badge-indigo',
-      hasToolPackage: false
+      badgeClass: 'badge-indigo'
     },
     'refresher-tot': {
       id: 'refresher-tot',
@@ -45,8 +43,7 @@ const ImpTotModule = {
       title: 'Booster / Refresher Training',
       defaultActivity: '10.3-Booster/ Refresher Training',
       icon: '🔄',
-      badgeClass: 'badge-cyan',
-      hasToolPackage: false
+      badgeClass: 'badge-cyan'
     },
     'mo-training': {
       id: 'mo-training',
@@ -54,8 +51,7 @@ const ImpTotModule = {
       title: 'Medical Officer Training (MO Training)',
       defaultActivity: '10.4-Medical Officer training',
       icon: '🩺',
-      badgeClass: 'badge-emerald',
-      hasToolPackage: false
+      badgeClass: 'badge-emerald'
     },
     'district-tot': {
       id: 'district-tot',
@@ -63,8 +59,7 @@ const ImpTotModule = {
       title: 'District Level Training (HWC / CHO Training)',
       defaultActivity: '10.5-District level training',
       icon: '🏥',
-      badgeClass: 'badge-emerald',
-      hasToolPackage: false
+      badgeClass: 'badge-emerald'
     },
     'facility-launch': {
       id: 'facility-launch',
@@ -72,8 +67,7 @@ const ImpTotModule = {
       title: 'Facility Launch & Collateral Deployment',
       defaultActivity: '10.6-Facility Launch',
       icon: '🚀',
-      badgeClass: 'badge-cyan',
-      hasToolPackage: false
+      badgeClass: 'badge-cyan'
     },
     'supervision-visits': {
       id: 'supervision-visits',
@@ -81,8 +75,7 @@ const ImpTotModule = {
       title: 'Supportive Supervision & Monitoring (PCs & Non-PCs)',
       defaultActivity: '10.7-Supportive Supervision',
       icon: '🚗',
-      badgeClass: 'badge-indigo',
-      hasToolPackage: false
+      badgeClass: 'badge-indigo'
     },
     'partnership-visits': {
       id: 'partnership-visits',
@@ -90,8 +83,7 @@ const ImpTotModule = {
       title: 'Partnership & Leadership Visits',
       defaultActivity: '10.8-Partnership Visits',
       icon: '✈️',
-      badgeClass: 'badge-cyan',
-      hasToolPackage: false
+      badgeClass: 'badge-cyan'
     }
   },
 
@@ -1846,16 +1838,6 @@ const ImpTotModule = {
                   <label class="form-label font-bold" style="font-size: 11px;">Team Size (Trainers)</label>
                   <input type="number" min="1" step="1" class="form-input font-bold" id="scaleTeamSize" value="${scale.teamSize || 2}" oninput="ImpTotModule.recalculateModalCost()">
                 </div>
-                <div class="form-group mb-none" id="scaleToolPkgGroup" style="${comp.hasToolPackage ? '' : 'display: none;'}">
-                  <label class="form-label font-bold" style="font-size: 11px;">Tool Package / Template Option</label>
-                  <select class="form-select font-bold" id="scaleToolPkg" onchange="ImpTotModule.onToolPackageSelectChanged(this.value)">
-                    ${activityTemplates.map(t => `
-                      <option value="${t.id}" ${t.id === (activeTemplate?.id) ? 'selected' : ''}>
-                        ${t.templateName || t.title} (${t.scaleDefaults?.daysCount || 2}d, ${t.scaleDefaults?.participantsCount || 20}p)
-                      </option>
-                    `).join('')}
-                  </select>
-                </div>
               </div>
             </div>
 
@@ -2056,16 +2038,9 @@ const ImpTotModule = {
     this.recalculateModalCost();
   },
 
-  // When Tool Package option changes in modal, sync with template selector
-  async onToolPackageSelectChanged(templateId) {
-    await this.onTemplateSelectChanged(templateId);
-  },
-
   // When activity changes in modal, filter templates strictly to this activity and country
   async onActivitySelectChanged(activityName) {
     const actCode = this.extractActivityCode(activityName);
-    const comp = Object.values(this.components).find(c => c.code === actCode) || this.components['bundled-tot'];
-
     const locSelect = document.getElementById('impLocationSelect');
     const location = locSelect ? locSelect.value : 'India KA';
     const rates = await db.getImpUnitRates(location);
@@ -2083,21 +2058,6 @@ const ImpTotModule = {
         </option>
       `).join('');
       tplSelect.value = tpl.id;
-    }
-
-    const toolPkgGroup = document.getElementById('scaleToolPkgGroup');
-    if (toolPkgGroup) {
-      toolPkgGroup.style.display = comp.hasToolPackage ? '' : 'none';
-    }
-
-    const toolPkgSelect = document.getElementById('scaleToolPkg');
-    if (toolPkgSelect) {
-      toolPkgSelect.innerHTML = activityTemplates.map(t => `
-        <option value="${t.id}" ${t.id === tpl.id ? 'selected' : ''}>
-          ${t.templateName || t.title} (${t.scaleDefaults?.daysCount || 2}d, ${t.scaleDefaults?.participantsCount || 20}p)
-        </option>
-      `).join('');
-      toolPkgSelect.value = tpl.id;
     }
 
     const tplDisplayName = tpl?.templateName || tpl?.title || 'Template';
@@ -2144,7 +2104,6 @@ const ImpTotModule = {
 
     const actSelect = document.getElementById('impActivitySelect');
     const actCode = this.extractActivityCode(actSelect?.value);
-    const comp = Object.values(this.components).find(c => c.code === actCode) || this.components['bundled-tot'];
 
     // Fetch ONLY templates for this activity and new country
     const activityTemplates = await db.getAllImpActivityTemplates(countryCode, actCode);
@@ -2158,21 +2117,6 @@ const ImpTotModule = {
         </option>
       `).join('');
       tplSelect.value = tpl.id;
-    }
-
-    const toolPkgGroup = document.getElementById('scaleToolPkgGroup');
-    if (toolPkgGroup) {
-      toolPkgGroup.style.display = comp.hasToolPackage ? '' : 'none';
-    }
-
-    const toolPkgSelect = document.getElementById('scaleToolPkg');
-    if (toolPkgSelect) {
-      toolPkgSelect.innerHTML = activityTemplates.map(t => `
-        <option value="${t.id}" ${t.id === tpl.id ? 'selected' : ''}>
-          ${t.templateName || t.title} (${t.scaleDefaults?.daysCount || 2}d, ${t.scaleDefaults?.participantsCount || 20}p)
-        </option>
-      `).join('');
-      toolPkgSelect.value = tpl.id;
     }
 
     const notice = document.getElementById('impRateNotice');
@@ -2227,7 +2171,6 @@ const ImpTotModule = {
     const facilities = parseInt(document.getElementById('scaleFacilities')?.value, 10) || 0;
     const participants = parseInt(document.getElementById('scaleParticipants')?.value, 10) || 0;
     const teamSize = parseInt(document.getElementById('scaleTeamSize')?.value, 10) || 1;
-    const toolPkg = document.getElementById('scaleToolPkg')?.value || 'Tool Package - 1 (Standard)';
 
     const tbody = document.getElementById('modalCostItemsBody');
     if (!tbody) return;
@@ -2731,6 +2674,12 @@ const ImpTotModule = {
         customLines.push(customItem);
       });
 
+      const selectedTplId = document.getElementById('impTemplateSelect')?.value;
+      let activeTplObj = null;
+      if (selectedTplId) {
+        activeTplObj = (await db.getImpActivityTemplateById(selectedTplId)) || (await db.getImpActivityTemplate(selectedTplId));
+      }
+
       const eventObj = {
         yearId: String(yearId),
         entityId: entity.id,
@@ -2743,6 +2692,8 @@ const ImpTotModule = {
         donor: donor,
         employeeName: employeeName,
         details: details,
+        templateId: activeTplObj?.id || null,
+        templateName: activeTplObj?.templateName || activeTplObj?.title || null,
         scaleSummary: `${events} Event${events === 1 ? '' : 's'} &bull; ${days} Day${days === 1 ? '' : 's'} &bull; ${facilities} Facs &bull; ${participants} Trainees &bull; ${teamSize} Staff`,
         scale: {
           eventCount: events,
@@ -2750,21 +2701,12 @@ const ImpTotModule = {
           facilitiesCount: facilities,
           participantsCount: participants,
           teamSize: teamSize,
-          toolPackage: toolPkg
+          toolPackage: activeTplObj?.templateName || activeTplObj?.title || 'Standard'
         },
         costLines: costLines,
         customLines: customLines,
         totalCost: grandTotal
       };
-
-      const selectedTplId = document.getElementById('impTemplateSelect')?.value;
-      if (selectedTplId) {
-        const tplObj = (await db.getImpActivityTemplateById(selectedTplId)) || (await db.getImpActivityTemplate(selectedTplId));
-        if (tplObj) {
-          eventObj.templateId = tplObj.id;
-          eventObj.templateName = tplObj.templateName || tplObj.title;
-        }
-      }
 
       if (editEventId && editEventId !== 'null' && editEventId !== 'undefined') {
         eventObj.id = editEventId;
