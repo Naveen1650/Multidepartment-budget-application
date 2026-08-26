@@ -226,15 +226,15 @@ const BudgetEntryModule = {
       <!-- Other Costs Sub-Tabs (Visible when activeTab === 'other-costs') -->
       <div class="sub-tabs" id="otherCostSubTabs" style="${this.activeTab === 'other-costs' ? '' : 'display: none;'}">
         <button class="sub-tab ${this.activeOtherCostSubTab === 'grid' || this.activeOtherCostSubTab === 'all' ? 'active' : ''}" data-subtab="grid">📊 All Accounts Overview</button>
-        ${(canViewTot && typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(selectedDept)) ? `
-          <button class="sub-tab ${this.activeOtherCostSubTab === 'tot' || this.activeOtherCostSubTab === 'imp-tot' ? 'active' : ''}" data-subtab="tot" style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(99, 102, 241, 0.15)); border: 1px solid rgba(6, 182, 212, 0.3); color: #0284c7; font-weight: 700;">🎯 ToT Program Budget (IMP)</button>
-        ` : ''}
         ${canViewTravel ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'travel' || this.activeOtherCostSubTab === 'travel-packages' ? 'active' : ''}" data-subtab="travel">✈️ Travel & Lodging</button>` : ''}
         ${canViewSupplies ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'supplies' ? 'active' : ''}" data-subtab="supplies">🖨️ Supplies & Printing</button>` : ''}
         ${canViewComm ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'communication' ? 'active' : ''}" data-subtab="communication">📡 Communication</button>` : ''}
         ${canViewOffice ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'office' ? 'active' : ''}" data-subtab="office">🏢 Office Expenses</button>` : ''}
         ${canViewProf ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'professional' ? 'active' : ''}" data-subtab="professional">💼 Professional Charges</button>` : ''}
         ${canViewOtherLines ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'other' ? 'active' : ''}" data-subtab="other">📑 Other Expense Lines</button>` : ''}
+        ${(canViewTot && typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(selectedDept)) ? `
+          <button class="sub-tab ${this.activeOtherCostSubTab === 'tot' || this.activeOtherCostSubTab === 'imp-tot' ? 'active' : ''}" data-subtab="tot">🎯 ToT Program Budget (IMP)</button>
+        ` : ''}
       </div>
 
       <!-- Tab Content Area -->
@@ -2552,19 +2552,6 @@ const BudgetEntryModule = {
       <div style="font-size: var(--font-size-sm); padding: 8px;">
         <p class="text-secondary mb-lg" style="font-size: 13px;">Select an expense category below to open its full-screen structured input format with employee assignment, 12-month calculation schedule, and justification remarks.</p>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
-          ${(typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(dept)) ? `
-            <!-- 🎯 ToT Program Budget / Training Package -->
-            <div class="card p-lg cursor-pointer hover-card" style="border: 2px solid rgba(6, 182, 212, 0.4); background: linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(99, 102, 241, 0.08)); transition: all 0.2s;" onclick="Utils.closeModal(); BudgetEntryModule.activeTab = 'other-costs'; BudgetEntryModule.activeOtherCostSubTab = 'tot'; BudgetEntryModule.renderGrid(BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._budgetYear, BudgetEntryModule._actualsMonth);">
-              <div style="font-size: 2.2rem; margin-bottom: 8px;">🎯</div>
-              <div class="flex items-center gap-xs">
-                <h3 style="font-weight: 700; color: #0284c7; margin-bottom: 6px; font-size: 1.1rem;">ToT Program Training Matrix</h3>
-                <span class="badge badge-cyan font-bold" style="font-size: 10px;">IMP Department</span>
-              </div>
-              <p class="text-secondary" style="font-size: 12px; line-height: 1.5;">Annual Batch Matrix Planner for State ToTs, Refresher Trainings, MO Trainings, HWC District ToTs, Facility Launches, and Supervision visits.</p>
-            </div>
-          ` : ''}
-
           <!-- 1. Travel & Lodging -->
           <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); transition: all 0.2s;" onclick="Utils.closeModal(); BudgetEntryModule.showTravelPackageWizard('${yearId}', BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._locations, BudgetEntryModule._donors, BudgetEntryModule._activities, BudgetEntryModule._conditionAreas);">
             <div style="font-size: 2.2rem; margin-bottom: 8px;">✈️</div>
@@ -2606,6 +2593,15 @@ const BudgetEntryModule = {
             <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.1rem;">Other Expense Lines</h3>
             <p class="text-secondary" style="font-size: 12px; line-height: 1.5;">Any other general or custom non-payroll operating line items.</p>
           </div>
+
+          ${(typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(dept)) ? `
+            <!-- 7. 🎯 ToT Program Budget / Training Package -->
+            <div class="card p-lg cursor-pointer hover-card" style="border: 1px solid var(--border-default); transition: all 0.2s;" onclick="Utils.closeModal(); BudgetEntryModule.activeTab = 'other-costs'; BudgetEntryModule.activeOtherCostSubTab = 'tot'; BudgetEntryModule.renderGrid(BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._budgetYear, BudgetEntryModule._actualsMonth);">
+              <div style="font-size: 2.2rem; margin-bottom: 8px;">🎯</div>
+              <h3 style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; font-size: 1.1rem;">ToT Program Training Matrix</h3>
+              <p class="text-secondary" style="font-size: 12px; line-height: 1.5;">Annual Batch Matrix Planner for State ToTs, Refresher Trainings, MO Trainings, HWC District ToTs, Facility Launches, and Supervision visits.</p>
+            </div>
+          ` : ''}
         </div>
       </div>
     `;
