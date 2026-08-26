@@ -238,10 +238,10 @@ const BudgetEntryModule = {
           ` : ''}
         </div>
 
-        ${(typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(selectedDept)) ? `
-          <!-- With ToT / Without ToT View Option -->
+        ${(this.activeOtherCostSubTab !== 'grid' && this.activeOtherCostSubTab !== 'all' && this.activeOtherCostSubTab !== 'tot' && this.activeOtherCostSubTab !== 'imp-tot' && typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(selectedDept)) ? `
+          <!-- With ToT / Without ToT View Option (Available in category tabs only) -->
           <div class="flex items-center gap-xs" style="background: var(--bg-secondary); padding: 3px 6px; border-radius: var(--radius-md); border: 1px solid var(--border-default); margin-left: auto;">
-            <span class="text-secondary font-bold" style="font-size: 11px; margin-right: 2px;">ToT View:</span>
+            <span class="text-secondary font-bold" style="font-size: 11px; margin-right: 2px;">ToT Costs:</span>
             <button type="button" class="btn btn-sm ${this.totFilterMode !== 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('with-tot')" style="font-size: 11px; padding: 2px 8px;">
               🎯 With ToT
             </button>
@@ -2005,7 +2005,7 @@ const BudgetEntryModule = {
     const totRecordsCount = records.filter(r => r.isImpTot).length;
     const hasTotLines = totRecordsCount > 0 || isImpDept;
 
-    // Apply With ToT / Without ToT filtering
+    // Apply With ToT / Without ToT filtering for category views (default: with-tot)
     const displayRecords = this.totFilterMode === 'without-tot'
       ? records.filter(r => !r.isImpTot)
       : records;
@@ -2024,9 +2024,13 @@ const BudgetEntryModule = {
     const profRecords = displayRecords.filter(r => this.getOtherCostCategory(r) === 'professional');
     const otherRecords = displayRecords.filter(r => !r.isTravelPackage && this.getOtherCostCategory(r) === 'other');
 
-    const totalCost = displayRecords.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
-    const rate = this._conversionRates?.[entity.currency] || 1.0;
     const currentSubTab = this.activeOtherCostSubTab || 'grid';
+    const isAllAccountsTab = currentSubTab === 'grid' || currentSubTab === 'all';
+    const totalCost = isAllAccountsTab
+      ? records.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0)
+      : displayRecords.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
+    const displayedCount = isAllAccountsTab ? records.length : displayRecords.length;
+    const rate = this._conversionRates?.[entity.currency] || 1.0;
     const isLocked = typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entity.id);
 
     // If ToT Program Budget sub-tab is active, delegate directly to ImpTotModule
@@ -2047,14 +2051,14 @@ const BudgetEntryModule = {
           </div>
           <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
             <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Total Budgeted Items</div>
-            <div id="bannerCount" style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary);">${displayRecords.length} Item Entries</div>
+            <div id="bannerCount" style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary);">${displayedCount} Item Entries</div>
           </div>
           <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
             <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Department</div>
             <div style="font-size: 1rem; font-weight: 600; color: var(--text-secondary);">${deptDisplayName}</div>
           </div>
 
-          ${hasTotLines ? `
+          ${(!isAllAccountsTab && hasTotLines) ? `
             <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
               <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase; margin-bottom: 3px;">ToT Costs View</div>
               <div class="flex items-center gap-xs" style="background: var(--bg-card); padding: 3px 6px; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
@@ -2079,7 +2083,7 @@ const BudgetEntryModule = {
 
       <!-- Tab Content Area -->
       <div id="otherCostTabContent">
-        ${this.renderOtherCostSubTabContent(currentSubTab, nonPayrollCoa, displayRecords, combinedTravelRecords, suppliesRecords, commRecords, officeRecords, profRecords, otherRecords, yearId, entity, dept, budgetYear, rate, isLocked)}
+        ${this.renderOtherCostSubTabContent(currentSubTab, nonPayrollCoa, isAllAccountsTab ? records : displayRecords, combinedTravelRecords, suppliesRecords, commRecords, officeRecords, profRecords, otherRecords, yearId, entity, dept, budgetYear, rate, isLocked, hasTotLines)}
       </div>
     `;
 
@@ -2135,7 +2139,7 @@ const BudgetEntryModule = {
     if (btnEmptyNewTrip) btnEmptyNewTrip.addEventListener('click', openTravelWizard);
   },
 
-  renderOtherCostSubTabContent(subTab, nonPayrollCoa, allRecords, travelRecords, suppliesRecords, commRecords, officeRecords, profRecords, otherRecords, yearId, entity, dept, budgetYear, rate, isLocked = false) {
+  renderOtherCostSubTabContent(subTab, nonPayrollCoa, allRecords, travelRecords, suppliesRecords, commRecords, officeRecords, profRecords, otherRecords, yearId, entity, dept, budgetYear, rate, isLocked = false, hasTotLines = false) {
     const cleanStr = (s) => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 
     // ─── 1. ALL ACCOUNTS OVERVIEW (Always Shows All COA Lines, Read-only Rollup) ───
@@ -2299,12 +2303,23 @@ const BudgetEntryModule = {
       const totalTravelCost = travelRecords.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
       return `
         <div class="card mb-lg">
-          <div class="card-header flex justify-between items-center">
+          <div class="card-header flex justify-between items-center" style="flex-wrap: wrap; gap: 10px;">
             <div>
               <div class="card-title">Employee Travel & Lodging Packages (${travelRecords.length})</div>
               <div class="card-subtitle">Showing single-line summaries &bull; Click <strong>▶</strong> to expand 12-month budget & location benchmark breakdown</div>
             </div>
             <div class="flex items-center gap-sm">
+              ${hasTotLines ? `
+                <div class="flex items-center gap-xs" style="background: var(--bg-primary); padding: 3px 6px; border-radius: var(--radius-sm); border: 1px solid var(--border-default); margin-right: 4px;">
+                  <span class="text-secondary font-bold" style="font-size: 11px; padding: 0 4px;">ToT Costs:</span>
+                  <button type="button" class="btn btn-sm ${this.totFilterMode !== 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('with-tot')" style="font-size: 11px; padding: 2px 8px; border-radius: var(--radius-xs);">
+                    🎯 With ToT
+                  </button>
+                  <button type="button" class="btn btn-sm ${this.totFilterMode === 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('without-tot')" style="font-size: 11px; padding: 2px 8px; border-radius: var(--radius-xs);">
+                    🚫 Without ToT
+                  </button>
+                </div>
+              ` : ''}
               <button type="button" class="btn btn-secondary btn-sm" id="btnToggleAllMonths" title="Expand / Collapse all monthly schedules">▶ Expand All</button>
               ${isLocked ? '' : `
                 <button class="btn btn-primary btn-sm" id="btnHeaderNewTrip">
@@ -2455,12 +2470,23 @@ const BudgetEntryModule = {
 
     return `
       <div class="card mb-lg">
-        <div class="card-header flex justify-between items-center">
+        <div class="card-header flex justify-between items-center" style="flex-wrap: wrap; gap: 10px;">
           <div>
             <div class="card-title">${catMeta.icon} ${catMeta.title} (${catRecords.length} Items)</div>
             <div class="card-subtitle">Showing single-line summaries &bull; Click <strong>▶</strong> on any line to expand 12-month schedule & calculation basis</div>
           </div>
           <div class="flex items-center gap-sm">
+            ${hasTotLines ? `
+              <div class="flex items-center gap-xs" style="background: var(--bg-primary); padding: 3px 6px; border-radius: var(--radius-sm); border: 1px solid var(--border-default); margin-right: 4px;">
+                <span class="text-secondary font-bold" style="font-size: 11px; padding: 0 4px;">ToT Costs:</span>
+                <button type="button" class="btn btn-sm ${this.totFilterMode !== 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('with-tot')" style="font-size: 11px; padding: 2px 8px; border-radius: var(--radius-xs);">
+                  🎯 With ToT
+                </button>
+                <button type="button" class="btn btn-sm ${this.totFilterMode === 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('without-tot')" style="font-size: 11px; padding: 2px 8px; border-radius: var(--radius-xs);">
+                  🚫 Without ToT
+                </button>
+              </div>
+            ` : ''}
             <button type="button" class="btn btn-secondary btn-sm" id="btnToggleAllMonths" title="Expand / Collapse all monthly schedules">▶ Expand All</button>
             ${isLocked ? '' : `
               <button class="btn btn-primary btn-sm" onclick="BudgetEntryModule.showExpenseInputWizard('${subTab}')">
