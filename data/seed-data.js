@@ -2205,31 +2205,7 @@ const SEED_DATA = {
       parentAccount: 'Professional & Consultancy Charges',
       unitDesc: 'Per doctor / session',
       defaultFormula: 'events_days_honorarium',
-      defaultMultiplier: 1,
-      isBuiltIn: false
-    },
-    {
-      id: 'stationeryCertificates',
-      fieldKey: 'stationeryCertificates',
-      name: '📚 Stationery, Certificates & Badges',
-      category: 'printing',
-      defaultGlCode: '93204',
-      parentAccount: 'Supplies & Printing Costs',
-      unitDesc: 'Per participant kit',
-      defaultFormula: 'participants_rate',
-      defaultMultiplier: 1,
-      isBuiltIn: false
-    },
-    {
-      id: 'avRentalPerDay',
-      fieldKey: 'avRentalPerDay',
-      name: '📽️ AV & Projector Equipment Rental',
-      category: 'venue',
-      defaultGlCode: '93201',
-      parentAccount: 'Other Direct Expenses',
-      unitDesc: 'Per training day',
-      defaultFormula: 'events_days_hall',
-      defaultMultiplier: 1,
+      avRentalPerDay: 50,
       isBuiltIn: false
     }
   ],
@@ -2249,8 +2225,14 @@ const SEED_DATA = {
 
   // ─── IMP ToT Activity-Specific Master Templates (Activities 10.1 to 10.8) ───
   defaultImpActivityTemplates: [
+    // ─── GLOBAL DEFAULT TEMPLATES (Activities 10.1 to 10.8) ───
     {
+      id: 'tpl-global-10.1',
       code: '10.1',
+      countryCode: '*',
+      country: 'All Countries',
+      templateName: 'Standard State Level Bundled ToT (3 Days, 30 Pax)',
+      isDefault: true,
       activityName: '10.1-Bundled ToT- Master trainers',
       componentId: 'bundled-tot',
       title: 'State Level Bundled ToT (Master Trainers)',
@@ -2266,102 +2248,24 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        {
-          id: 'line-101-hotel',
-          description: '🏨 Hotel Accommodation (Double Occupancy)',
-          ledgerCode: '93101',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'hotelPerDay',
-          formulaType: 'events_days_trainers',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-101-cab',
-          description: '🚕 Local Cab Travel',
-          ledgerCode: '93104',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'cabPerDay',
-          formulaType: 'events_days_trainers',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-101-food',
-          description: '🍱 Trainer Food Allowance (Per Diem)',
-          ledgerCode: '93102',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'foodPerDay',
-          formulaType: 'events_days_trainers',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-101-transit',
-          description: '🚆 Bus / Train Roundtrip Transit',
-          ledgerCode: '93105',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'busTrainPerTrip',
-          formulaType: 'events_trainers',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-101-kits',
-          description: '📦 Training Collateral Kits',
-          ledgerCode: '93204',
-          parentAccount: 'Supplies & Printing Costs',
-          rateField: 'kitCost',
-          formulaType: 'facilities_rate',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-101-dolls',
-          description: '🎎 Doll Model Sets (2 per facility)',
-          ledgerCode: '93204',
-          parentAccount: 'Supplies & Printing Costs',
-          rateField: 'dollCost',
-          formulaType: 'facilities_multiplier',
-          multiplier: 2,
-          defaultActive: true
-        },
-        {
-          id: 'line-101-thalis',
-          description: '🍽️ Thali Model Sets (3 per facility)',
-          ledgerCode: '93204',
-          parentAccount: 'Supplies & Printing Costs',
-          rateField: 'thaliCost',
-          formulaType: 'facilities_multiplier',
-          multiplier: 3,
-          defaultActive: true
-        },
-        {
-          id: 'line-101-banners',
-          description: '🏷️ Banners & Stage Backdrops (3x6 ft)',
-          ledgerCode: '93204',
-          parentAccount: 'Supplies & Printing Costs',
-          rateField: 'bannerCost',
-          secondaryRateField: 'backdropCost',
-          formulaType: 'events_rate_dual',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-101-venue',
-          description: '🏢 Venue Hall Rental & Participant Catering',
-          ledgerCode: '93201',
-          parentAccount: 'Other Direct Expenses',
-          rateField: 'venueHallPerDay',
-          secondaryRateField: 'venueFoodPerPerson',
-          formulaType: 'events_days_hall_catering',
-          multiplier: 1,
-          defaultActive: true
-        }
+        { id: 'line-101-hotel', description: '🏨 Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-cab', description: '🚕 Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-transit', description: '🚆 Bus / Train Roundtrip Transit', ledgerCode: '93105', parentAccount: 'Travel & Lodging Expenses', rateField: 'busTrainPerTrip', formulaType: 'events_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-kits', description: '📦 Training Collateral Kits', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'kitCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
+        { id: 'line-101-dolls', description: '🎎 Doll Model Sets (2 per facility)', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'dollCost', formulaType: 'facilities_multiplier', multiplier: 2, defaultActive: true },
+        { id: 'line-101-thalis', description: '🍽️ Thali Model Sets (3 per facility)', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'thaliCost', formulaType: 'facilities_multiplier', multiplier: 3, defaultActive: true },
+        { id: 'line-101-banners', description: '🏷️ Banners & Stage Backdrops (3x6 ft)', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'bannerCost', secondaryRateField: 'backdropCost', formulaType: 'events_rate_dual', multiplier: 1, defaultActive: true },
+        { id: 'line-101-venue', description: '🏢 Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true }
       ]
     },
     {
+      id: 'tpl-global-10.2',
       code: '10.2',
+      countryCode: '*',
+      country: 'All Countries',
+      templateName: 'State Level Non-Bundled ToT (3 Days, 30 Pax)',
+      isDefault: true,
       activityName: '10.2-Non-bundled ToTs-Master Trainers',
       componentId: 'non-bundled-tot',
       title: 'State Level Non-Bundled ToT (Master Trainers)',
@@ -2377,72 +2281,21 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        {
-          id: 'line-102-hotel',
-          description: '🏨 Hotel Accommodation (Double Occupancy)',
-          ledgerCode: '93101',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'hotelPerDay',
-          formulaType: 'events_days_trainers',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-102-cab',
-          description: '🚕 Local Cab Travel',
-          ledgerCode: '93104',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'cabPerDay',
-          formulaType: 'events_days_trainers',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-102-food',
-          description: '🍱 Trainer Food Allowance (Per Diem)',
-          ledgerCode: '93102',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'foodPerDay',
-          formulaType: 'events_days_trainers',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-102-transit',
-          description: '🚆 Bus / Train Roundtrip Transit',
-          ledgerCode: '93105',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'busTrainPerTrip',
-          formulaType: 'events_trainers',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-102-banners',
-          description: '🏷️ Banners & Stage Backdrops (3x6 ft)',
-          ledgerCode: '93204',
-          parentAccount: 'Supplies & Printing Costs',
-          rateField: 'bannerCost',
-          secondaryRateField: 'backdropCost',
-          formulaType: 'events_rate_dual',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-102-venue',
-          description: '🏢 Venue Hall Rental & Participant Catering',
-          ledgerCode: '93201',
-          parentAccount: 'Other Direct Expenses',
-          rateField: 'venueHallPerDay',
-          secondaryRateField: 'venueFoodPerPerson',
-          formulaType: 'events_days_hall_catering',
-          multiplier: 1,
-          defaultActive: true
-        }
+        { id: 'line-102-hotel', description: '🏨 Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-102-cab', description: '🚕 Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-102-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-102-transit', description: '🚆 Bus / Train Roundtrip Transit', ledgerCode: '93105', parentAccount: 'Travel & Lodging Expenses', rateField: 'busTrainPerTrip', formulaType: 'events_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-102-banners', description: '🏷️ Banners & Stage Backdrops (3x6 ft)', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'bannerCost', secondaryRateField: 'backdropCost', formulaType: 'events_rate_dual', multiplier: 1, defaultActive: true },
+        { id: 'line-102-venue', description: '🏢 Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true }
       ]
     },
     {
+      id: 'tpl-global-10.3',
       code: '10.3',
+      countryCode: '*',
+      country: 'All Countries',
+      templateName: 'Standard Booster / Refresher Training (1 Day, 25 Pax)',
+      isDefault: true,
       activityName: '10.3-Booster/ Refresher Training',
       componentId: 'refresher-tot',
       title: 'Booster / Refresher Training',
@@ -2458,51 +2311,19 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        {
-          id: 'line-103-cab',
-          description: '🚕 Local Cab Travel',
-          ledgerCode: '93104',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'cabPerDay',
-          formulaType: 'events_days_trainers',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-103-food',
-          description: '🍱 Trainer Food Allowance (Per Diem)',
-          ledgerCode: '93102',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'foodPerDay',
-          formulaType: 'events_days_trainers',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-103-venue',
-          description: '🏢 Venue Hall Rental & Participant Catering',
-          ledgerCode: '93201',
-          parentAccount: 'Other Direct Expenses',
-          rateField: 'venueHallPerDay',
-          secondaryRateField: 'venueFoodPerPerson',
-          formulaType: 'events_days_hall_catering',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-103-materials',
-          description: '📋 Refresher Handouts & Training Materials',
-          ledgerCode: '93204',
-          parentAccount: 'Supplies & Printing Costs',
-          rateField: 'bannerCost',
-          formulaType: 'events_rate',
-          multiplier: 1,
-          defaultActive: true
-        }
+        { id: 'line-103-cab', description: '🚕 Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-103-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-103-venue', description: '🏢 Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true },
+        { id: 'line-103-materials', description: '📋 Refresher Handouts & Training Materials', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'bannerCost', formulaType: 'events_rate', multiplier: 1, defaultActive: true }
       ]
     },
     {
+      id: 'tpl-global-10.4',
       code: '10.4',
+      countryCode: '*',
+      country: 'All Countries',
+      templateName: 'Standard Medical Officer Training (1 Day, 25 Pax)',
+      isDefault: true,
       activityName: '10.4-Medical Officer training',
       componentId: 'mo-training',
       title: 'Medical Officer Training (MO Training)',
@@ -2518,70 +2339,21 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        {
-          id: 'line-104-cab',
-          description: '🚕 Local Cab Travel',
-          ledgerCode: '93104',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'cabPerDay',
-          formulaType: 'events_days_trainers',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-104-food',
-          description: '🍱 Trainer Food Allowance (Per Diem)',
-          ledgerCode: '93102',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'foodPerDay',
-          formulaType: 'events_days_trainers',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-104-hall',
-          description: '🏢 Medical Training Venue Hall Rental',
-          ledgerCode: '93201',
-          parentAccount: 'Other Direct Expenses',
-          rateField: 'venueHallPerDay',
-          formulaType: 'events_days_hall',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-104-catering',
-          description: '🍽️ MO Participant Catering & High Tea',
-          ledgerCode: '93201',
-          parentAccount: 'Other Direct Expenses',
-          rateField: 'venueFoodPerPerson',
-          formulaType: 'events_days_participants',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-104-honorarium',
-          description: '🩺 Doctor / Specialist Guest Honorarium',
-          ledgerCode: '93701',
-          parentAccount: 'Professional & Consultancy Charges',
-          rateField: 'doctorHonorarium',
-          formulaType: 'events_days_honorarium',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-104-materials',
-          description: '📚 MO Clinical Protocols & Stationery',
-          ledgerCode: '93204',
-          parentAccount: 'Supplies & Printing Costs',
-          rateField: 'bannerCost',
-          formulaType: 'events_rate',
-          multiplier: 1,
-          defaultActive: true
-        }
+        { id: 'line-104-cab', description: '🚕 Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-104-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-104-hall', description: '🏢 Medical Training Venue Hall Rental', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', formulaType: 'events_days_hall', multiplier: 1, defaultActive: true },
+        { id: 'line-104-catering', description: '🍽️ MO Participant Catering & High Tea', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueFoodPerPerson', formulaType: 'events_days_participants', multiplier: 1, defaultActive: true },
+        { id: 'line-104-honorarium', description: '🩺 Doctor / Specialist Guest Honorarium', ledgerCode: '93701', parentAccount: 'Professional & Consultancy Charges', rateField: 'doctorHonorarium', formulaType: 'events_days_honorarium', multiplier: 1, defaultActive: true },
+        { id: 'line-104-materials', description: '📚 MO Clinical Protocols & Stationery', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'bannerCost', formulaType: 'events_rate', multiplier: 1, defaultActive: true }
       ]
     },
     {
+      id: 'tpl-global-10.5',
       code: '10.5',
+      countryCode: '*',
+      country: 'All Countries',
+      templateName: 'Standard District Level Training (2 Days, 20 Pax)',
+      isDefault: true,
       activityName: '10.5-District level training',
       componentId: 'district-tot',
       title: 'District Level Training (HWC / CHO Training)',
@@ -2597,71 +2369,21 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        {
-          id: 'line-105-hotel',
-          description: '🏨 Hotel Accommodation (Double Occupancy)',
-          ledgerCode: '93101',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'hotelPerDay',
-          formulaType: 'events_days_trainers',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-105-cab',
-          description: '🚕 District Local Cab Travel',
-          ledgerCode: '93104',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'cabPerDay',
-          formulaType: 'events_days_trainers',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-105-food',
-          description: '🍱 Trainer Food Allowance (Per Diem)',
-          ledgerCode: '93102',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'foodPerDay',
-          formulaType: 'events_days_trainers',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-105-kits',
-          description: '📦 HWC / CHO Training Collateral Kits',
-          ledgerCode: '93204',
-          parentAccount: 'Supplies & Printing Costs',
-          rateField: 'kitCost',
-          formulaType: 'facilities_rate',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-105-venue',
-          description: '🏢 District Training Hall Rental & Catering',
-          ledgerCode: '93201',
-          parentAccount: 'Other Direct Expenses',
-          rateField: 'venueHallPerDay',
-          secondaryRateField: 'venueFoodPerPerson',
-          formulaType: 'events_days_hall_catering',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-105-banners',
-          description: '🏷️ District Banners & Signage',
-          ledgerCode: '93204',
-          parentAccount: 'Supplies & Printing Costs',
-          rateField: 'bannerCost',
-          formulaType: 'events_rate',
-          multiplier: 1,
-          defaultActive: true
-        }
+        { id: 'line-105-hotel', description: '🏨 Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-105-cab', description: '🚕 District Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-105-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-105-kits', description: '📦 HWC / CHO Training Collateral Kits', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'kitCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
+        { id: 'line-105-venue', description: '🏢 District Training Hall Rental & Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true },
+        { id: 'line-105-banners', description: '🏷️ District Banners & Signage', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'bannerCost', formulaType: 'events_rate', multiplier: 1, defaultActive: true }
       ]
     },
     {
+      id: 'tpl-global-10.6',
       code: '10.6',
+      countryCode: '*',
+      country: 'All Countries',
+      templateName: 'Standard Facility Launch & Collateral Deployment (15 Facilities)',
+      isDefault: true,
       activityName: '10.6-Facility Launch',
       componentId: 'facility-launch',
       title: 'Facility Launch & Collateral Deployment',
@@ -2677,70 +2399,21 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        {
-          id: 'line-106-launch-pkg',
-          description: '🚀 Facility Launch Collateral Packages',
-          ledgerCode: '93204',
-          parentAccount: 'Supplies & Printing Costs',
-          rateField: 'launchCollaterals',
-          formulaType: 'facilities_rate',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-106-dolls',
-          description: '🎎 Doll Model Sets (2 per facility)',
-          ledgerCode: '93204',
-          parentAccount: 'Supplies & Printing Costs',
-          rateField: 'dollCost',
-          formulaType: 'facilities_multiplier',
-          multiplier: 2,
-          defaultActive: true
-        },
-        {
-          id: 'line-106-thalis',
-          description: '🍽️ Thali Model Sets (3 per facility)',
-          ledgerCode: '93204',
-          parentAccount: 'Supplies & Printing Costs',
-          rateField: 'thaliCost',
-          formulaType: 'facilities_multiplier',
-          multiplier: 3,
-          defaultActive: true
-        },
-        {
-          id: 'line-106-banners',
-          description: '🏷️ Facility Launch Banners & Backdrops',
-          ledgerCode: '93204',
-          parentAccount: 'Supplies & Printing Costs',
-          rateField: 'bannerCost',
-          formulaType: 'facilities_rate',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-106-supervision',
-          description: '🚗 Launch Supervision & PC Travel Visits',
-          ledgerCode: '93104',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'pcCabPerVisit',
-          formulaType: 'facilities_pc_cab',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-106-courier',
-          description: '📦 Facility Collateral Dispatch Courier',
-          ledgerCode: '93302',
-          parentAccount: 'Communication Cost',
-          rateField: 'courierPerEvent',
-          formulaType: 'events_rate',
-          multiplier: 1,
-          defaultActive: true
-        }
+        { id: 'line-106-launch-pkg', description: '🚀 Facility Launch Collateral Packages', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'launchCollaterals', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
+        { id: 'line-106-dolls', description: '🎎 Doll Model Sets (2 per facility)', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'dollCost', formulaType: 'facilities_multiplier', multiplier: 2, defaultActive: true },
+        { id: 'line-106-thalis', description: '🍽️ Thali Model Sets (3 per facility)', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'thaliCost', formulaType: 'facilities_multiplier', multiplier: 3, defaultActive: true },
+        { id: 'line-106-banners', description: '🏷️ Facility Launch Banners & Backdrops', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'bannerCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
+        { id: 'line-106-supervision', description: '🚗 Launch Supervision & PC Travel Visits', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'pcCabPerVisit', formulaType: 'facilities_pc_cab', multiplier: 1, defaultActive: true },
+        { id: 'line-106-courier', description: '📦 Facility Collateral Dispatch Courier', ledgerCode: '93302', parentAccount: 'Communication Cost', rateField: 'courierPerEvent', formulaType: 'events_rate', multiplier: 1, defaultActive: true }
       ]
     },
     {
+      id: 'tpl-global-10.7',
       code: '10.7',
+      countryCode: '*',
+      country: 'All Countries',
+      templateName: 'Standard Supportive Supervision (10 Facilities, 1 PC)',
+      isDefault: true,
       activityName: '10.7-Supportive Supervision',
       componentId: 'supervision-visits',
       title: 'Supportive Supervision & Monitoring (PCs & Non-PCs)',
@@ -2756,40 +2429,18 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        {
-          id: 'line-107-pc-cab',
-          description: '🚗 Program Coordinator (PC) Cab Visit',
-          ledgerCode: '93104',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'pcCabPerVisit',
-          formulaType: 'facilities_pc_cab',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-107-pc-food',
-          description: '🍱 PC Food Allowance (Per Visit)',
-          ledgerCode: '93102',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'pcFoodPerVisit',
-          formulaType: 'facilities_pc_food',
-          multiplier: 1,
-          defaultActive: true
-        },
-        {
-          id: 'line-107-nonpc-hotel',
-          description: '🏨 Specialist / Non-PC Hotel Accommodation',
-          ledgerCode: '93101',
-          parentAccount: 'Travel & Lodging Expenses',
-          rateField: 'nonPcHotelPerDay',
-          formulaType: 'events_days_trainers',
-          multiplier: 1,
-          defaultActive: true
-        }
+        { id: 'line-107-pc-cab', description: '🚗 Program Coordinator (PC) Cab Visit', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'pcCabPerVisit', formulaType: 'facilities_pc_cab', multiplier: 1, defaultActive: true },
+        { id: 'line-107-pc-food', description: '🍱 PC Food Allowance (Per Visit)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'pcFoodPerVisit', formulaType: 'facilities_pc_food', multiplier: 1, defaultActive: true },
+        { id: 'line-107-nonpc-hotel', description: '🏨 Specialist / Non-PC Hotel Accommodation', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'nonPcHotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true }
       ]
     },
     {
+      id: 'tpl-global-10.8',
       code: '10.8',
+      countryCode: '*',
+      country: 'All Countries',
+      templateName: 'Standard Partnership & Leadership Visits (2 Days, 2 Leaders)',
+      isDefault: true,
       activityName: '10.8-Partnership Visits',
       componentId: 'partnership-visits',
       title: 'Partnership & Leadership Visits',
@@ -2835,6 +2486,160 @@ const SEED_DATA = {
           multiplier: 1,
           defaultActive: true
         }
+      ]
+    },
+
+    // ─── COUNTRY-SPECIFIC TEMPLATE VARIANTS ───
+    // India (IN)
+    {
+      id: 'tpl-in-10.1-hub',
+      code: '10.1',
+      countryCode: 'IN',
+      country: 'India',
+      templateName: 'District Hub Bundled ToT (2 Days, 20 Pax)',
+      isDefault: false,
+      activityName: '10.1-Bundled ToT- Master trainers',
+      componentId: 'bundled-tot',
+      title: 'District Hub Bundled ToT',
+      icon: '🏛️',
+      badgeClass: 'badge-indigo',
+      hasToolPackage: true,
+      scaleDefaults: {
+        eventCount: 1,
+        daysCount: 2,
+        facilitiesCount: 10,
+        participantsCount: 20,
+        teamSize: 2,
+        toolPackage: 'Tool Package - 1 (Standard)'
+      },
+      lineItems: [
+        { id: 'line-101-hotel', description: '🏨 Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-cab', description: '🚕 Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-kits', description: '📦 Training Collateral Kits', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'kitCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
+        { id: 'line-101-venue', description: '🏢 Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true }
+      ]
+    },
+    {
+      id: 'tpl-in-10.4-specialist',
+      code: '10.4',
+      countryCode: 'IN',
+      country: 'India',
+      templateName: 'Specialist Medical Officer CME (1 Day, 15 Pax)',
+      isDefault: false,
+      activityName: '10.4-Medical Officer training',
+      componentId: 'mo-training',
+      title: 'Specialist MO Clinical Workshop',
+      icon: '🩺',
+      badgeClass: 'badge-emerald',
+      hasToolPackage: false,
+      scaleDefaults: {
+        eventCount: 1,
+        daysCount: 1,
+        facilitiesCount: 5,
+        participantsCount: 15,
+        teamSize: 2,
+        toolPackage: 'Tool Package - 1 (Standard)'
+      },
+      lineItems: [
+        { id: 'line-104-cab', description: '🚕 Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-104-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-104-hall', description: '🏢 Medical Training Venue Hall Rental', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', formulaType: 'events_days_hall', multiplier: 1, defaultActive: true },
+        { id: 'line-104-catering', description: '🍽️ MO Participant Catering & High Tea', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueFoodPerPerson', formulaType: 'events_days_participants', multiplier: 1, defaultActive: true },
+        { id: 'line-104-honorarium', description: '🩺 Specialist Guest Speaker Honorarium', ledgerCode: '93701', parentAccount: 'Professional & Consultancy Charges', rateField: 'doctorHonorarium', formulaType: 'events_days_honorarium', multiplier: 1, defaultActive: true }
+      ]
+    },
+
+    // Bangladesh (BD)
+    {
+      id: 'tpl-bd-10.1-division',
+      code: '10.1',
+      countryCode: 'BD',
+      country: 'Bangladesh',
+      templateName: 'Division Master Trainer ToT (3 Days, 25 Pax)',
+      isDefault: true,
+      activityName: '10.1-Bundled ToT- Master trainers',
+      componentId: 'bundled-tot',
+      title: 'Division Master Trainer ToT',
+      icon: '🏛️',
+      badgeClass: 'badge-indigo',
+      hasToolPackage: true,
+      scaleDefaults: {
+        eventCount: 1,
+        daysCount: 3,
+        facilitiesCount: 12,
+        participantsCount: 25,
+        teamSize: 3,
+        toolPackage: 'Tool Package - 1 (Standard)'
+      },
+      lineItems: [
+        { id: 'line-101-hotel', description: '🏨 Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-cab', description: '🚕 Local Travel / Vehicle Hire', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-kits', description: '📦 Training Collateral Kits', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'kitCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
+        { id: 'line-101-venue', description: '🏢 Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true }
+      ]
+    },
+
+    // Indonesia (INDO)
+    {
+      id: 'tpl-indo-10.1-provincial',
+      code: '10.1',
+      countryCode: 'INDO',
+      country: 'Indonesia',
+      templateName: 'Provincial Master Trainer ToT (3 Days, 20 Pax)',
+      isDefault: true,
+      activityName: '10.1-Bundled ToT- Master trainers',
+      componentId: 'bundled-tot',
+      title: 'Provincial Master Trainer ToT',
+      icon: '🏛️',
+      badgeClass: 'badge-indigo',
+      hasToolPackage: true,
+      scaleDefaults: {
+        eventCount: 1,
+        daysCount: 3,
+        facilitiesCount: 10,
+        participantsCount: 20,
+        teamSize: 2,
+        toolPackage: 'Tool Package - 1 (Standard)'
+      },
+      lineItems: [
+        { id: 'line-101-hotel', description: '🏨 Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-cab', description: '🚕 Local Travel / Transport', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-kits', description: '📦 Training Collateral Kits', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'kitCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
+        { id: 'line-101-venue', description: '🏢 Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true }
+      ]
+    },
+
+    // Nepal (NP)
+    {
+      id: 'tpl-np-10.1-district',
+      code: '10.1',
+      countryCode: 'NP',
+      country: 'Nepal',
+      templateName: 'District Level ToT Program (3 Days, 20 Pax)',
+      isDefault: true,
+      activityName: '10.1-Bundled ToT- Master trainers',
+      componentId: 'bundled-tot',
+      title: 'District Level ToT Program',
+      icon: '🏛️',
+      badgeClass: 'badge-indigo',
+      hasToolPackage: true,
+      scaleDefaults: {
+        eventCount: 1,
+        daysCount: 3,
+        facilitiesCount: 8,
+        participantsCount: 20,
+        teamSize: 2,
+        toolPackage: 'Tool Package - 1 (Standard)'
+      },
+      lineItems: [
+        { id: 'line-101-hotel', description: '🏨 Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-cab', description: '🚕 Local Vehicle Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-kits', description: '📦 Training Collateral Kits', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'kitCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
+        { id: 'line-101-venue', description: '🏢 Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true }
       ]
     }
   ],

@@ -297,7 +297,6 @@ const ImpTotModule = {
     const isLocked = typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entity?.id);
 
     const events = await db.getImpTotEvents(yearId, entity.id, dept.id);
-    const templates = await db.getAllImpActivityTemplates();
     const customFields = await db.getAllImpCustomRateFields();
     const conversionRate = (await db.getConversionRatesForYear(budgetYear))?.[0]?.rateToUSD || 83.5;
 
@@ -313,24 +312,49 @@ const ImpTotModule = {
     this.activeLocationFilter = activeLocation;
 
     const rates = await db.getImpUnitRates(activeLocation);
+    const countryCode = rates.countryCode || rates.country || entity.countryCode || (rates.country === 'India' ? 'IN' : rates.country === 'Bangladesh' ? 'BD' : rates.country === 'Indonesia' ? 'INDO' : rates.country === 'Nepal' ? 'NP' : '*');
 
-    // Initialize or load Matrix State for activeLocation
+    // Fetch country-scoped templates
+    const templates = await db.getAllImpActivityTemplates(countryCode);
+
+    // Initialize or load Matrix State and Selected Template variants for activeLocation
     if (!this.matrixState[activeLocation]) {
       this.matrixState[activeLocation] = {};
+    }
+    if (!this.matrixSelectedTemplates) {
+      this.matrixSelectedTemplates = {};
+    }
+    if (!this.matrixSelectedTemplates[activeLocation]) {
+      this.matrixSelectedTemplates[activeLocation] = {};
     }
 
     const activityList = Object.values(this.components);
 
-    // Pre-calculate standard batch cost for each activity
+    // Pre-calculate standard batch cost for each activity using its chosen template variant
     const stdBatchCosts = {};
+    const chosenTemplates = {};
     activityList.forEach(comp => {
-      const tpl = templates.find(t => t.code === comp.code) || SEED_DATA.defaultImpActivityTemplates.find(t => t.code === comp.code) || SEED_DATA.defaultImpActivityTemplates[0];
-      stdBatchCosts[comp.code] = this.calculateActivityBatchCost(tpl, rates, customFields);
+      const code = comp.code;
+      const tplsForCode = templates.filter(t => t.code === code || t.componentId === comp.id);
+
+      let chosenTplId = this.matrixSelectedTemplates[activeLocation][code];
+      let tpl = tplsForCode.find(t => t.id === chosenTplId);
+      if (!tpl) {
+        tpl = tplsForCode.find(t => (t.countryCode || '*').toUpperCase() === countryCode.toUpperCase() && t.isDefault) ||
+              tplsForCode.find(t => t.isDefault) ||
+              tplsForCode[0] ||
+              SEED_DATA.defaultImpActivityTemplates.find(t => t.code === code) ||
+              SEED_DATA.defaultImpActivityTemplates[0];
+        this.matrixSelectedTemplates[activeLocation][code] = tpl.id;
+      }
+      chosenTemplates[code] = tpl;
+      stdBatchCosts[code] = this.calculateActivityBatchCost(tpl, rates, customFields);
     });
 
     // Populate matrixState from existing DB events or standard templates
     activityList.forEach(comp => {
       const code = comp.code;
+      const activeTpl = chosenTemplates[code];
       if (!this.matrixState[activeLocation][code]) {
         this.matrixState[activeLocation][code] = {};
       }
@@ -355,6 +379,8 @@ const ImpTotModule = {
               unitCost: unitCost,
               totalCost: totalCost,
               eventId: existingEvent.id,
+              templateId: existingEvent.templateId || activeTpl.id,
+              templateName: existingEvent.templateName || activeTpl.templateName || activeTpl.title,
               isCustomized: (existingEvent.customLines && existingEvent.customLines.length > 0) || (unitCost !== stdBatchCosts[code].batchTotal)
             };
           } else {
@@ -365,6 +391,8 @@ const ImpTotModule = {
               unitCost: stdBatchCosts[code].batchTotal,
               totalCost: 0,
               eventId: null,
+              templateId: activeTpl.id,
+              templateName: activeTpl.templateName || activeTpl.title,
               isCustomized: false
             };
           }
@@ -549,22 +577,40 @@ const ImpTotModule = {
                   const stdCostObj = stdBatchCosts[code];
                   const scale = stdCostObj.scale;
                   const rowTotals = activityRowTotals[code] || { batches: 0, cost: 0 };
-                  const scaleDesc = `${scale.daysCount || 1}d &bull; ${scale.participantsCount || 25}p &bull; ${scale.teamSize || 2}t`;
+                  const activeTpl = chosenTemplates[code];
+                  const codeTpls = templates.filter(t => t.code === code || t.componentId === comp.id);
 
                   return `
                     <tr class="matrix-act-row" data-act-code="${code}" style="border-bottom: 1px solid var(--border-subtle);">
                       <td class="sticky-col-1 font-bold" style="background: var(--bg-secondary);">
-                        <div class="flex items-center gap-xs">
-                          <span style="font-size: 15px;">${comp.icon}</span>
-                          <div>
-                            <span class="badge ${comp.badgeClass || 'badge-cyan'}" style="font-size: 10.5px; padding: 2px 6px;">${comp.code}</span>
-                            <span style="color: var(--text-primary); font-size: 12px; margin-left: 2px;">${comp.title.replace(/\([^)]*\)/g, '').trim()}</span>
-                            <div class="text-tertiary font-mono" style="font-size: 10px; margin-top: 2px;">Norm: ${scaleDesc}</div>
+                        <div class="flex items-start gap-xs">
+                          <span style="font-size: 16px; margin-top: 2px;">${comp.icon}</span>
+                          <div style="flex: 1; min-width: 0;">
+                            <div class="flex items-center gap-xs">
+                              <span class="badge ${comp.badgeClass || 'badge-cyan'}" style="font-size: 10.5px; padding: 2px 6px;">${comp.code}</span>
+                              <span style="color: var(--text-primary); font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${comp.title}">
+                                ${comp.title.replace(/\([^)]*\)/g, '').trim()}
+                              </span>
+                            </div>
+                            <!-- Activity Template Variant Selector -->
+                            <div class="mt-xs">
+                              <select class="form-select font-bold matrix-tpl-select" 
+                                      data-act="${code}"
+                                      onchange="ImpTotModule.onActivityTemplateChanged('${code}', this.value)" 
+                                      style="font-size: 10.5px; padding: 2px 6px; height: 26px; border-radius: 4px; background: var(--bg-primary); border: 1px solid var(--border-default); width: 100%; max-width: 250px; color: var(--text-primary);" 
+                                      title="Choose activity template variant for this state/location">
+                                ${codeTpls.map(t => `
+                                  <option value="${t.id}" ${t.id === activeTpl.id ? 'selected' : ''}>
+                                    ${t.templateName || t.title} (${t.scaleDefaults?.daysCount || 2}d, ${t.scaleDefaults?.participantsCount || 20}p)
+                                  </option>
+                                `).join('')}
+                              </select>
+                            </div>
                           </div>
                         </div>
                       </td>
 
-                      <td class="sticky-col-2 num font-bold font-mono" style="background: var(--bg-secondary); color: var(--accent-secondary); font-size: 12px;">
+                      <td class="sticky-col-2 num font-bold font-mono" id="normBatchCost_${code}" style="background: var(--bg-secondary); color: var(--accent-secondary); font-size: 12px;">
                         ${Utils.formatCurrency(stdCostObj.batchTotal, entity.currency)}
                       </td>
 
@@ -667,6 +713,55 @@ const ImpTotModule = {
         </div>
       </div>
     `;
+  },
+
+  // Handle interactive activity template switching on matrix row
+  async onActivityTemplateChanged(actCode, templateId) {
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(this._yearId, this._entity?.id)) return;
+    const activeLocation = this.activeLocationFilter;
+    if (!this.matrixSelectedTemplates) this.matrixSelectedTemplates = {};
+    if (!this.matrixSelectedTemplates[activeLocation]) this.matrixSelectedTemplates[activeLocation] = {};
+    this.matrixSelectedTemplates[activeLocation][actCode] = templateId;
+
+    const tpl = await db.getImpActivityTemplateById(templateId);
+    if (!tpl) return;
+
+    const rates = await db.getImpUnitRates(activeLocation);
+    const customFields = await db.getAllImpCustomRateFields();
+    const newCostObj = this.calculateActivityBatchCost(tpl, rates, customFields);
+
+    const currency = this._entity?.currency || 'INR';
+
+    // Update all monthly cells for this activity with the new unit cost, scale, and lines
+    if (this.matrixState[activeLocation] && this.matrixState[activeLocation][actCode]) {
+      for (let m = 0; m < 12; m++) {
+        const cell = this.matrixState[activeLocation][actCode][m];
+        cell.scale = { ...newCostObj.scale };
+        cell.costLines = JSON.parse(JSON.stringify(newCostObj.costLines));
+        cell.unitCost = newCostObj.batchTotal;
+        cell.totalCost = (cell.count || 0) * newCostObj.batchTotal;
+        cell.templateId = tpl.id;
+        cell.templateName = tpl.templateName || tpl.title;
+        cell.isCustomized = false;
+
+        const costLabel = document.getElementById(`cellCost_${actCode}_${m}`);
+        if (costLabel) {
+          costLabel.textContent = cell.count > 0 ? Utils.formatCurrency(cell.totalCost, currency) : '';
+        }
+      }
+    }
+
+    // Update norm batch cost display in sticky-col-2
+    const normCostEl = document.getElementById(`normBatchCost_${actCode}`);
+    if (normCostEl) {
+      normCostEl.textContent = Utils.formatCurrency(newCostObj.batchTotal, currency);
+    }
+
+    // Trigger cell recalculation for the first month to update all totals
+    const firstCellCount = this.matrixState[activeLocation]?.[actCode]?.[0]?.count || 0;
+    this.onMatrixCellInput(actCode, 0, firstCellCount);
+
+    Utils.showToast(`✨ Template changed to "${tpl.templateName || tpl.title}" (Norm: ${Utils.formatCurrency(newCostObj.batchTotal, currency)})`, 'info');
   },
 
   // Interactive Live Cell Calculation on Typing (Zero DOM teardown)
@@ -1154,7 +1249,9 @@ const ImpTotModule = {
               scaleSummary: `${count} Batch${count === 1 ? '' : 'es'} &bull; ${scale.daysCount}d &bull; ${scale.participantsCount} Pax &bull; ${scale.facilitiesCount} Facs`,
               scale: scale,
               costLines: scaledCostLines,
-              totalCost: eventCost
+              totalCost: eventCost,
+              templateId: cell.templateId || this.matrixSelectedTemplates?.[activeLocation]?.[code],
+              templateName: cell.templateName
             };
 
             if (cell.eventId) {
@@ -1500,16 +1597,25 @@ const ImpTotModule = {
       existingEvent = await db.get(STORES.impTotEvents, editEventId);
     }
 
-    const allTemplates = await db.getAllImpActivityTemplates();
-    const defaultActivity = existingEvent?.activity || comp.defaultActivity;
-    const activeTemplate = await db.getImpActivityTemplate(defaultActivity || comp.code || comp.id);
-
     const defaultMonth = existingEvent ? existingEvent.monthIdx : (this.activeMonthFilter !== 'all' ? this.activeMonthFilter : 0);
     const defaultLocation = existingEvent?.location || (this.activeLocationFilter !== 'all' ? this.activeLocationFilter : (locNames[0] || 'India KA'));
     const defaultDonor = existingEvent?.donor || donorNames[0] || 'Gates Foundation';
     const defaultCondition = existingEvent?.conditionArea || condNames[0] || 'Maternal & Newborn Care';
     const defaultEmployee = existingEvent?.employeeName || masterEmployees[0]?.name || '';
     const defaultDetails = existingEvent?.details || '';
+
+    const rates = await db.getImpUnitRates(defaultLocation);
+    const countryCode = rates.countryCode || rates.country || entity.countryCode || (rates.country === 'India' ? 'IN' : rates.country === 'Bangladesh' ? 'BD' : rates.country === 'Indonesia' ? 'INDO' : rates.country === 'Nepal' ? 'NP' : '*');
+    const allTemplates = await db.getAllImpActivityTemplates(countryCode);
+
+    const defaultActivity = existingEvent?.activity || comp.defaultActivity;
+    let activeTemplate = null;
+    if (existingEvent?.templateId) {
+      activeTemplate = await db.getImpActivityTemplateById(existingEvent.templateId);
+    }
+    if (!activeTemplate) {
+      activeTemplate = await db.getImpActivityTemplate(defaultActivity || comp.code || comp.id, countryCode);
+    }
 
     // Scale defaults from existing event or active template
     const scale = existingEvent?.scale || activeTemplate?.scaleDefaults || {
@@ -1522,7 +1628,6 @@ const ImpTotModule = {
     };
 
     const customLines = existingEvent?.customLines || [];
-    const rates = await db.getImpUnitRates(defaultLocation);
 
     // Remove any lingering old modal overlay
     const oldOverlay = document.getElementById('impEventModalOverlay');
@@ -1566,8 +1671,8 @@ const ImpTotModule = {
                   <label class="form-label font-bold" style="font-size: 11px; color: var(--accent-primary);">📋 Master Activity Template <span class="text-danger">*</span></label>
                   <select class="form-select font-bold" id="impTemplateSelect" onchange="ImpTotModule.onTemplateSelectChanged(this.value)" style="border: 1.5px solid var(--accent-primary); background: var(--bg-card); font-size: 12px; padding: 6px 10px;">
                     ${allTemplates.map(t => `
-                      <option value="${t.code}" ${t.code === (activeTemplate?.code || '10.1') ? 'selected' : ''}>
-                        ${t.icon || '🎯'} Activity ${t.code}: ${t.title}
+                      <option value="${t.id}" ${t.id === (activeTemplate?.id || `tpl-global-${comp.code}`) ? 'selected' : ''}>
+                        ${t.icon || '🎯'} Activity ${t.code}: ${t.templateName || t.title} (${t.country || 'Global'})
                       </option>
                     `).join('')}
                   </select>
@@ -1819,25 +1924,27 @@ const ImpTotModule = {
   },
 
   // When Master Activity Template changes in modal, re-load active template and sync dimensions
-  async onTemplateSelectChanged(templateCode) {
-    const tpl = await db.getImpActivityTemplate(templateCode);
+  async onTemplateSelectChanged(templateIdOrCode) {
+    const tpl = (await db.getImpActivityTemplateById(templateIdOrCode)) || (await db.getImpActivityTemplate(templateIdOrCode));
     const titleEl = document.getElementById('impModalTitle');
     const badgeEl = document.getElementById('impModalBadge');
     const subtitleEl = document.getElementById('impModalSubtitle');
     const tplBadgeEl = document.getElementById('impActiveTemplateBadge');
     const actSelect = document.getElementById('impActivitySelect');
 
+    const tplDisplayName = tpl?.templateName || tpl?.title || 'Template';
+
     if (titleEl && tpl) {
-      titleEl.innerHTML = `🎯 Plan ${tpl.title}`;
+      titleEl.innerHTML = `🎯 Plan ${tplDisplayName}`;
     }
     if (badgeEl && tpl) {
       badgeEl.textContent = tpl.code;
     }
     if (subtitleEl && tpl) {
-      subtitleEl.innerHTML = `Template-Driven Scale Engine &bull; Master Template: <strong>${tpl.code} - ${tpl.title}</strong>`;
+      subtitleEl.innerHTML = `Template-Driven Scale Engine &bull; Master Template: <strong>${tpl.code} - ${tplDisplayName} (${tpl.country || 'Global'})</strong>`;
     }
     if (tplBadgeEl && tpl) {
-      tplBadgeEl.textContent = `📋 Template: ${tpl.code} - ${tpl.title}`;
+      tplBadgeEl.textContent = `📋 Template: ${tpl.code} - ${tplDisplayName}`;
     }
     if (actSelect && tpl) {
       // Find matching option in 5D activity select
@@ -1871,27 +1978,32 @@ const ImpTotModule = {
 
   // When activity changes in modal, re-load active template and recalculate
   async onActivitySelectChanged(activityName) {
-    const tpl = await db.getImpActivityTemplate(activityName);
+    const locSelect = document.getElementById('impLocationSelect');
+    const location = locSelect ? locSelect.value : 'India KA';
+    const rates = await db.getImpUnitRates(location);
+    const countryCode = rates.countryCode || rates.country || this._entity?.countryCode || '*';
+    const tpl = await db.getImpActivityTemplate(activityName, countryCode);
     const tplSelect = document.getElementById('impTemplateSelect');
-    if (tplSelect && tpl && tpl.code) {
-      tplSelect.value = tpl.code;
+    if (tplSelect && tpl) {
+      tplSelect.value = tpl.id || tpl.code;
     }
+    const tplDisplayName = tpl?.templateName || tpl?.title || 'Template';
     const titleEl = document.getElementById('impModalTitle');
     const badgeEl = document.getElementById('impModalBadge');
     const subtitleEl = document.getElementById('impModalSubtitle');
     const tplBadgeEl = document.getElementById('impActiveTemplateBadge');
 
     if (titleEl && tpl) {
-      titleEl.innerHTML = `🎯 Plan ${tpl.title}`;
+      titleEl.innerHTML = `🎯 Plan ${tplDisplayName}`;
     }
     if (badgeEl && tpl) {
       badgeEl.textContent = tpl.code;
     }
     if (subtitleEl && tpl) {
-      subtitleEl.innerHTML = `Template-Driven Scale Engine &bull; Master Template: <strong>${tpl.code} - ${tpl.title}</strong>`;
+      subtitleEl.innerHTML = `Template-Driven Scale Engine &bull; Master Template: <strong>${tpl.code} - ${tplDisplayName} (${tpl.country || 'Global'})</strong>`;
     }
     if (tplBadgeEl && tpl) {
-      tplBadgeEl.textContent = `📋 Template: ${tpl.code} - ${tpl.title}`;
+      tplBadgeEl.textContent = `📋 Template: ${tpl.code} - ${tplDisplayName}`;
     }
     this.recalculateModalCost();
   },
@@ -1928,7 +2040,7 @@ const ImpTotModule = {
     const templateKey = (tplSelect && tplSelect.value) || (actSelect && actSelect.value) || '10.1';
 
     // Fetch active Admin Template for this activity
-    const template = await db.getImpActivityTemplate(templateKey);
+    const template = (await db.getImpActivityTemplateById(templateKey)) || (await db.getImpActivityTemplate(templateKey));
     const customFields = await db.getAllImpCustomRateFields();
 
     const events = parseInt(document.getElementById('scaleEvents')?.value, 10) || 1;
@@ -2465,6 +2577,15 @@ const ImpTotModule = {
         customLines: customLines,
         totalCost: grandTotal
       };
+
+      const selectedTplId = document.getElementById('impTemplateSelect')?.value;
+      if (selectedTplId) {
+        const tplObj = (await db.getImpActivityTemplateById(selectedTplId)) || (await db.getImpActivityTemplate(selectedTplId));
+        if (tplObj) {
+          eventObj.templateId = tplObj.id;
+          eventObj.templateName = tplObj.templateName || tplObj.title;
+        }
+      }
 
       if (editEventId && editEventId !== 'null' && editEventId !== 'undefined') {
         eventObj.id = editEventId;

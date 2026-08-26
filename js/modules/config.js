@@ -5105,25 +5105,159 @@ const ConfigModule = {
 
   // ═══════════════════════════════════════════════════════════════════════════
   // TAB 3: Activity Templates & Line Items Builder (Activities 10.1 to 10.8)
+  // Country-Specific Multi-Template Architecture
   // ═══════════════════════════════════════════════════════════════════════════
-  async renderImpActivityTemplatesTab(container, templates, standardFields, customFields) {
-    const selectedTemplate = templates.find(t => t.code === this.selectedTemplateCode) || templates[0] || SEED_DATA.defaultImpActivityTemplates[0];
-    this.selectedTemplateCode = selectedTemplate.code;
+  selectedCountryFilter: '*',
+  selectedTemplateCode: '10.1',
+  selectedTemplateId: null,
+
+  async renderImpActivityTemplatesTab(container, allTemplates, standardFields, customFields) {
+    const countryFilter = this.selectedCountryFilter || '*';
+    const activeCode = this.selectedTemplateCode || '10.1';
+
+    // Filter templates for the chosen activity code (and matching country or global '*')
+    const allForCode = (allTemplates || []).filter(t => t.code === activeCode || t.componentId === activeCode || (t.activityName && t.activityName.startsWith(activeCode)));
+    
+    // If country is filtered, prioritize templates matching this country
+    let matchingTemplates = allForCode;
+    if (countryFilter !== '*' && countryFilter !== 'all') {
+      const filtered = allForCode.filter(t => (t.countryCode || '*').toUpperCase() === countryFilter.toUpperCase() || t.countryCode === '*');
+      if (filtered.length > 0) matchingTemplates = filtered;
+    }
+
+    // Determine currently active template
+    let selectedTemplate = null;
+    if (this.selectedTemplateId) {
+      selectedTemplate = allTemplates.find(t => t.id === this.selectedTemplateId);
+    }
+    if (!selectedTemplate && matchingTemplates.length > 0) {
+      // Pick country-specific default first, then any default, then first matching
+      selectedTemplate = matchingTemplates.find(t => (t.countryCode || '*').toUpperCase() === countryFilter.toUpperCase() && t.isDefault) ||
+                         matchingTemplates.find(t => t.isDefault) ||
+                         matchingTemplates[0];
+    }
+    if (!selectedTemplate) {
+      selectedTemplate = allForCode[0] || (typeof SEED_DATA !== 'undefined' ? SEED_DATA.defaultImpActivityTemplates[0] : {});
+    }
+
+    this.selectedTemplateId = selectedTemplate.id;
+    this.selectedTemplateCode = selectedTemplate.code || activeCode;
 
     const allFieldDefs = [...(standardFields || []), ...(customFields || [])];
 
+    const countryOptions = [
+      { code: '*', label: '🌍 All Countries / Global Default', flag: '🌍' },
+      { code: 'IN', label: '🇮🇳 India', flag: '🇮🇳' },
+      { code: 'BD', label: '🇧🇩 Bangladesh', flag: '🇧🇩' },
+      { code: 'INDO', label: '🇮🇩 Indonesia', flag: '🇮🇩' },
+      { code: 'NP', label: '🇳🇵 Nepal', flag: '🇳🇵' },
+      { code: 'US', label: '🇺🇸 United States', flag: '🇺🇸' }
+    ];
+
+    const currentCountryObj = countryOptions.find(c => c.code === countryFilter) || countryOptions[0];
+
     container.innerHTML = `
-      <!-- Activity Switcher Buttons (10.1 to 10.8) -->
-      <div class="card p-md mb-md" style="background: var(--bg-secondary); border: 1px solid var(--border-default);">
-        <div class="text-tertiary font-bold mb-xs" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">
-          🎯 Select Activity Template to Configure (Activities 10.1 to 10.8):
-        </div>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          ${templates.map(t => `
-            <button type="button" class="btn btn-sm ${t.code === this.selectedTemplateCode ? 'btn-primary font-bold' : 'btn-secondary'}" onclick="ConfigModule.selectActivityTemplate('${t.code}')" style="font-size: 12px; padding: 6px 12px;">
-              <span>${t.icon || '🎯'}</span> <strong>${t.code}</strong> ${t.title.replace(/\([^)]*\)/g, '').trim()}
+      <!-- Top Country & Activity Selector Card -->
+      <div class="card p-md mb-md" style="background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-md);">
+        <div class="flex justify-between items-center mb-sm" style="flex-wrap: wrap; gap: 10px;">
+          <div>
+            <div class="text-tertiary font-bold" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">
+              🌍 1. Filter by Country Scope:
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+              ${countryOptions.map(c => `
+                <button type="button" class="btn btn-sm ${countryFilter === c.code ? 'btn-primary font-bold' : 'btn-secondary'}" onclick="ConfigModule.selectCountryForActivityTemplates('${c.code}')" style="font-size: 12px; padding: 4px 10px;">
+                  <span>${c.flag}</span> ${c.label.replace(/^[^\s]+\s*/, '')}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+          <div class="flex items-center gap-sm">
+            <button type="button" class="btn btn-primary btn-sm font-bold" onclick="ConfigModule.showCreateTemplateModal()">
+              ➕ + New Activity Template
             </button>
-          `).join('')}
+          </div>
+        </div>
+
+        <!-- Activity Switcher Buttons (10.1 to 10.8) -->
+        <div style="border-top: 1px solid var(--border-subtle); padding-top: 10px; margin-top: 8px;">
+          <div class="text-tertiary font-bold mb-xs" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">
+            🎯 2. Select Activity Code (10.1 to 10.8):
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            ${['10.1', '10.2', '10.3', '10.4', '10.5', '10.6', '10.7', '10.8'].map(code => {
+              const count = (allTemplates || []).filter(t => t.code === code).length;
+              const sample = (allTemplates || []).find(t => t.code === code) || {};
+              const isSelected = code === this.selectedTemplateCode;
+              return `
+                <button type="button" class="btn btn-sm ${isSelected ? 'btn-primary font-bold' : 'btn-secondary'}" onclick="ConfigModule.selectActivityTemplateCode('${code}')" style="font-size: 12px; padding: 6px 12px;">
+                  <span>${sample.icon || '🎯'}</span> <strong>${code}</strong> <span class="badge ${isSelected ? 'badge-primary' : 'badge-secondary'}" style="font-size: 10px; margin-left: 4px; padding: 1px 5px;">${count}</span>
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- Template Variants Switcher for Selected Activity & Country -->
+      <div class="card p-md mb-md" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.05)); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: var(--radius-md);">
+        <div class="flex justify-between items-center mb-sm" style="flex-wrap: wrap; gap: 10px;">
+          <div>
+            <div class="flex items-center gap-sm">
+              <span class="font-bold text-primary" style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">
+                📑 Available Template Variants for Activity ${this.selectedTemplateCode} (${matchingTemplates.length} Available):
+              </span>
+              <span class="badge badge-indigo font-bold" style="font-size: 11px;">Scope: ${currentCountryObj.flag} ${currentCountryObj.label}</span>
+            </div>
+            <div class="text-secondary mt-xs" style="font-size: 12px;">
+              Employees will be able to choose from these configured templates when budgeting this activity in the IMP ToT Program Matrix.
+            </div>
+          </div>
+          <div class="flex items-center gap-sm">
+            <button type="button" class="btn btn-secondary btn-sm font-bold" onclick="ConfigModule.showCloneTemplateModal('${selectedTemplate.id}')" title="Clone this template to create a new variant">
+              📋 Clone Template
+            </button>
+            ${!selectedTemplate.isDefault ? `
+              <button type="button" class="btn btn-secondary btn-sm font-bold text-warning" onclick="ConfigModule.setDefaultTemplate('${selectedTemplate.id}', '${selectedTemplate.countryCode || '*'}', '${selectedTemplate.code}')" title="Make this template the default for this activity and country">
+                ⭐ Set as Default
+              </button>
+            ` : `
+              <span class="badge badge-emerald font-bold" style="font-size: 11.5px; padding: 4px 10px;">⭐ Default Template</span>
+            `}
+            <button type="button" class="btn btn-ghost btn-sm font-bold" onclick="ConfigModule.showEditTemplateModal('${selectedTemplate.id}')" title="Edit Template Name, Scope, and Details">
+              ✏️ Edit Template Info
+            </button>
+            ${selectedTemplate.id?.startsWith('tpl-custom-') || !selectedTemplate.id?.startsWith('tpl-global-') ? `
+              <button type="button" class="btn btn-danger btn-sm font-bold" onclick="ConfigModule.deleteTemplate('${selectedTemplate.id}')" title="Delete custom template">
+                🗑️ Delete
+              </button>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- Template Variant Pills / Selector Cards -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;">
+          ${matchingTemplates.map(t => {
+            const isAct = t.id === selectedTemplate.id;
+            const flag = t.countryCode === 'IN' ? '🇮🇳' : (t.countryCode === 'BD' ? '🇧🇩' : (t.countryCode === 'INDO' ? '🇮🇩' : (t.countryCode === 'NP' ? '🇳🇵' : (t.countryCode === 'US' ? '🇺🇸' : '🌍'))));
+            const cName = t.country || (t.countryCode === '*' ? 'All Countries' : t.countryCode);
+            return `
+              <div class="card p-sm" onclick="ConfigModule.selectSpecificTemplate('${t.id}')" style="cursor: pointer; border: 2px solid ${isAct ? 'var(--accent-primary)' : 'var(--border-default)'}; background: ${isAct ? 'var(--bg-primary)' : 'var(--bg-secondary)'}; border-radius: 8px; transition: all 0.15s ease;">
+                <div class="flex justify-between items-center mb-xs">
+                  <div class="flex items-center gap-xs">
+                    <span style="font-size: 1.1rem;">${t.icon || '🎯'}</span>
+                    <strong style="color: ${isAct ? 'var(--accent-primary)' : 'var(--text-primary)'}; font-size: 12.5px;">${t.templateName || t.title}</strong>
+                  </div>
+                  ${t.isDefault ? '<span class="badge badge-emerald" style="font-size: 9.5px;">⭐ Default</span>' : ''}
+                </div>
+                <div class="flex items-center justify-between text-secondary" style="font-size: 11px;">
+                  <span>${flag} <strong>${cName}</strong></span>
+                  <span>${t.scaleDefaults?.daysCount || 2} Days &bull; ${t.scaleDefaults?.participantsCount || 25} Pax</span>
+                  <span class="badge ${isAct ? 'badge-primary' : 'badge-secondary'}" style="font-size: 10px;">${t.lineItems?.length || 0} Lines</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
         </div>
       </div>
 
@@ -5136,16 +5270,17 @@ const ConfigModule = {
                 ACTIVITY ${selectedTemplate.code}
               </span>
               <h3 style="margin: 0; color: var(--text-primary); font-size: 1.25rem;">
-                ${selectedTemplate.icon || '🎯'} ${selectedTemplate.title}
+                ${selectedTemplate.icon || '🎯'} ${selectedTemplate.templateName || selectedTemplate.title}
               </h3>
+              ${selectedTemplate.isDefault ? '<span class="badge badge-emerald font-bold" style="font-size: 10px;">⭐ Default</span>' : ''}
             </div>
             <div class="text-secondary mt-xs" style="font-size: 12px;">
-              Linked 5D Activity: <code style="font-weight: bold;">${selectedTemplate.activityName}</code> &bull; ${selectedTemplate.lineItems?.length || 0} Linked Cost Line Items
+              Country Scope: <strong>${selectedTemplate.country || 'All Countries'} (${selectedTemplate.countryCode || '*'})</strong> &bull; Linked 5D Activity: <code style="font-weight: bold;">${selectedTemplate.activityName}</code> &bull; ${selectedTemplate.lineItems?.length || 0} Cost Line Items
             </div>
           </div>
           <div class="flex items-center gap-sm">
-            <button class="btn btn-ghost btn-sm text-danger font-bold" onclick="ConfigModule.resetActivityTemplate('${selectedTemplate.code}')" title="Reset this template to factory default seed settings">
-              ↺ Reset to Default
+            <button class="btn btn-ghost btn-sm text-danger font-bold" onclick="ConfigModule.resetActivityTemplate('${selectedTemplate.id}')" title="Reset this template to factory default seed settings">
+              ↺ Reset to Seed Defaults
             </button>
             <button class="btn btn-secondary btn-sm font-bold" onclick="ConfigModule.showTemplateLineItemModal()">
               ➕ + Add Line Item
@@ -5250,15 +5385,392 @@ const ConfigModule = {
     `;
   },
 
-  async selectActivityTemplate(code) {
-    this.selectedTemplateCode = code;
+  async selectCountryForActivityTemplates(countryCode) {
+    this.selectedCountryFilter = countryCode;
+    this.selectedTemplateId = null;
     const pageContent = document.getElementById('pageContent');
     if (pageContent) return await this.renderImpUnitRates(pageContent);
   },
 
+  async selectActivityTemplateCode(code) {
+    this.selectedTemplateCode = code;
+    this.selectedTemplateId = null;
+    const pageContent = document.getElementById('pageContent');
+    if (pageContent) return await this.renderImpUnitRates(pageContent);
+  },
+
+  async selectSpecificTemplate(templateId) {
+    this.selectedTemplateId = templateId;
+    const tpl = await db.getImpActivityTemplateById(templateId);
+    if (tpl) this.selectedTemplateCode = tpl.code;
+    const pageContent = document.getElementById('pageContent');
+    if (pageContent) return await this.renderImpUnitRates(pageContent);
+  },
+
+  async showCreateTemplateModal() {
+    const allTemplates = await db.getAllImpActivityTemplates();
+    const activeCode = this.selectedTemplateCode || '10.1';
+    const activeCountry = this.selectedCountryFilter !== '*' ? this.selectedCountryFilter : 'IN';
+    const sampleTpl = allTemplates.find(t => t.code === activeCode) || allTemplates[0];
+
+    const content = `
+      <form id="createTemplateForm" style="font-size: 13px;">
+        <div class="form-group mb-sm">
+          <label class="form-label font-bold">Activity Code <span class="text-danger">*</span></label>
+          <select class="form-select font-bold" id="newTplCode">
+            <option value="10.1" ${activeCode === '10.1' ? 'selected' : ''}>10.1 - Bundled ToT (Master Trainers)</option>
+            <option value="10.2" ${activeCode === '10.2' ? 'selected' : ''}>10.2 - Non-Bundled ToT (Facility Staff)</option>
+            <option value="10.3" ${activeCode === '10.3' ? 'selected' : ''}>10.3 - Refresher ToT</option>
+            <option value="10.4" ${activeCode === '10.4' ? 'selected' : ''}>10.4 - Medical Officer Training</option>
+            <option value="10.5" ${activeCode === '10.5' ? 'selected' : ''}>10.5 - District Level Training</option>
+            <option value="10.6" ${activeCode === '10.6' ? 'selected' : ''}>10.6 - Facility Launch & Collaterals</option>
+            <option value="10.7" ${activeCode === '10.7' ? 'selected' : ''}>10.7 - Supportive Supervision</option>
+            <option value="10.8" ${activeCode === '10.8' ? 'selected' : ''}>10.8 - Partnership & Leadership Visits</option>
+          </select>
+        </div>
+
+        <div class="form-group mb-sm">
+          <label class="form-label font-bold">Template Name / Variant Title <span class="text-danger">*</span></label>
+          <input type="text" class="form-input font-bold" id="newTplName" placeholder="e.g. State Division ToT (3 Days, 25 Pax), District Hub Workshop" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+          <div class="form-group mb-none">
+            <label class="form-label font-bold">Country Scope <span class="text-danger">*</span></label>
+            <select class="form-select font-bold" id="newTplCountry">
+              <option value="*" ${activeCountry === '*' ? 'selected' : ''}>🌍 All Countries (Global Default)</option>
+              <option value="IN" ${activeCountry === 'IN' ? 'selected' : ''}>🇮🇳 India</option>
+              <option value="BD" ${activeCountry === 'BD' ? 'selected' : ''}>🇧🇩 Bangladesh</option>
+              <option value="INDO" ${activeCountry === 'INDO' ? 'selected' : ''}>🇮🇩 Indonesia</option>
+              <option value="NP" ${activeCountry === 'NP' ? 'selected' : ''}>🇳🇵 Nepal</option>
+              <option value="US" ${activeCountry === 'US' ? 'selected' : ''}>🇺🇸 United States</option>
+            </select>
+          </div>
+
+          <div class="form-group mb-none">
+            <label class="form-label font-bold">Clone Line Items from Existing</label>
+            <select class="form-select font-bold" id="newTplCloneSource">
+              <option value="none">✨ Blank (No Line Items)</option>
+              ${allTemplates.map(t => `
+                <option value="${t.id}" ${(t.code === activeCode && t.isDefault) ? 'selected' : ''}>
+                  ${t.icon || '🎯'} ${t.code} - ${t.templateName || t.title} (${t.country || 'Global'})
+                </option>
+              `).join('')}
+            </select>
+          </div>
+        </div>
+
+        <div class="card p-md mb-md" style="background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-md);">
+          <div class="font-bold mb-xs" style="font-size: 11px; text-transform: uppercase; color: var(--accent-primary);">
+            Operational Scale Defaults
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px;">
+            <div class="form-group mb-none">
+              <label class="form-label font-bold" style="font-size: 10.5px;">Batches</label>
+              <input type="number" min="1" class="form-input font-bold" id="newTplEvents" value="1">
+            </div>
+            <div class="form-group mb-none">
+              <label class="form-label font-bold" style="font-size: 10.5px;">Days</label>
+              <input type="number" min="1" class="form-input font-bold" id="newTplDays" value="${sampleTpl.scaleDefaults?.daysCount || 2}">
+            </div>
+            <div class="form-group mb-none">
+              <label class="form-label font-bold" style="font-size: 10.5px;">Facilities</label>
+              <input type="number" min="0" class="form-input font-bold" id="newTplFacilities" value="${sampleTpl.scaleDefaults?.facilitiesCount || 10}">
+            </div>
+            <div class="form-group mb-none">
+              <label class="form-label font-bold" style="font-size: 10.5px;">Trainees</label>
+              <input type="number" min="1" class="form-input font-bold" id="newTplParticipants" value="${sampleTpl.scaleDefaults?.participantsCount || 20}">
+            </div>
+            <div class="form-group mb-none">
+              <label class="form-label font-bold" style="font-size: 10.5px;">Team Size</label>
+              <input type="number" min="1" class="form-input font-bold" id="newTplTeamSize" value="${sampleTpl.scaleDefaults?.teamSize || 2}">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group mb-none">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="newTplIsDefault" style="width: 16px; height: 16px;">
+            <span class="font-bold">Set as Default Template for this Activity and Country</span>
+          </label>
+        </div>
+      </form>
+    `;
+
+    Utils.showModal('➕ Create New Activity Template Variant', content, {
+      modalWidth: '650px',
+      footer: (footer, close) => {
+        footer.appendChild(Utils.createElement('button', { className: 'btn btn-ghost', textContent: 'Cancel', onClick: close }));
+        footer.appendChild(Utils.createElement('button', {
+          className: 'btn btn-primary font-bold',
+          textContent: '💾 Create Template',
+          onClick: async () => {
+            const name = Utils.$('#newTplName')?.value.trim();
+            if (!name) {
+              Utils.showToast('Please enter a template name.', 'warning');
+              return;
+            }
+
+            const code = Utils.$('#newTplCode')?.value || '10.1';
+            const countryCode = Utils.$('#newTplCountry')?.value || '*';
+            const cloneSourceId = Utils.$('#newTplCloneSource')?.value;
+            const isDef = Utils.$('#newTplIsDefault')?.checked;
+
+            const countryMap = {
+              '*': 'All Countries',
+              'IN': 'India',
+              'BD': 'Bangladesh',
+              'INDO': 'Indonesia',
+              'NP': 'Nepal',
+              'US': 'United States'
+            };
+
+            let lineItems = [];
+            let icon = '🎯';
+            let badgeClass = 'badge-indigo';
+            let componentId = 'bundled-tot';
+
+            if (cloneSourceId && cloneSourceId !== 'none') {
+              const src = await db.getImpActivityTemplateById(cloneSourceId) || allTemplates.find(t => t.id === cloneSourceId);
+              if (src) {
+                lineItems = JSON.parse(JSON.stringify(src.lineItems || []));
+                icon = src.icon || icon;
+                badgeClass = src.badgeClass || badgeClass;
+                componentId = src.componentId || componentId;
+              }
+            } else {
+              const src = allTemplates.find(t => t.code === code);
+              if (src) {
+                icon = src.icon || icon;
+                badgeClass = src.badgeClass || badgeClass;
+                componentId = src.componentId || componentId;
+              }
+            }
+
+            const templateId = `tpl-${countryCode.toLowerCase()}-${code}-${Date.now()}`;
+            const newTpl = {
+              id: templateId,
+              code: code,
+              countryCode: countryCode,
+              country: countryMap[countryCode] || countryCode,
+              templateName: name,
+              title: name,
+              isDefault: isDef,
+              activityName: `${code}-${name}`,
+              componentId: componentId,
+              icon: icon,
+              badgeClass: badgeClass,
+              hasToolPackage: (code === '10.1' || code === '10.2'),
+              scaleDefaults: {
+                eventCount: parseInt(Utils.$('#newTplEvents')?.value, 10) || 1,
+                daysCount: parseInt(Utils.$('#newTplDays')?.value, 10) || 2,
+                facilitiesCount: parseInt(Utils.$('#newTplFacilities')?.value, 10) || 10,
+                participantsCount: parseInt(Utils.$('#newTplParticipants')?.value, 10) || 20,
+                teamSize: parseInt(Utils.$('#newTplTeamSize')?.value, 10) || 2,
+                toolPackage: 'Tool Package - 1 (Standard)'
+              },
+              lineItems: lineItems
+            };
+
+            await db.saveImpActivityTemplate(newTpl);
+            if (isDef) {
+              await db.setDefaultImpActivityTemplate(templateId, countryCode, code);
+            }
+
+            Utils.showToast(`✅ Created template variant "${name}" for Activity ${code}!`, 'success');
+            ConfigModule.selectedTemplateCode = code;
+            ConfigModule.selectedTemplateId = templateId;
+            close();
+            const pageContent = Utils.$('#pageContent');
+            if (pageContent) ConfigModule.renderImpUnitRates(pageContent);
+          }
+        }));
+      }
+    });
+  },
+
+  async showCloneTemplateModal(sourceTemplateId) {
+    const allTemplates = await db.getAllImpActivityTemplates();
+    const src = allTemplates.find(t => t.id === sourceTemplateId) || allTemplates[0];
+
+    const content = `
+      <form id="cloneTemplateForm" style="font-size: 13px;">
+        <div class="card p-sm mb-md" style="background: var(--bg-secondary); border: 1px solid var(--border-default);">
+          <div class="flex items-center gap-xs">
+            <span style="font-size: 1.1rem;">📋</span>
+            <div>
+              <strong>Cloning:</strong> ${src.icon || '🎯'} Activity ${src.code} &bull; ${src.templateName || src.title}
+              <div class="text-secondary" style="font-size: 11px;">Contains ${src.lineItems?.length || 0} configured cost line items</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group mb-sm">
+          <label class="form-label font-bold">New Template Name <span class="text-danger">*</span></label>
+          <input type="text" class="form-input font-bold" id="cloneTplName" value="${src.templateName || src.title} (Custom Copy)" required>
+        </div>
+
+        <div class="form-group mb-md">
+          <label class="form-label font-bold">Target Country Scope <span class="text-danger">*</span></label>
+          <select class="form-select font-bold" id="cloneTplCountry">
+            <option value="*" ${src.countryCode === '*' ? 'selected' : ''}>🌍 All Countries (Global)</option>
+            <option value="IN" ${src.countryCode === 'IN' ? 'selected' : ''}>🇮🇳 India</option>
+            <option value="BD" ${src.countryCode === 'BD' ? 'selected' : ''}>🇧🇩 Bangladesh</option>
+            <option value="INDO" ${src.countryCode === 'INDO' ? 'selected' : ''}>🇮🇩 Indonesia</option>
+            <option value="NP" ${src.countryCode === 'NP' ? 'selected' : ''}>🇳🇵 Nepal</option>
+            <option value="US" ${src.countryCode === 'US' ? 'selected' : ''}>🇺🇸 United States</option>
+          </select>
+        </div>
+      </form>
+    `;
+
+    Utils.showModal(`📋 Clone Activity ${src.code} Template`, content, {
+      modalWidth: '550px',
+      footer: (footer, close) => {
+        footer.appendChild(Utils.createElement('button', { className: 'btn btn-ghost', textContent: 'Cancel', onClick: close }));
+        footer.appendChild(Utils.createElement('button', {
+          className: 'btn btn-primary font-bold',
+          textContent: '📋 Duplicate Template',
+          onClick: async () => {
+            const name = Utils.$('#cloneTplName')?.value.trim();
+            if (!name) {
+              Utils.showToast('Please enter a template name.', 'warning');
+              return;
+            }
+
+            const countryCode = Utils.$('#cloneTplCountry')?.value || '*';
+            const countryMap = {
+              '*': 'All Countries',
+              'IN': 'India',
+              'BD': 'Bangladesh',
+              'INDO': 'Indonesia',
+              'NP': 'Nepal',
+              'US': 'United States'
+            };
+
+            const templateId = `tpl-${countryCode.toLowerCase()}-${src.code}-${Date.now()}`;
+            const clonedTpl = {
+              ...JSON.parse(JSON.stringify(src)),
+              id: templateId,
+              templateName: name,
+              title: name,
+              countryCode: countryCode,
+              country: countryMap[countryCode] || countryCode,
+              isDefault: false
+            };
+
+            await db.saveImpActivityTemplate(clonedTpl);
+            Utils.showToast(`✅ Cloned template as "${name}"!`, 'success');
+            ConfigModule.selectedTemplateId = templateId;
+            close();
+            const pageContent = Utils.$('#pageContent');
+            if (pageContent) ConfigModule.renderImpUnitRates(pageContent);
+          }
+        }));
+      }
+    });
+  },
+
+  async showEditTemplateModal(templateId) {
+    const allTemplates = await db.getAllImpActivityTemplates();
+    const tpl = allTemplates.find(t => t.id === templateId);
+    if (!tpl) return;
+
+    const content = `
+      <form id="editTemplateForm" style="font-size: 13px;">
+        <div class="form-group mb-sm">
+          <label class="form-label font-bold">Template Name / Variant Title <span class="text-danger">*</span></label>
+          <input type="text" class="form-input font-bold" id="editTplName" value="${tpl.templateName || tpl.title || ''}" required>
+        </div>
+
+        <div class="form-group mb-sm">
+          <label class="form-label font-bold">Country Scope <span class="text-danger">*</span></label>
+          <select class="form-select font-bold" id="editTplCountry">
+            <option value="*" ${tpl.countryCode === '*' ? 'selected' : ''}>🌍 All Countries (Global)</option>
+            <option value="IN" ${tpl.countryCode === 'IN' ? 'selected' : ''}>🇮🇳 India</option>
+            <option value="BD" ${tpl.countryCode === 'BD' ? 'selected' : ''}>🇧🇩 Bangladesh</option>
+            <option value="INDO" ${tpl.countryCode === 'INDO' ? 'selected' : ''}>🇮🇩 Indonesia</option>
+            <option value="NP" ${tpl.countryCode === 'NP' ? 'selected' : ''}>🇳🇵 Nepal</option>
+            <option value="US" ${tpl.countryCode === 'US' ? 'selected' : ''}>🇺🇸 United States</option>
+          </select>
+        </div>
+
+        <div class="form-group mb-none">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="editTplIsDefault" ${tpl.isDefault ? 'checked' : ''} style="width: 16px; height: 16px;">
+            <span class="font-bold">Set as Default Template for this Activity and Country</span>
+          </label>
+        </div>
+      </form>
+    `;
+
+    Utils.showModal(`✏️ Edit Activity ${tpl.code} Template Info`, content, {
+      modalWidth: '550px',
+      footer: (footer, close) => {
+        footer.appendChild(Utils.createElement('button', { className: 'btn btn-ghost', textContent: 'Cancel', onClick: close }));
+        footer.appendChild(Utils.createElement('button', {
+          className: 'btn btn-primary font-bold',
+          textContent: '💾 Save Info',
+          onClick: async () => {
+            const name = Utils.$('#editTplName')?.value.trim();
+            if (!name) {
+              Utils.showToast('Please enter a template name.', 'warning');
+              return;
+            }
+
+            const countryCode = Utils.$('#editTplCountry')?.value || '*';
+            const isDef = Utils.$('#editTplIsDefault')?.checked;
+
+            const countryMap = {
+              '*': 'All Countries',
+              'IN': 'India',
+              'BD': 'Bangladesh',
+              'INDO': 'Indonesia',
+              'NP': 'Nepal',
+              'US': 'United States'
+            };
+
+            tpl.templateName = name;
+            tpl.title = name;
+            tpl.countryCode = countryCode;
+            tpl.country = countryMap[countryCode] || countryCode;
+            tpl.isDefault = isDef;
+
+            await db.saveImpActivityTemplate(tpl);
+            if (isDef) {
+              await db.setDefaultImpActivityTemplate(tpl.id, countryCode, tpl.code);
+            }
+
+            Utils.showToast(`✅ Updated template info for "${name}"!`, 'success');
+            close();
+            const pageContent = Utils.$('#pageContent');
+            if (pageContent) ConfigModule.renderImpUnitRates(pageContent);
+          }
+        }));
+      }
+    });
+  },
+
+  async setDefaultTemplate(templateId, countryCode, activityCode) {
+    await db.setDefaultImpActivityTemplate(templateId, countryCode, activityCode);
+    Utils.showToast('⭐ Template set as default for this activity and country!', 'success');
+    const pageContent = Utils.$('#pageContent');
+    if (pageContent) ConfigModule.renderImpUnitRates(pageContent);
+  },
+
+  async deleteTemplate(templateId) {
+    if (!confirm('Are you sure you want to delete this custom activity template?')) return;
+    await db.deleteImpActivityTemplate(templateId);
+    Utils.showToast('🗑️ Template deleted.', 'info');
+    this.selectedTemplateId = null;
+    const pageContent = Utils.$('#pageContent');
+    if (pageContent) ConfigModule.renderImpUnitRates(pageContent);
+  },
+
   async showTemplateLineItemModal(lineId = null) {
     const templates = await db.getAllImpActivityTemplates();
-    const selectedTemplate = templates.find(t => t.code === this.selectedTemplateCode) || templates[0];
+    const selectedTemplate = (this.selectedTemplateId ? templates.find(t => t.id === this.selectedTemplateId) : null) ||
+                             templates.find(t => t.code === this.selectedTemplateCode) || templates[0];
     const standardFields = await db.getAllImpStandardBenchmarkFields();
     const customFields = await db.getAllImpCustomRateFields();
     const existing = selectedTemplate.lineItems?.find(l => l.id === lineId);
@@ -5286,7 +5798,7 @@ const ConfigModule = {
       <form id="templateLineItemForm" style="font-size: 13px;">
         <div class="card p-sm mb-md" style="background: var(--bg-secondary); border: 1px solid var(--border-default);">
           <div class="flex items-center justify-between">
-            <span class="badge badge-indigo font-bold">ACTIVITY ${selectedTemplate.code} COST LINE</span>
+            <span class="badge badge-indigo font-bold">ACTIVITY ${selectedTemplate.code} &bull; ${selectedTemplate.templateName || selectedTemplate.title}</span>
             <span class="badge badge-purple font-bold" style="font-size: 10px;">✨ AI Formula Engine</span>
           </div>
         </div>
@@ -5438,7 +5950,7 @@ const ConfigModule = {
       </form>
     `;
 
-    Utils.showModal(existing ? `✏️ Edit Line Item for Activity ${selectedTemplate.code}` : `➕ Add Line Item to Activity ${selectedTemplate.code}`, content, {
+    Utils.showModal(existing ? `✏️ Edit Line Item for ${selectedTemplate.templateName || selectedTemplate.title}` : `➕ Add Line Item to ${selectedTemplate.templateName || selectedTemplate.title}`, content, {
       modalWidth: '700px',
       footer: (footer, close) => {
         footer.appendChild(Utils.createElement('button', { className: 'btn btn-ghost', textContent: 'Cancel', onClick: close }));
@@ -5495,7 +6007,8 @@ const ConfigModule = {
               defaultActive: true
             };
 
-            const activeTpl = await db.getImpActivityTemplate(ConfigModule.selectedTemplateCode);
+            const activeTpl = (selectedTemplate.id ? await db.getImpActivityTemplateById(selectedTemplate.id) : null) ||
+                             await db.getImpActivityTemplate(ConfigModule.selectedTemplateCode);
             if (!activeTpl.lineItems) activeTpl.lineItems = [];
 
             if (existing) {
@@ -5506,7 +6019,7 @@ const ConfigModule = {
             }
 
             await db.saveImpActivityTemplate(activeTpl);
-            Utils.showToast(`✅ Saved line item "${desc}" to Template ${activeTpl.code}!`, 'success');
+            Utils.showToast(`✅ Saved line item "${desc}"!`, 'success');
             close();
             const pageContent = Utils.$('#pageContent');
             if (pageContent) ConfigModule.renderImpUnitRates(pageContent);
@@ -5539,7 +6052,8 @@ const ConfigModule = {
 
   async deleteTemplateLineItem(lineId) {
     if (!confirm('Are you sure you want to remove this cost line item from the template?')) return;
-    const activeTpl = await db.getImpActivityTemplate(this.selectedTemplateCode);
+    const activeTpl = (this.selectedTemplateId ? await db.getImpActivityTemplateById(this.selectedTemplateId) : null) ||
+                      await db.getImpActivityTemplate(this.selectedTemplateCode);
     activeTpl.lineItems = (activeTpl.lineItems || []).filter(l => l.id !== lineId);
     await db.saveImpActivityTemplate(activeTpl);
     Utils.showToast('🗑️ Removed line item from template.', 'info');
@@ -5548,7 +6062,8 @@ const ConfigModule = {
   },
 
   async saveCurrentActivityTemplate() {
-    const activeTpl = await db.getImpActivityTemplate(this.selectedTemplateCode);
+    const activeTpl = (this.selectedTemplateId ? await db.getImpActivityTemplateById(this.selectedTemplateId) : null) ||
+                      await db.getImpActivityTemplate(this.selectedTemplateCode);
     
     // Capture scale defaults from DOM
     activeTpl.scaleDefaults = {
@@ -5561,13 +6076,14 @@ const ConfigModule = {
     };
 
     await db.saveImpActivityTemplate(activeTpl);
-    Utils.showToast(`💾 Master Template for Activity ${activeTpl.code} (${activeTpl.title}) saved successfully!`, 'success');
+    Utils.showToast(`💾 Master Template "${activeTpl.templateName || activeTpl.title}" saved successfully!`, 'success');
   },
 
-  async resetActivityTemplate(code) {
-    if (!confirm(`Are you sure you want to reset Activity ${code} template to original factory default settings?`)) return;
-    await db.resetImpActivityTemplate(code);
-    Utils.showToast(`↺ Reset Activity ${code} template to seed defaults.`, 'info');
+  async resetActivityTemplate(templateIdOrCode) {
+    if (!confirm(`Are you sure you want to reset this template to seed defaults?`)) return;
+    await db.resetImpActivityTemplate(templateIdOrCode);
+    Utils.showToast(`↺ Reset template to seed defaults.`, 'info');
+    this.selectedTemplateId = null;
     const pageContent = Utils.$('#pageContent');
     if (pageContent) ConfigModule.renderImpUnitRates(pageContent);
   },

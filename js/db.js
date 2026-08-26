@@ -4,7 +4,7 @@
 // ============================================================
 
 const DB_NAME = 'NooraBudgetDB';
-const DB_VERSION = 12;
+const DB_VERSION = 13;
 
 const STORES = {
   entities: 'entities',
@@ -148,8 +148,17 @@ class BudgetDB {
         if (!db.objectStoreNames.contains(STORES.impCustomRateFields)) {
           db.createObjectStore(STORES.impCustomRateFields, { keyPath: 'id' });
         }
+        if (event.oldVersion < 13 && db.objectStoreNames.contains(STORES.impActivityTemplates)) {
+          try {
+            db.deleteObjectStore(STORES.impActivityTemplates);
+          } catch (e) {
+            console.warn('Could not delete old impActivityTemplates store:', e);
+          }
+        }
         if (!db.objectStoreNames.contains(STORES.impActivityTemplates)) {
-          db.createObjectStore(STORES.impActivityTemplates, { keyPath: 'code' });
+          const tplStore = db.createObjectStore(STORES.impActivityTemplates, { keyPath: 'id' });
+          tplStore.createIndex('code', 'code', { unique: false });
+          tplStore.createIndex('countryCode', 'countryCode', { unique: false });
         }
         if (!db.objectStoreNames.contains(STORES.impRateCategories)) {
           db.createObjectStore(STORES.impRateCategories, { keyPath: 'id' });
@@ -981,71 +990,185 @@ class BudgetDB {
   }
 
   // ─── IMP ToT Activity-Specific Templates Helpers (Activities 10.1 to 10.8) ───
-  async getAllImpActivityTemplates() {
+  async getAllImpActivityTemplates(countryFilter = null, activityCode = null) {
     let customTemplates = [];
     try {
-      customTemplates = (await this.getAll(STORES.impActivityTemplates)) || [];
+      if (this.db && this.db.objectStoreNames.contains(STORES.impActivityTemplates)) {
+        customTemplates = (await this.getAll(STORES.impActivityTemplates)) || [];
+      }
     } catch (e) {
       console.warn('Could not read STORES.impActivityTemplates:', e);
     }
     const defaultTemplates = (typeof SEED_DATA !== 'undefined' && SEED_DATA.defaultImpActivityTemplates) || [];
-    if (!customTemplates || customTemplates.length === 0) {
-      return defaultTemplates;
-    }
-    const merged = [...defaultTemplates];
+
+    // Ensure all default templates have an id, countryCode, and metadata
+    const seedWithDefaults = defaultTemplates.map(t => ({
+      id: t.id || `tpl-seed-${t.code}-${(t.countryCode || 'global').toLowerCase()}`,
+      countryCode: t.countryCode || '*',
+      country: t.country || 'All Countries',
+      templateName: t.templateName || t.title || `Activity ${t.code} Template`,
+      isDefault: t.isDefault !== undefined ? t.isDefault : true,
+      ...t
+    }));
+
+    // Merge custom and default templates by unique id
+    const tplMap = new Map();
+    seedWithDefaults.forEach(t => tplMap.set(t.id, { ...t }));
     customTemplates.forEach(ct => {
-      const idx = merged.findIndex(m => m.code === ct.code || m.componentId === ct.componentId);
-      if (idx !== -1) merged[idx] = { ...merged[idx], ...ct };
-      else merged.push(ct);
+      const id = ct.id || `tpl-custom-${ct.code}`;
+      tplMap.set(id, { ...ct, id });
     });
-    return merged;
+
+    let list = Array.from(tplMap.values());
+
+    // Filter by activity code if provided
+    if (activityCode) {
+      const cleanCode = String(activityCode).trim();
+      list = list.filter(t => t.code === cleanCode || t.componentId === cleanCode || (t.activityName && t.activityName.startsWith(cleanCode)));
+    }
+
+    // Filter by country if provided
+    if (countryFilter && countryFilter !== 'all' && countryFilter !== '*') {
+      const cNorm = String(countryFilter).trim().toLowerCase();
+      const codeToCountryMap = {
+        'in': 'india',
+        'bd': 'bangladesh',
+        'indo': 'indonesia',
+        'id': 'indonesia',
+        'np': 'nepal',
+        'us': 'united states',
+        'usa': 'united states'
+      };
+      const countryToCodeMap = {
+        'india': 'in',
+        'bangladesh': 'bd',
+        'indonesia': 'indo',
+        'nepal': 'np',
+        'united states': 'us',
+        'usa': 'us'
+      };
+
+      const targetCc = countryToCodeMap[cNorm] || cNorm;
+      const targetCountryName = codeToCountryMap[cNorm] || cNorm;
+
+      list = list.filter(t => {
+        const tCc = (t.countryCode || '*').toLowerCase();
+        const tCountry = (t.country || '').toLowerCase();
+        return tCc === '*' || tCc === targetCc || tCountry === targetCountryName || tCountry === 'all countries';
+      });
+    }
+
+    return list;
   }
 
-  async getImpActivityTemplate(codeOrCompId) {
-    const all = await this.getAllImpActivityTemplates();
+  async getImpActivityTemplatesForCountry(countryCodeOrEntity, activityCode = null) {
+    let countryCode = '*';
+    if (typeof countryCodeOrEntity === 'object' && countryCodeOrEntity !== null) {
+      countryCode = countryCodeOrEntity.countryCode || countryCodeOrEntity.country || '*';
+    } else if (typeof countryCodeOrEntity === 'string') {
+      const ent = (typeof SEED_DATA !== 'undefined' && SEED_DATA.entities ? SEED_DATA.entities.find(e => e.id === countryCodeOrEntity) : null);
+      if (ent) countryCode = ent.countryCode || ent.country;
+      else countryCode = countryCodeOrEntity;
+    }
+    return this.getAllImpActivityTemplates(countryCode, activityCode);
+  }
+
+  async getImpActivityTemplate(codeOrCompIdOrTplId, countryFilter = null) {
+    const all = await this.getAllImpActivityTemplates(countryFilter);
     const defaults = (typeof SEED_DATA !== 'undefined' && SEED_DATA.defaultImpActivityTemplates) || [];
     const fallback = all[0] || defaults[0] || {};
-    if (!codeOrCompId) return fallback;
+    if (!codeOrCompIdOrTplId) return fallback;
 
-    const raw = String(codeOrCompId).trim();
+    const raw = String(codeOrCompIdOrTplId).trim();
     const key = raw.toLowerCase();
 
-    // 1. Exact match by code or componentId
-    let found = all.find(t => t.code?.toLowerCase() === key || t.componentId?.toLowerCase() === key);
+    // 1. Match by exact template id
+    let found = all.find(t => t.id && t.id.toLowerCase() === key);
     if (found) return found;
 
-    // 2. Match by activity code prefix (e.g. '10.1', '10.2', '10.3', etc.)
-    const codeMatch = raw.match(/^10\.[1-8]/) || raw.match(/10\.[1-8]/);
-    if (codeMatch) {
-      found = all.find(t => t.code === codeMatch[0]);
+    // 2. Match by exact code or componentId with country priority (country-specific default first)
+    if (countryFilter && countryFilter !== '*' && countryFilter !== 'all') {
+      const cNorm = String(countryFilter).trim().toLowerCase();
+      const codeToCountryMap = { 'in': 'india', 'bd': 'bangladesh', 'indo': 'indonesia', 'id': 'indonesia', 'np': 'nepal', 'us': 'united states' };
+      const countryToCodeMap = { 'india': 'in', 'bangladesh': 'bd', 'indonesia': 'indo', 'nepal': 'np', 'united states': 'us' };
+      const targetCc = countryToCodeMap[cNorm] || cNorm;
+      const targetCountryName = codeToCountryMap[cNorm] || cNorm;
+
+      found = all.find(t => 
+        (t.code?.toLowerCase() === key || t.componentId?.toLowerCase() === key) &&
+        ((t.countryCode || '').toLowerCase() === targetCc || (t.country || '').toLowerCase() === targetCountryName) &&
+        t.isDefault
+      ) || all.find(t => 
+        (t.code?.toLowerCase() === key || t.componentId?.toLowerCase() === key) &&
+        ((t.countryCode || '').toLowerCase() === targetCc || (t.country || '').toLowerCase() === targetCountryName)
+      );
       if (found) return found;
     }
 
-    // 3. Match by activityName or title
+    // 3. Match default template for this code
+    found = all.find(t => (t.code?.toLowerCase() === key || t.componentId?.toLowerCase() === key) && t.isDefault);
+    if (found) return found;
+
+    // 4. Any match by code or componentId
+    found = all.find(t => t.code?.toLowerCase() === key || t.componentId?.toLowerCase() === key);
+    if (found) return found;
+
+    // 5. Match by activity code prefix (e.g. '10.1', '10.2', etc.)
+    const codeMatch = raw.match(/^10\.[1-8]/) || raw.match(/10\.[1-8]/);
+    if (codeMatch) {
+      found = all.find(t => t.code === codeMatch[0] && t.isDefault) || all.find(t => t.code === codeMatch[0]);
+      if (found) return found;
+    }
+
+    // 6. Match by activityName, title or templateName
     found = all.find(t => 
       (t.activityName && (t.activityName.toLowerCase().startsWith(key) || t.activityName.toLowerCase().includes(key))) ||
-      (t.title && (t.title.toLowerCase().startsWith(key) || t.title.toLowerCase().includes(key)))
+      (t.title && (t.title.toLowerCase().startsWith(key) || t.title.toLowerCase().includes(key))) ||
+      (t.templateName && (t.templateName.toLowerCase().startsWith(key) || t.templateName.toLowerCase().includes(key)))
     );
     if (found) return found;
 
-    // 4. Match if key contains template activityName or title
-    found = all.find(t => 
-      (t.activityName && key.includes(t.activityName.toLowerCase())) ||
-      (t.title && key.includes(t.title.toLowerCase()))
-    );
+    return fallback;
+  }
 
-    return found || fallback;
+  async getImpActivityTemplateById(templateId) {
+    if (!templateId) return null;
+    const all = await this.getAllImpActivityTemplates();
+    return all.find(t => t.id === templateId) || null;
   }
 
   async saveImpActivityTemplate(templateObj) {
     if (!templateObj.code) {
       throw new Error('Activity template must have a valid activity code (e.g. 10.1)');
     }
+    if (!templateObj.id) {
+      const cc = (templateObj.countryCode || 'custom').toLowerCase();
+      templateObj.id = `tpl-${cc}-${templateObj.code}-${Date.now()}`;
+    }
+    if (!templateObj.templateName) {
+      templateObj.templateName = templateObj.title || `Activity ${templateObj.code} Template`;
+    }
     return this.put(STORES.impActivityTemplates, templateObj);
   }
 
-  async resetImpActivityTemplate(code) {
-    return this.delete(STORES.impActivityTemplates, code);
+  async deleteImpActivityTemplate(templateId) {
+    if (!templateId) return;
+    return this.delete(STORES.impActivityTemplates, templateId);
+  }
+
+  async setDefaultImpActivityTemplate(templateId, countryCode, activityCode) {
+    const all = await this.getAllImpActivityTemplates();
+    const targetCc = (countryCode || '*').toLowerCase();
+    for (const t of all) {
+      if (t.code === activityCode && (t.countryCode || '*').toLowerCase() === targetCc) {
+        t.isDefault = (t.id === templateId);
+        await this.saveImpActivityTemplate(t);
+      }
+    }
+  }
+
+  async resetImpActivityTemplate(templateIdOrCode) {
+    return this.delete(STORES.impActivityTemplates, templateIdOrCode);
   }
 
   async resetAllImpActivityTemplates() {
