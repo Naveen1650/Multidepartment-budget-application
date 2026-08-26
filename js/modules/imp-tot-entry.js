@@ -1727,21 +1727,11 @@ const ImpTotModule = {
             <div class="card p-md mb-md" style="background: var(--bg-secondary); border: 1px solid var(--border-default); box-shadow: var(--shadow-sm);">
               <div class="flex items-center justify-between mb-sm" style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 6px;">
                 <div class="font-bold" style="font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-primary);">
-                  1. 5-Dimensional Budget Tagging &amp; Master Template Selection
+                  1. 5-Dimensional Budget Tagging &amp; Event Scheduling
                 </div>
-                <span class="badge badge-cyan" style="font-size: 10px;">5D Dimensions &amp; Template</span>
+                <span class="badge badge-cyan" style="font-size: 10px;">5D Dimensions</span>
               </div>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-                <div class="form-group mb-none" style="grid-column: span 2;">
-                  <label class="form-label font-bold" style="font-size: 11px; color: var(--accent-primary);">📋 Activity Template <span class="text-danger">*</span></label>
-                  <select class="form-select font-bold" id="impTemplateSelect" onchange="ImpTotModule.onTemplateSelectChanged(this.value)" style="border: 1.5px solid var(--accent-primary); background: var(--bg-card); font-size: 12px; padding: 6px 10px;">
-                    ${activityTemplates.map(t => `
-                      <option value="${t.id}" ${t.id === (activeTemplate?.id) ? 'selected' : ''}>
-                        ${t.icon || '🎯'} ${t.templateName || t.title} (${t.country || 'Global'})
-                      </option>
-                    `).join('')}
-                  </select>
-                </div>
                 <div class="form-group mb-none">
                   <label class="form-label font-bold" style="font-size: 11px;">📅 Scheduled Budget Month <span class="text-danger">*</span></label>
                   <select class="form-select font-bold" id="impMonthSelect">
@@ -1841,20 +1831,20 @@ const ImpTotModule = {
               </div>
             </div>
 
-            <!-- 3. Template-Linked Cost Line Items (With Selection Checkboxes) -->
+            <!-- 3. Template Option & Cost Calculation Breakdown -->
             <div class="card p-md mb-none" style="background: var(--bg-secondary); border: 1px solid var(--border-default); box-shadow: var(--shadow-sm);">
-              <div class="flex justify-between items-center mb-sm" style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 6px; flex-wrap: wrap; gap: 8px;">
+              <div class="flex justify-between items-center mb-sm" style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px; flex-wrap: wrap; gap: 8px;">
                 <div>
                   <div class="flex items-center gap-xs mb-xs">
                     <span class="font-bold" style="font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-primary);">
-                      3. Template-Linked Budget Cost Line Items &amp; Calculation Breakdown
+                      3. Template Option &amp; Calculation Breakdown
                     </span>
                     <span class="badge badge-indigo font-bold" id="impActiveTemplateBadge" style="font-size: 11px; padding: 2px 8px;">
-                      📋 Template: ${activeTemplate?.code || '10.1'} - ${activeTemplate?.title || comp.title}
+                      📋 Template: ${activeTemplate?.code || '10.1'} - ${activeTemplate?.templateName || activeTemplate?.title || comp.title}
                     </span>
                   </div>
                   <div class="text-tertiary" style="font-size: 11px;">
-                    Cost line items loaded from Master Activity Template. Select or deselect to include/exclude. (All selected by default ✅)
+                    Select the activity template option below to apply norms and breakdown line items. (All items included by default ✅)
                   </div>
                 </div>
                 <div class="flex items-center gap-xs">
@@ -1867,6 +1857,23 @@ const ImpTotModule = {
                   <button type="button" class="btn btn-secondary btn-sm font-bold" onclick="ImpTotModule.addCustomCostLineInModal()" style="border-color: var(--accent-primary); color: var(--accent-primary); font-size: 11px;">
                     ➕ + Add Custom Cost Line
                   </button>
+                </div>
+              </div>
+
+              <!-- Template Option Dropdown in Section 3 -->
+              <div class="card p-sm mb-md" style="background: var(--bg-primary); border: 1.5px solid var(--accent-primary); border-radius: var(--radius-md);">
+                <div class="form-group mb-none">
+                  <label class="form-label font-bold" style="font-size: 11.5px; color: var(--accent-primary); margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
+                    <span>📋 Activity Template Option <span class="text-danger">*</span></span>
+                    <span class="badge badge-cyan font-bold" style="font-size: 10px;">${activityTemplates.length} Option${activityTemplates.length === 1 ? '' : 's'} for ${countryCode}</span>
+                  </label>
+                  <select class="form-select font-bold" id="impTemplateSelect" onchange="ImpTotModule.onTemplateSelectChanged(this.value)" style="border: 1px solid var(--border-default); background: var(--bg-secondary); font-size: 12.5px; padding: 7px 12px;">
+                    ${activityTemplates.map(t => `
+                      <option value="${t.id}" ${t.id === (activeTemplate?.id) ? 'selected' : ''}>
+                        ${t.icon || '🎯'} ${t.templateName || t.title} (${t.scaleDefaults?.daysCount || 2}d, ${t.scaleDefaults?.participantsCount || 20}p) [${t.country || 'Global'}]
+                      </option>
+                    `).join('')}
+                  </select>
                 </div>
               </div>
 
