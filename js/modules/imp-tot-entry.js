@@ -877,13 +877,12 @@ const ImpTotModule = {
     const cell = this.matrixState[activeLocation]?.[actCode]?.[monthIdx];
     if (!cell) return;
 
-    const comp = Object.values(this.components).find(c => c.code === actCode) || this.components['bundled-tot'];
-    const monthName = SEED_DATA.months[monthIdx] || 'Jan';
-    const currency = this._entity?.currency || 'INR';
-
-    const tpl = await db.getImpActivityTemplate(actCode);
     const rates = await db.getImpUnitRates(activeLocation);
+    const countryCode = rates.countryCode || rates.country || this._entity?.countryCode || '*';
     const customFields = await db.getAllImpCustomRateFields();
+    const tplsForCode = await db.getAllImpActivityTemplates(countryCode, actCode);
+    const chosenTplId = cell.templateId || this.matrixSelectedTemplates?.[activeLocation]?.[actCode];
+    const tpl = (chosenTplId ? await db.getImpActivityTemplateById(chosenTplId) : null) || tplsForCode.find(t => t.isDefault) || tplsForCode[0] || (await db.getImpActivityTemplate(actCode, countryCode));
 
     const scale = cell.scale || tpl.scaleDefaults;
     const costLines = cell.costLines || (this.calculateActivityBatchCost(tpl, rates, customFields, scale).costLines);
@@ -902,6 +901,20 @@ const ImpTotModule = {
           </div>
           <div class="text-secondary" style="font-size: 11.5px;">
             📍 Location: <strong>${activeLocation}</strong> &bull; 📅 Month: <strong>${monthName}-${this._budgetYear}</strong>
+          </div>
+        </div>
+
+        <!-- Activity Template Variant Selector -->
+        <div class="card p-md mb-md" style="background: var(--bg-primary); border: 1px solid var(--border-default);">
+          <div class="form-group mb-none">
+            <label class="form-label font-bold" style="font-size: 11px; color: var(--accent-primary);">📋 Activity Template / Tool Package Variant</label>
+            <select class="form-select font-bold" id="custTemplateSelect" onchange="ImpTotModule.onCustomizerTemplateChanged('${actCode}', ${monthIdx}, this.value)" style="font-size: 11.5px;">
+              ${tplsForCode.map(t => `
+                <option value="${t.id}" ${t.id === tpl.id ? 'selected' : ''}>
+                  ${t.templateName || t.title} (${t.scaleDefaults?.daysCount || 2}d, ${t.scaleDefaults?.participantsCount || 20}p) [${t.country || 'Global'}]
+                </option>
+              `).join('')}
+            </select>
           </div>
         </div>
 
@@ -1013,6 +1026,53 @@ const ImpTotModule = {
     });
   },
 
+  // When activity template variant changes inside Customizer modal
+  async onCustomizerTemplateChanged(actCode, monthIdx, templateId) {
+    const tpl = (await db.getImpActivityTemplateById(templateId)) || (await db.getImpActivityTemplate(templateId));
+    if (!tpl) return;
+
+    const activeLocation = this.activeLocationFilter;
+    const rates = await db.getImpUnitRates(activeLocation);
+    const customFields = await db.getAllImpCustomRateFields();
+    const newCostObj = this.calculateActivityBatchCost(tpl, rates, customFields);
+
+    const elDays = document.getElementById('custScaleDays');
+    const elPart = document.getElementById('custScaleParticipants');
+    const elTeam = document.getElementById('custScaleTeamSize');
+    const elFac = document.getElementById('custScaleFacilities');
+
+    if (elDays && tpl.scaleDefaults?.daysCount !== undefined) elDays.value = tpl.scaleDefaults.daysCount;
+    if (elPart && tpl.scaleDefaults?.participantsCount !== undefined) elPart.value = tpl.scaleDefaults.participantsCount;
+    if (elTeam && tpl.scaleDefaults?.teamSize !== undefined) elTeam.value = tpl.scaleDefaults.teamSize;
+    if (elFac && tpl.scaleDefaults?.facilitiesCount !== undefined) elFac.value = tpl.scaleDefaults.facilitiesCount;
+
+    const tbody = document.getElementById('custLinesBody');
+    const currency = this._entity?.currency || 'INR';
+    if (tbody) {
+      tbody.innerHTML = newCostObj.costLines.map(l => {
+        const glInfo = Utils.getGlInfo(l.ledgerCode);
+        return `
+          <tr data-line-id="${l.id}" data-formula="${l.formulaType}" data-formula-expr="${l.formulaExpression || ''}" data-rate-field="${l.rateField}" data-multiplier="${l.multiplier || 1}">
+            <td style="text-align: center;">
+              <input type="checkbox" class="cust-line-cb" checked onchange="ImpTotModule.recalculateCustomizerLive('${actCode}')" style="width: 15px; height: 15px; accent-color: var(--accent-primary);">
+            </td>
+            <td style="font-weight: 600; color: var(--text-primary);">${l.description}</td>
+            <td>
+              <div class="font-bold" style="font-size: 11px;">${glInfo.desc}</div>
+              <div style="font-size: 9.5px; color: var(--text-secondary);"><code style="font-size: 9.5px;">${l.ledgerCode}</code> &bull; ${l.parentAccount || glInfo.parent}</div>
+            </td>
+            <td class="num font-mono">${Utils.formatNumber(l.unitRate)}</td>
+            <td class="num font-bold font-mono cust-line-amt" style="color: var(--accent-primary);">
+              ${Utils.formatCurrency(l.amount, currency)}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    this.recalculateCustomizerLive(actCode);
+  },
+
   // Live Recalculate inside Customizer Modal
   async recalculateCustomizerLive(actCode) {
     const form = document.getElementById('matrixCustomizerForm');
@@ -1106,7 +1166,8 @@ const ImpTotModule = {
     const activeLocation = this.activeLocationFilter;
     const rates = await db.getImpUnitRates(activeLocation);
     const customFields = await db.getAllImpCustomRateFields();
-    const tpl = await db.getImpActivityTemplate(actCode);
+    const custTplId = document.getElementById('custTemplateSelect')?.value;
+    const tpl = (custTplId ? await db.getImpActivityTemplateById(custTplId) : null) || (await db.getImpActivityTemplate(actCode));
 
     const targetMonths = applyToAllMonths ? Array.from({ length: 12 }, (_, i) => i) : [monthIdx];
 
@@ -1118,7 +1179,7 @@ const ImpTotModule = {
         facilitiesCount: facilities,
         participantsCount: participants,
         teamSize: teamSize,
-        toolPackage: 'Tool Package - 1 (Standard)'
+        toolPackage: tpl.templateName || 'Tool Package - 1 (Standard)'
       };
 
       let newBatchTotal = 0;
@@ -1172,6 +1233,8 @@ const ImpTotModule = {
         });
       });
 
+      cell.templateId = tpl.id;
+      cell.templateName = tpl.templateName || tpl.title;
       cell.unitCost = newBatchTotal;
       cell.costLines = updatedLines;
       cell.isCustomized = true;
@@ -1537,6 +1600,13 @@ const ImpTotModule = {
     btn.textContent = isExpanding ? '▼ Collapse All' : '▶ Expand All';
   },
 
+  // Helper to extract activity code (10.1 - 10.8) from string or component
+  extractActivityCode(actStr, defaultCode = '10.1') {
+    if (!actStr) return defaultCode;
+    const match = String(actStr).match(/10\.[1-8]/);
+    return match ? match[0] : defaultCode;
+  },
+
   // ─── Modal Wizard to Create / Edit a Training Event ───
   async showEventWizard(compKey, editEventId = null) {
     const comp = this.components[compKey] || this.components['bundled-tot'];
@@ -1603,18 +1673,21 @@ const ImpTotModule = {
     const defaultCondition = existingEvent?.conditionArea || condNames[0] || 'Maternal & Newborn Care';
     const defaultEmployee = existingEvent?.employeeName || masterEmployees[0]?.name || '';
     const defaultDetails = existingEvent?.details || '';
+    const defaultActivity = existingEvent?.activity || comp.defaultActivity;
+    const selectedActCode = this.extractActivityCode(defaultActivity, comp.code || '10.1');
 
     const rates = await db.getImpUnitRates(defaultLocation);
     const countryCode = rates.countryCode || rates.country || entity.countryCode || (rates.country === 'India' ? 'IN' : rates.country === 'Bangladesh' ? 'BD' : rates.country === 'Indonesia' ? 'INDO' : rates.country === 'Nepal' ? 'NP' : '*');
-    const allTemplates = await db.getAllImpActivityTemplates(countryCode);
+    
+    // Fetch ONLY templates belonging to the selected activity and country
+    const activityTemplates = await db.getAllImpActivityTemplates(countryCode, selectedActCode);
 
-    const defaultActivity = existingEvent?.activity || comp.defaultActivity;
     let activeTemplate = null;
     if (existingEvent?.templateId) {
-      activeTemplate = await db.getImpActivityTemplateById(existingEvent.templateId);
+      activeTemplate = activityTemplates.find(t => t.id === existingEvent.templateId) || (await db.getImpActivityTemplateById(existingEvent.templateId));
     }
     if (!activeTemplate) {
-      activeTemplate = await db.getImpActivityTemplate(defaultActivity || comp.code || comp.id, countryCode);
+      activeTemplate = activityTemplates.find(t => t.isDefault) || activityTemplates[0] || (await db.getImpActivityTemplate(selectedActCode, countryCode));
     }
 
     // Scale defaults from existing event or active template
@@ -1624,7 +1697,7 @@ const ImpTotModule = {
       facilitiesCount: comp.id === 'district-tot' ? 10 : 15,
       participantsCount: comp.id === 'district-tot' ? 20 : (comp.id === 'mo-training' ? 25 : 30),
       teamSize: comp.id === 'district-tot' ? 2 : (comp.id === 'mo-training' ? 2 : 3),
-      toolPackage: 'Tool Package - 1 (Standard)'
+      toolPackage: activeTemplate?.id || 'Tool Package - 1 (Standard)'
     };
 
     const customLines = existingEvent?.customLines || [];
@@ -1645,11 +1718,11 @@ const ImpTotModule = {
             <div class="flex items-center gap-sm">
               <span class="badge ${comp.badgeClass || 'badge-cyan'} font-bold" style="font-size: 11px;" id="impModalBadge">${activeTemplate?.code || comp.code}</span>
               <h3 style="margin: 0; color: var(--text-primary); font-size: 1.25rem; font-weight: 700;" id="impModalTitle">
-                ${existingEvent ? `✏️ Edit Training Package: ${activeTemplate?.title || comp.title}` : `🎯 Plan ${activeTemplate?.title || comp.title}`}
+                ${existingEvent ? `✏️ Edit Training Package: ${activeTemplate?.templateName || activeTemplate?.title || comp.title}` : `🎯 Plan ${activeTemplate?.templateName || activeTemplate?.title || comp.title}`}
               </h3>
             </div>
             <div class="text-secondary" style="font-size: 12px; margin-top: 3px;" id="impModalSubtitle">
-              Template-Driven Scale Engine &bull; Master Template: <strong>${activeTemplate?.code || '10.1'} - ${activeTemplate?.title || comp.title}</strong>
+              Template-Driven Scale Engine &bull; Master Template: <strong>${activeTemplate?.code || selectedActCode} - ${activeTemplate?.templateName || activeTemplate?.title || comp.title} (${activeTemplate?.country || 'Global'})</strong>
             </div>
           </div>
           <button class="modal-close" id="btnCloseImpModal" style="font-size: 1.4rem;">&times;</button>
@@ -1668,11 +1741,11 @@ const ImpTotModule = {
               </div>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
                 <div class="form-group mb-none" style="grid-column: span 2;">
-                  <label class="form-label font-bold" style="font-size: 11px; color: var(--accent-primary);">📋 Master Activity Template <span class="text-danger">*</span></label>
+                  <label class="form-label font-bold" style="font-size: 11px; color: var(--accent-primary);">📋 Activity Template <span class="text-danger">*</span></label>
                   <select class="form-select font-bold" id="impTemplateSelect" onchange="ImpTotModule.onTemplateSelectChanged(this.value)" style="border: 1.5px solid var(--accent-primary); background: var(--bg-card); font-size: 12px; padding: 6px 10px;">
-                    ${allTemplates.map(t => `
-                      <option value="${t.id}" ${t.id === (activeTemplate?.id || `tpl-global-${comp.code}`) ? 'selected' : ''}>
-                        ${t.icon || '🎯'} Activity ${t.code}: ${t.templateName || t.title} (${t.country || 'Global'})
+                    ${activityTemplates.map(t => `
+                      <option value="${t.id}" ${t.id === (activeTemplate?.id) ? 'selected' : ''}>
+                        ${t.icon || '🎯'} ${t.templateName || t.title} (${t.country || 'Global'})
                       </option>
                     `).join('')}
                   </select>
@@ -1773,15 +1846,16 @@ const ImpTotModule = {
                   <label class="form-label font-bold" style="font-size: 11px;">Team Size (Trainers)</label>
                   <input type="number" min="1" step="1" class="form-input font-bold" id="scaleTeamSize" value="${scale.teamSize || 2}" oninput="ImpTotModule.recalculateModalCost()">
                 </div>
-                ${comp.hasToolPackage ? `
-                  <div class="form-group mb-none">
-                    <label class="form-label font-bold" style="font-size: 11px;">Tool Package</label>
-                    <select class="form-select font-bold" id="scaleToolPkg" onchange="ImpTotModule.recalculateModalCost()">
-                      <option value="Tool Package - 1 (Standard)" ${scale.toolPackage?.includes('1') ? 'selected' : ''}>Tool Package - 1 (Standard)</option>
-                      <option value="Tool Package - 2 (Required)" ${scale.toolPackage?.includes('2') ? 'selected' : ''}>Tool Package - 2 (Required)</option>
-                    </select>
-                  </div>
-                ` : ''}
+                <div class="form-group mb-none" id="scaleToolPkgGroup" style="${comp.hasToolPackage ? '' : 'display: none;'}">
+                  <label class="form-label font-bold" style="font-size: 11px;">Tool Package / Template Option</label>
+                  <select class="form-select font-bold" id="scaleToolPkg" onchange="ImpTotModule.onToolPackageSelectChanged(this.value)">
+                    ${activityTemplates.map(t => `
+                      <option value="${t.id}" ${t.id === (activeTemplate?.id) ? 'selected' : ''}>
+                        ${t.templateName || t.title} (${t.scaleDefaults?.daysCount || 2}d, ${t.scaleDefaults?.participantsCount || 20}p)
+                      </option>
+                    `).join('')}
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -1923,7 +1997,7 @@ const ImpTotModule = {
     if (parentSpan) parentSpan.textContent = glInfo.parent;
   },
 
-  // When Master Activity Template changes in modal, re-load active template and sync dimensions
+  // When Activity Template changes in modal, re-load active template and sync dimensions
   async onTemplateSelectChanged(templateIdOrCode) {
     const tpl = (await db.getImpActivityTemplateById(templateIdOrCode)) || (await db.getImpActivityTemplate(templateIdOrCode));
     const titleEl = document.getElementById('impModalTitle');
@@ -1931,9 +2005,17 @@ const ImpTotModule = {
     const subtitleEl = document.getElementById('impModalSubtitle');
     const tplBadgeEl = document.getElementById('impActiveTemplateBadge');
     const actSelect = document.getElementById('impActivitySelect');
+    const tplSelect = document.getElementById('impTemplateSelect');
+    const toolPkgSelect = document.getElementById('scaleToolPkg');
 
     const tplDisplayName = tpl?.templateName || tpl?.title || 'Template';
 
+    if (tplSelect && tpl) {
+      tplSelect.value = tpl.id || tpl.code;
+    }
+    if (toolPkgSelect && tpl) {
+      toolPkgSelect.value = tpl.id || tpl.code;
+    }
     if (titleEl && tpl) {
       titleEl.innerHTML = `🎯 Plan ${tplDisplayName}`;
     }
@@ -1963,30 +2045,61 @@ const ImpTotModule = {
       const elFac = document.getElementById('scaleFacilities');
       const elPart = document.getElementById('scaleParticipants');
       const elTeam = document.getElementById('scaleTeamSize');
-      const elPkg = document.getElementById('scaleToolPkg');
 
       if (elEvents && tpl.scaleDefaults.eventCount !== undefined) elEvents.value = tpl.scaleDefaults.eventCount;
       if (elDays && tpl.scaleDefaults.daysCount !== undefined) elDays.value = tpl.scaleDefaults.daysCount;
       if (elFac && tpl.scaleDefaults.facilitiesCount !== undefined) elFac.value = tpl.scaleDefaults.facilitiesCount;
       if (elPart && tpl.scaleDefaults.participantsCount !== undefined) elPart.value = tpl.scaleDefaults.participantsCount;
       if (elTeam && tpl.scaleDefaults.teamSize !== undefined) elTeam.value = tpl.scaleDefaults.teamSize;
-      if (elPkg && tpl.scaleDefaults.toolPackage !== undefined) elPkg.value = tpl.scaleDefaults.toolPackage;
     }
 
     this.recalculateModalCost();
   },
 
-  // When activity changes in modal, re-load active template and recalculate
+  // When Tool Package option changes in modal, sync with template selector
+  async onToolPackageSelectChanged(templateId) {
+    await this.onTemplateSelectChanged(templateId);
+  },
+
+  // When activity changes in modal, filter templates strictly to this activity and country
   async onActivitySelectChanged(activityName) {
+    const actCode = this.extractActivityCode(activityName);
+    const comp = Object.values(this.components).find(c => c.code === actCode) || this.components['bundled-tot'];
+
     const locSelect = document.getElementById('impLocationSelect');
     const location = locSelect ? locSelect.value : 'India KA';
     const rates = await db.getImpUnitRates(location);
     const countryCode = rates.countryCode || rates.country || this._entity?.countryCode || '*';
-    const tpl = await db.getImpActivityTemplate(activityName, countryCode);
+
+    // Fetch ONLY templates belonging to this selected activity and country
+    const activityTemplates = await db.getAllImpActivityTemplates(countryCode, actCode);
+    const tpl = activityTemplates.find(t => t.isDefault) || activityTemplates[0] || (await db.getImpActivityTemplate(actCode, countryCode));
+
     const tplSelect = document.getElementById('impTemplateSelect');
-    if (tplSelect && tpl) {
-      tplSelect.value = tpl.id || tpl.code;
+    if (tplSelect) {
+      tplSelect.innerHTML = activityTemplates.map(t => `
+        <option value="${t.id}" ${t.id === tpl.id ? 'selected' : ''}>
+          ${t.icon || '🎯'} ${t.templateName || t.title} (${t.country || 'Global'})
+        </option>
+      `).join('');
+      tplSelect.value = tpl.id;
     }
+
+    const toolPkgGroup = document.getElementById('scaleToolPkgGroup');
+    if (toolPkgGroup) {
+      toolPkgGroup.style.display = comp.hasToolPackage ? '' : 'none';
+    }
+
+    const toolPkgSelect = document.getElementById('scaleToolPkg');
+    if (toolPkgSelect) {
+      toolPkgSelect.innerHTML = activityTemplates.map(t => `
+        <option value="${t.id}" ${t.id === tpl.id ? 'selected' : ''}>
+          ${t.templateName || t.title} (${t.scaleDefaults?.daysCount || 2}d, ${t.scaleDefaults?.participantsCount || 20}p)
+        </option>
+      `).join('');
+      toolPkgSelect.value = tpl.id;
+    }
+
     const tplDisplayName = tpl?.templateName || tpl?.title || 'Template';
     const titleEl = document.getElementById('impModalTitle');
     const badgeEl = document.getElementById('impModalBadge');
@@ -2005,12 +2118,63 @@ const ImpTotModule = {
     if (tplBadgeEl && tpl) {
       tplBadgeEl.textContent = `📋 Template: ${tpl.code} - ${tplDisplayName}`;
     }
+
+    // Apply template scale defaults
+    if (tpl && tpl.scaleDefaults) {
+      const elEvents = document.getElementById('scaleEvents');
+      const elDays = document.getElementById('scaleDays');
+      const elFac = document.getElementById('scaleFacilities');
+      const elPart = document.getElementById('scaleParticipants');
+      const elTeam = document.getElementById('scaleTeamSize');
+
+      if (elEvents && tpl.scaleDefaults.eventCount !== undefined) elEvents.value = tpl.scaleDefaults.eventCount;
+      if (elDays && tpl.scaleDefaults.daysCount !== undefined) elDays.value = tpl.scaleDefaults.daysCount;
+      if (elFac && tpl.scaleDefaults.facilitiesCount !== undefined) elFac.value = tpl.scaleDefaults.facilitiesCount;
+      if (elPart && tpl.scaleDefaults.participantsCount !== undefined) elPart.value = tpl.scaleDefaults.participantsCount;
+      if (elTeam && tpl.scaleDefaults.teamSize !== undefined) elTeam.value = tpl.scaleDefaults.teamSize;
+    }
+
     this.recalculateModalCost();
   },
 
-  // When location changes in modal, re-fetch rates and recalculate
+  // When location changes in modal, re-fetch rates and filter templates for this activity in new country
   async onLocationChanged(newLoc) {
     const rates = await db.getImpUnitRates(newLoc);
+    const countryCode = rates.countryCode || rates.country || this._entity?.countryCode || '*';
+
+    const actSelect = document.getElementById('impActivitySelect');
+    const actCode = this.extractActivityCode(actSelect?.value);
+    const comp = Object.values(this.components).find(c => c.code === actCode) || this.components['bundled-tot'];
+
+    // Fetch ONLY templates for this activity and new country
+    const activityTemplates = await db.getAllImpActivityTemplates(countryCode, actCode);
+    const tpl = activityTemplates.find(t => t.isDefault) || activityTemplates[0] || (await db.getImpActivityTemplate(actCode, countryCode));
+
+    const tplSelect = document.getElementById('impTemplateSelect');
+    if (tplSelect) {
+      tplSelect.innerHTML = activityTemplates.map(t => `
+        <option value="${t.id}" ${t.id === tpl.id ? 'selected' : ''}>
+          ${t.icon || '🎯'} ${t.templateName || t.title} (${t.country || 'Global'})
+        </option>
+      `).join('');
+      tplSelect.value = tpl.id;
+    }
+
+    const toolPkgGroup = document.getElementById('scaleToolPkgGroup');
+    if (toolPkgGroup) {
+      toolPkgGroup.style.display = comp.hasToolPackage ? '' : 'none';
+    }
+
+    const toolPkgSelect = document.getElementById('scaleToolPkg');
+    if (toolPkgSelect) {
+      toolPkgSelect.innerHTML = activityTemplates.map(t => `
+        <option value="${t.id}" ${t.id === tpl.id ? 'selected' : ''}>
+          ${t.templateName || t.title} (${t.scaleDefaults?.daysCount || 2}d, ${t.scaleDefaults?.participantsCount || 20}p)
+        </option>
+      `).join('');
+      toolPkgSelect.value = tpl.id;
+    }
+
     const notice = document.getElementById('impRateNotice');
     if (notice) {
       notice.innerHTML = `📍 Loaded Benchmark Rates: <strong>${rates.stateName || newLoc}</strong> (${rates.currency || 'INR'})`;
@@ -2023,6 +2187,21 @@ const ImpTotModule = {
     if (allocHeader) {
       allocHeader.textContent = `Allocated Amount (${rates.currency || this._entity?.currency || 'INR'})`;
     }
+
+    if (tpl && tpl.scaleDefaults) {
+      const elEvents = document.getElementById('scaleEvents');
+      const elDays = document.getElementById('scaleDays');
+      const elFac = document.getElementById('scaleFacilities');
+      const elPart = document.getElementById('scaleParticipants');
+      const elTeam = document.getElementById('scaleTeamSize');
+
+      if (elEvents && tpl.scaleDefaults.eventCount !== undefined) elEvents.value = tpl.scaleDefaults.eventCount;
+      if (elDays && tpl.scaleDefaults.daysCount !== undefined) elDays.value = tpl.scaleDefaults.daysCount;
+      if (elFac && tpl.scaleDefaults.facilitiesCount !== undefined) elFac.value = tpl.scaleDefaults.facilitiesCount;
+      if (elPart && tpl.scaleDefaults.participantsCount !== undefined) elPart.value = tpl.scaleDefaults.participantsCount;
+      if (elTeam && tpl.scaleDefaults.teamSize !== undefined) elTeam.value = tpl.scaleDefaults.teamSize;
+    }
+
     this.recalculateModalCost(null, rates);
   },
 
