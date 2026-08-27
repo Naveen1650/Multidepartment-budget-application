@@ -198,7 +198,7 @@ const BudgetEntryModule = {
               ${activeDepts.map(d => {
                 const codePrefix = selectedEntity.deptPrefix || 'GEN';
                 const deptCode = d.codeTemplate ? d.codeTemplate.replace('{CC}', codePrefix) : d.id.toUpperCase();
-                return `<option value="${d.id}" ${d.id === this.currentDeptId ? 'selected' : ''}>${deptCode} — ${d.name}</option>`;
+                return `<option value="${d.id}" title="${d.name}" ${d.id === this.currentDeptId ? 'selected' : ''}>${deptCode}</option>`;
               }).join('')}
             </select>
           </div>
