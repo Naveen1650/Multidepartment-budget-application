@@ -191,11 +191,20 @@ const ConfigModule = {
     if (await Utils.confirm(`Are you sure you want to delete entity "${entity.shortName}"? This will also remove associated department mappings.`)) {
       await db.delete(STORES.entities, id);
 
-      // Clean up entityDeptConfig for this entity
+      // Clean up entityDeptConfig for this entity (local)
       const allConfigs = await db.getAll(STORES.entityDeptConfig);
       for (const cfg of allConfigs) {
         if (cfg.entityId === id) {
           await db.delete(STORES.entityDeptConfig, cfg.id);
+        }
+      }
+
+      // Clean up entityDeptConfig and entity from cloud database
+      if (typeof CloudSyncModule !== 'undefined' && CloudSyncModule._client) {
+        try {
+          await CloudSyncModule.deleteEntityFromCloud(id);
+        } catch (e) {
+          console.warn('Cloud delete for entity failed:', e);
         }
       }
 
@@ -551,6 +560,16 @@ const ConfigModule = {
   async deleteDepartment(id) {
     if (await Utils.confirm('Are you sure you want to delete this department template?')) {
       await db.delete(STORES.departments, id);
+
+      // Clean up department from cloud database
+      if (typeof CloudSyncModule !== 'undefined' && CloudSyncModule._client) {
+        try {
+          await CloudSyncModule.deleteFromCloud(STORES.departments, id);
+        } catch (e) {
+          console.warn('Cloud delete for department failed:', e);
+        }
+      }
+
       Utils.showToast('Department deleted', 'info');
       App.renderCurrentPage();
     }
@@ -1254,6 +1273,16 @@ const ConfigModule = {
   async deleteBudgetYear(id) {
     if (await Utils.confirm('Are you sure you want to delete this budget year? All entries under it will be lost.')) {
       await db.delete(STORES.budgetYears, id);
+
+      // Clean up budget year from cloud database
+      if (typeof CloudSyncModule !== 'undefined' && CloudSyncModule._client) {
+        try {
+          await CloudSyncModule.deleteFromCloud(STORES.budgetYears, id);
+        } catch (e) {
+          console.warn('Cloud delete for budget year failed:', e);
+        }
+      }
+
       Utils.showToast('Budget year deleted', 'info');
       App.populateGlobalSelectors();
       App.renderCurrentPage();

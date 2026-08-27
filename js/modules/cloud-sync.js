@@ -122,7 +122,7 @@ const CloudSyncModule = {
     }
   },
 
-  async syncNow() {
+   async syncNow() {
     if (!this._client) {
       if (this._config.url && this._config.anonKey) {
         await this.connect();
@@ -149,6 +149,65 @@ const CloudSyncModule = {
       if (typeof Utils !== 'undefined' && Utils.showToast) {
         Utils.showToast(`Sync failed: ${err.message}`, 'danger');
       }
+    }
+  },
+
+  async deleteFromCloud(storeName, id) {
+    if (!this._client) return false;
+    const storeTableMap = {
+      [STORES.entities]: 'entities',
+      [STORES.departments]: 'departments',
+      [STORES.chartOfAccounts]: 'chart_of_accounts',
+      [STORES.budgetYears]: 'budget_years',
+      [STORES.entityDeptConfig]: 'entity_dept_configs',
+      [STORES.payrollPersonnel]: 'payroll_personnel',
+      [STORES.payrollEHA]: 'payroll_eha',
+      [STORES.payrollFixedAsset]: 'payroll_fixed_assets',
+      [STORES.nonPayrollCost]: 'non_payroll_costs',
+      [STORES.employeesMaster]: 'employees_master',
+      [STORES.impTotEvents]: 'imp_tot_events',
+      [STORES.roles]: 'roles',
+      [STORES.users]: 'users'
+    };
+    const table = storeTableMap[storeName];
+    if (!table) return false;
+
+    try {
+      const result = await this._client.from(table).delete().eq('id', id);
+      if (result.error) {
+        console.warn(`Cloud delete error on ${table} for id="${id}":`, result.error.message);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.warn(`Cloud delete exception on ${table} for id="${id}":`, err);
+      return false;
+    }
+  },
+
+  async deleteEntityFromCloud(entityId) {
+    if (!this._client) return false;
+
+    const tables = {
+      entities: 'entities',
+      entityDeptConfig: 'entity_dept_configs'
+    };
+
+    try {
+      const { error: entityError } = await this._client.from(tables.entities).delete().eq('id', entityId);
+      if (entityError) {
+        console.warn(`Cloud delete error on entities for id="${entityId}":`, entityError.message);
+      }
+
+      const { error: configError } = await this._client.from(tables.entityDeptConfig).delete().eq('entity_id', entityId);
+      if (configError) {
+        console.warn(`Cloud delete error on entity_dept_configs for entity_id="${entityId}":`, configError.message);
+      }
+
+      return true;
+    } catch (err) {
+      console.warn(`Cloud delete exception for entity "${entityId}":`, err);
+      return false;
     }
   },
 
