@@ -2529,9 +2529,9 @@ const ConfigModule = {
                     <th style="width: 75px; text-align: center; white-space: nowrap;">Band</th>
                     <th style="min-width: 200px; white-space: nowrap;">Name &amp; Designation</th>
                     ${isAllEntities ? '<th style="width: 90px; text-align: center; white-space: nowrap;">Entity</th>' : ''}
+                    <th style="width: 60px; text-align: center; white-space: nowrap;" title="Country of Employment (ISO 2-letter code)">Country</th>
                     <th style="width: 105px; white-space: nowrap;">Date of Joining</th>
                     <th style="width: 115px; text-align: center; white-space: nowrap;">Department</th>
-                    <th style="width: 150px; white-space: nowrap;">Reporting Manager</th>
                     <th class="num font-bold" style="width: 130px; text-align: right; white-space: nowrap;">${isAllEntities ? 'Annual CTC (USD)' : `Annual CTC (${activeEntity.currency})`}</th>
                     <th class="num font-bold" style="width: 130px; text-align: right; color: var(--accent-primary); white-space: nowrap;">${isAllEntities ? 'Monthly CTC (USD)' : `Monthly CTC (${activeEntity.currency})`}</th>
                     <th style="width: 85px; text-align: center; white-space: nowrap;">Status</th>
@@ -2574,14 +2574,14 @@ const ConfigModule = {
                           ${e.designation ? `<div class="text-tertiary" style="font-size: 11px; margin-top: 1px;">${e.designation}</div>` : ''}
                         </td>
                         ${isAllEntities ? `<td style="text-align: center; width: 90px; white-space: nowrap;"><span class="badge badge-subtle font-bold" style="font-size: 10.5px;">${ent.flag} ${ent.shortName}</span></td>` : ''}
+                        <td style="text-align: center; width: 60px; white-space: nowrap;">
+                          ${e.countryCode ? `<span class="badge badge-subtle font-mono font-bold" style="font-size: 10.5px; padding: 2px 5px;" title="Employed from: ${e.countryCode}">${e.countryCode}</span>` : '<span class="text-tertiary">—</span>'}
+                        </td>
                         <td style="font-size: 11.5px; font-family: var(--font-mono); width: 105px; white-space: nowrap;">
                           ${e.doj ? Utils.formatDate(e.doj) : '—'}
                         </td>
                         <td style="text-align: center; width: 115px; white-space: nowrap;">
                           <span class="badge badge-subtle font-mono font-bold" style="font-size: 11px; padding: 2px 6px;" title="${e.department || deptObj.name || ''}">${deptShort}</span>
-                        </td>
-                        <td style="width: 150px; font-size: 12px; white-space: nowrap;">
-                          ${e.reportingManager ? `<span class="flex items-center gap-xs"><span>👔</span><span>${e.reportingManager}</span></span>` : '<span class="text-tertiary">—</span>'}
                         </td>
                         <td class="num font-mono" style="width: 130px; text-align: right;">
                           ${isAllEntities ? `
@@ -2741,11 +2741,23 @@ const ConfigModule = {
         <div class="form-row">
           <div class="form-group">
             <label class="form-label font-bold">Employee Code</label>
-            <input type="text" class="form-input font-mono" id="mEmpCode" value="${existing?.employeeCode || 'NH-' + Math.floor(1000 + Math.random() * 9000)}" placeholder="e.g. NH-1045" required>
+            <input type="text" class="form-input font-mono" id="mEmpCode" value="${existing?.employeeCode || 'NH-' + Math.floor(1000 + Math.random() * 9000)}" placeholder="e.g. NH-IN-1045" required>
           </div>
           <div class="form-group">
             <label class="form-label font-bold">Name of the Employee</label>
             <input type="text" class="form-input" id="mEmpName" value="${existing?.name || ''}" placeholder="e.g. Simerneet Bajwa" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label font-bold">Country of Employment <span class="badge badge-cyan" style="font-size: 10px; vertical-align: middle;">ISO 2-letter</span></label>
+            <input type="text" class="form-input font-mono font-bold" id="mEmpCountryCode" value="${existing?.countryCode || ''}" placeholder="e.g. IN, US, BD, ID, NP" maxlength="2" style="text-transform: uppercase; max-width: 90px;">
+            <div class="text-tertiary mt-xs" style="font-size: 11px;">2-letter ISO country code of the country where this employee is hired & employed (e.g. IN = India, US = United States, BD = Bangladesh)</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label font-bold">Designation / Role</label>
+            <input type="text" class="form-input" id="mEmpDesignation" value="${existing?.designation || ''}" placeholder="e.g. Senior Health Communications Lead">
           </div>
         </div>
 
@@ -2789,10 +2801,6 @@ const ConfigModule = {
             <datalist id="managerSuggestions">
               ${managerNames.map(m => `<option value="${m}">`).join('')}
             </datalist>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Designation / Role</label>
-            <input type="text" class="form-input" id="mEmpDesignation" value="${existing?.designation || ''}" placeholder="e.g. Senior Health Communications Lead">
           </div>
         </div>
 
@@ -2854,6 +2862,7 @@ const ConfigModule = {
             const annualCTC = Utils.parseNumber(Utils.$('#mEmpAnnualCTC').value) || 0;
             const monthlyCTC = Math.round(annualCTC / 12);
 
+            const countryCodeRaw = (Utils.$('#mEmpCountryCode')?.value || '').trim().toUpperCase().slice(0, 2);
             const data = {
               ...(existing || {}),
               employeeCode: code,
@@ -2861,6 +2870,7 @@ const ConfigModule = {
               band: Utils.$('#mEmpBand').value,
               doj: Utils.$('#mEmpDoj').value,
               entityId,
+              countryCode: countryCodeRaw,
               deptId,
               department: deptName,
               reportingManager: Utils.$('#mEmpManager').value.trim(),

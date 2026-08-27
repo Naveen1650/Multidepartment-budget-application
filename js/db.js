@@ -499,7 +499,7 @@ class BudgetDB {
 
     if (this.db.objectStoreNames.contains(STORES.employeesMaster)) {
       const storedVersion = localStorage.getItem('noora_employees_master_version');
-      const targetVersion = '2027_v3_all_depts_countries';
+      const targetVersion = '2027_v4_staff_only_country_code';
       const empCount = await this.count(STORES.employeesMaster);
 
       if ((empCount === 0 || storedVersion !== targetVersion) && SEED_DATA.sampleEmployeesMaster) {

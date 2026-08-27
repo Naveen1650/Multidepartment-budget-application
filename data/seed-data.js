@@ -1,24 +1,24 @@
-// ============================================================
-// NOORA HEALTH BUDGET APP — Seed Data
+﻿// ============================================================
+// NOORA HEALTH BUDGET APP Ã¢â‚¬â€ Seed Data
 // Pre-loaded master data extracted from uploaded Excel files
 // ============================================================
 
 const SEED_DATA = {
 
-  // ─── Entities ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Entities Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   entities: [
-    { id: 'noora-us', name: 'Noora (HQ/Centralized)', shortName: 'Noora', countryCode: 'US', deptPrefix: 'US', country: 'United States', currency: 'USD', flag: '🇺🇸' },
-    { id: 'nhipl', name: 'Noora Health India Private Limited', shortName: 'NHIPL', countryCode: 'IN', deptPrefix: 'IN', country: 'India', currency: 'INR', flag: '🇮🇳' },
-    { id: 'yaif', name: 'Yo Shade Innovation Foundation', shortName: 'YAIF', countryCode: 'IN', deptPrefix: 'IN', country: 'India', currency: 'INR', flag: '🇮🇳' },
-    { id: 'nhbd', name: 'Noora Health Bangladesh', shortName: 'NHBD', countryCode: 'BD', deptPrefix: 'BD', country: 'Bangladesh', currency: 'BDT', flag: '🇧🇩' },
-    { id: 'nh-indo', name: 'Noora Health Indonesia', shortName: 'NH Indo', countryCode: 'INDO', deptPrefix: 'INDO', country: 'Indonesia', currency: 'IDR', flag: '🇮🇩' },
-    { id: 'nh-nepal', name: 'Noora Health Nepal', shortName: 'NH Nepal', countryCode: 'NP', deptPrefix: 'NP', country: 'Nepal', currency: 'NPR', flag: '🇳🇵' }
+    { id: 'noora-us', name: 'Noora (HQ/Centralized)', shortName: 'Noora', countryCode: 'US', deptPrefix: 'US', country: 'United States', currency: 'USD', flag: 'Ã°Å¸â€¡ÂºÃ°Å¸â€¡Â¸' },
+    { id: 'nhipl', name: 'Noora Health India Private Limited', shortName: 'NHIPL', countryCode: 'IN', deptPrefix: 'IN', country: 'India', currency: 'INR', flag: 'Ã°Å¸â€¡Â®Ã°Å¸â€¡Â³' },
+    { id: 'yaif', name: 'Yo Shade Innovation Foundation', shortName: 'YAIF', countryCode: 'IN', deptPrefix: 'IN', country: 'India', currency: 'INR', flag: 'Ã°Å¸â€¡Â®Ã°Å¸â€¡Â³' },
+    { id: 'nhbd', name: 'Noora Health Bangladesh', shortName: 'NHBD', countryCode: 'BD', deptPrefix: 'BD', country: 'Bangladesh', currency: 'BDT', flag: 'Ã°Å¸â€¡Â§Ã°Å¸â€¡Â©' },
+    { id: 'nh-indo', name: 'Noora Health Indonesia', shortName: 'NH Indo', countryCode: 'INDO', deptPrefix: 'INDO', country: 'Indonesia', currency: 'IDR', flag: 'Ã°Å¸â€¡Â®Ã°Å¸â€¡Â©' },
+    { id: 'nh-nepal', name: 'Noora Health Nepal', shortName: 'NH Nepal', countryCode: 'NP', deptPrefix: 'NP', country: 'Nepal', currency: 'NPR', flag: 'Ã°Å¸â€¡Â³Ã°Å¸â€¡Âµ' }
   ],
 
-  // ─── Department Master List ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Department Master List Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   // scope: 'country' = country-specific (auto-prefixed), 'gl' = global, 'dp-gp' = digital product global, 'dp-cp' = digital product country, 'general' = general
   departments: [
-    // ─── 1. Country-Specific Departments ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ 1. Country-Specific Departments Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     // PDD (Product Design & Development / Content / Tools)
     { id: 'pdd-med', number: '1', codeTemplate: '{CC}-PDD-MED', name: 'Framework designing & Content creation (Medical)', scope: 'country', entityMapping: { nhipl: true, yaif: false }, hasTotAccess: false },
     { id: 'pdd-hcomm', number: '1', codeTemplate: '{CC}-PDD-HCOMM', name: 'Framework designing & Content creation (Health Comm)', scope: 'country', entityMapping: { nhipl: true, yaif: false }, hasTotAccess: false },
@@ -44,16 +44,16 @@ const SEED_DATA = {
     // RMM (Resource Mobilization & Marketing)
     { id: 'rmm', number: '7', codeTemplate: '{CC}-RMM', name: 'RMM (Advocacy, Collaboration, Admin Mgmt)', scope: 'country', entityMapping: { nhipl: true, yaif: false }, hasTotAccess: false },
 
-    // ─── 2. Digital Product — Country-Specific (DP-CP) ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ 2. Digital Product Ã¢â‚¬â€ Country-Specific (DP-CP) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     { id: 'dp-cp-prodmngt', number: '4', codeTemplate: 'DP-CP-PRODMNGT', name: 'Remote Engagement Service (Country Product Mgmt)', scope: 'dp-cp', entityMapping: { nhipl: true, yaif: true }, hasTotAccess: false },
     { id: 'dp-cp-product', number: '8', codeTemplate: 'DP-CP-PRODUCT', name: 'Platform Dev & Management (Country Product)', scope: 'dp-cp', entityMapping: { nhipl: true, yaif: false }, hasTotAccess: false },
     { id: 'dp-cp-eng', number: '8', codeTemplate: 'DP-CP-ENG', name: 'Platform Dev & Management (Country Engineering)', scope: 'dp-cp', entityMapping: { nhipl: true, yaif: false }, hasTotAccess: false },
 
-    // ─── 3. Digital Product — Global (DP-GP) ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ 3. Digital Product Ã¢â‚¬â€ Global (DP-GP) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     { id: 'dp-gp-product', number: '8', codeTemplate: 'DP-GP-PRODUCT', name: 'Platform Dev & Management (Global Product)', scope: 'dp-gp', hasTotAccess: false },
     { id: 'dp-gp-eng', number: '8', codeTemplate: 'DP-GP-ENG', name: 'Platform Dev & Management (Global Engineering)', scope: 'dp-gp', hasTotAccess: false },
 
-    // ─── 4. Global Departments (GL) ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ 4. Global Departments (GL) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     // I&L (Insights & Learning / Training / Strategy / NIAB)
     { id: 'gl-learn-impact', number: '20', codeTemplate: 'GL-I&L-LEARN &IMPACT STGY', name: 'Knowledge sharing and dissemination', scope: 'gl', hasTotAccess: false },
     { id: 'gl-hcw-trng', number: '9', codeTemplate: 'GL-I&L-HCW PROD & TRNG', name: 'Health Care Worker Products & Training', scope: 'gl', hasTotAccess: true },
@@ -75,13 +75,13 @@ const SEED_DATA = {
     // Others
     { id: 'gl-prg-exp', number: '17', codeTemplate: 'GL-PRG EXP-EXP & IMP', name: 'Strategic Global Development', scope: 'gl', hasTotAccess: false },
 
-    // ─── 5. General (Cross-cutting) ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ 5. General (Cross-cutting) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     { id: 'gen-payroll', number: '21', codeTemplate: 'Payroll & Benefits', name: 'Payroll & Benefits', scope: 'general', hasTotAccess: false },
     { id: 'gen-immersion', number: '22', codeTemplate: 'Program Immersion', name: 'Program Immersion', scope: 'general', hasTotAccess: false },
     { id: 'gen-atr', number: '23', codeTemplate: 'All Team Retreat', name: 'All Team Retreat', scope: 'general', hasTotAccess: false }
   ],
 
-  // ─── Locations per Entity ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Locations per Entity Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   locations: {
     'nhipl': [
       'India', 'India KA', 'India MH', 'India OR', 'India PB', 'India HR', 'India AP',
@@ -126,7 +126,7 @@ const SEED_DATA = {
     ]
   },
 
-  // ─── Donors per Entity ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Donors per Entity Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   donors: {
     'nhipl': ['NHIPL'],
     'yaif': ['YAIF'],
@@ -136,7 +136,7 @@ const SEED_DATA = {
     'nh-nepal': ['NH NP']
   },
 
-  // ─── Activities ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Activities Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   activities: [
     'All',
     '1-Framework designing and Content creation',
@@ -176,7 +176,7 @@ const SEED_DATA = {
     '23. All Team Retreat'
   ],
 
-  // ─── Condition Areas ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Condition Areas Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   conditionAreas: [
     'All',
     'Maternal & Newborn Care',
@@ -188,7 +188,7 @@ const SEED_DATA = {
     'Others'
   ],
 
-  // ─── Non-Payroll Chart of Accounts ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Non-Payroll Chart of Accounts Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   chartOfAccounts: [
     // Payroll-related
     { subGroup: 'Payroll Cost', parentAccount: 'Salaries and Wages', glDescription: 'Salaries and Wages', ledgerCode: '91101-91107' },
@@ -196,7 +196,7 @@ const SEED_DATA = {
     { subGroup: 'Payroll Cost', parentAccount: 'Other Staff Expenses', glDescription: 'Staff Training, Learning & Development Exp', ledgerCode: '91302' },
     { subGroup: 'Direct Consultants', parentAccount: 'Resource Persons', glDescription: 'Program Resource Consultant (EHA)', ledgerCode: '92101' },
 
-    // Non-Payroll — Direct Cost
+    // Non-Payroll Ã¢â‚¬â€ Direct Cost
     { subGroup: 'Direct Cost', parentAccount: 'Travel & Lodging Expenses', glDescription: 'Hotel Accommodation', ledgerCode: '93101' },
     { subGroup: 'Direct Cost', parentAccount: 'Travel & Lodging Expenses', glDescription: 'Food Expenses', ledgerCode: '93102' },
     { subGroup: 'Direct Cost', parentAccount: 'Travel & Lodging Expenses', glDescription: 'Air fare', ledgerCode: '93103' },
@@ -212,7 +212,7 @@ const SEED_DATA = {
     { subGroup: 'Direct Cost', parentAccount: 'Office Expenses', glDescription: 'Stationery & Consumables', ledgerCode: '93404' },
     { subGroup: 'Direct Cost', parentAccount: 'Office Expenses', glDescription: 'Office Equipment Expense', ledgerCode: '93405' },
 
-    // Non-Payroll — Indirect Cost
+    // Non-Payroll Ã¢â‚¬â€ Indirect Cost
     { subGroup: 'Indirect Cost', parentAccount: 'Professional & Consultancy Charges', glDescription: 'Professional Charges', ledgerCode: '93701' },
     { subGroup: 'Indirect Cost', parentAccount: 'Professional & Consultancy Charges', glDescription: 'Admin Consultants', ledgerCode: '93703' },
 
@@ -220,7 +220,7 @@ const SEED_DATA = {
     { subGroup: 'Fixed Assets', parentAccount: 'Fixed Assets', glDescription: 'Laptop/ Printer', ledgerCode: '11301' }
   ],
 
-  // ─── Payroll Sub-categories ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Payroll Sub-categories Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   payrollSubGroups: [
     'Full Time Employee',
     'External hired Assistance'
@@ -231,14 +231,14 @@ const SEED_DATA = {
     'Staff Training, Learning & Development Expenses'
   ],
 
-  // ─── Calendar Months ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Calendar Months Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
 
-  // ─── Employee Bandings & Levels ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Employee Bandings & Levels Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   bandings: ['NH1', 'NH2', 'NH3', 'NH4', 'NH5'],
   levels: ['L1', 'L2', 'L3', 'L4'],
 
-  // ─── Sample Personnel Seed Data ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Sample Personnel Seed Data Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   samplePersonnel: [
     {
       yearId: '2026',
@@ -305,24 +305,26 @@ const SEED_DATA = {
     }
   ],
 
-  // ─── Masterlist of Employees Seed Data (Dummy Trial Dataset Covering All Entities & Departments) ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Masterlist of Employees Seed Data (Staff-Only Dataset Ã¢â‚¬â€ No Managers Ã¢â‚¬â€ All Entities & Departments) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // countryCode = ISO 2-letter code of the country the employee is hired from
   sampleEmployeesMaster: [
-    // ══════════════════════════════════════════════════════════════════
-    // 1. UNITED STATES — Noora HQ / Global (Currency: USD)
-    // ══════════════════════════════════════════════════════════════════
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // 1. UNITED STATES Ã¢â‚¬â€ Noora HQ / Global (Currency: USD)
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     {
-      employeeCode: 'NH-US-001',
-      name: 'Edith Elliott',
-      band: 'NH5',
-      level: 'Level 5',
-      doj: '2015-01-01',
+      employeeCode: 'NH-US-101',
+      name: 'Lena Fischer',
+      band: 'NH3',
+      level: 'Level 2',
+      doj: '2022-03-01',
       entityId: 'noora-us',
+      countryCode: 'US',
       deptId: 'gl-rmm',
       department: 'RMM (Global)',
-      reportingManager: 'Board of Directors',
-      annualCTC: 210000,
-      monthlyCTC: 17500,
-      designation: 'Chief Executive Officer & Co-Founder',
+      reportingManager: '',
+      annualCTC: 78000,
+      monthlyCTC: 6500,
+      designation: 'Resource Mobilization Analyst',
       location: 'United States',
       donor: 'Global Core Fund',
       activity: '7.1 Global Resource Mobilization',
@@ -330,18 +332,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-US-002',
-      name: 'Dr. Maya Lin',
-      band: 'NH5',
-      level: 'Level 4',
-      doj: '2019-06-15',
+      employeeCode: 'NH-US-102',
+      name: 'James O\'Brien',
+      band: 'NH3',
+      level: 'Level 3',
+      doj: '2021-09-15',
       entityId: 'noora-us',
+      countryCode: 'US',
       deptId: 'gl-learn-impact',
       department: 'Knowledge sharing and dissemination',
-      reportingManager: 'Edith Elliott',
-      annualCTC: 165000,
-      monthlyCTC: 13750,
-      designation: 'VP of Global Impact & Learning Strategy',
+      reportingManager: '',
+      annualCTC: 92000,
+      monthlyCTC: 7667,
+      designation: 'Global Learning & Knowledge Officer',
       location: 'United States',
       donor: 'Global Core Fund',
       activity: '20.1 Impact Evaluation & Global Dissemination',
@@ -349,18 +352,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-US-003',
-      name: 'David Kim',
-      band: 'NH5',
-      level: 'Level 4',
-      doj: '2020-02-10',
+      employeeCode: 'NH-US-103',
+      name: 'Priya Menon',
+      band: 'NH3',
+      level: 'Level 2',
+      doj: '2022-07-01',
       entityId: 'noora-us',
+      countryCode: 'IN',
       deptId: 'dp-gp-eng',
       department: 'Platform Dev & Management (Global Engineering)',
-      reportingManager: 'Edith Elliott',
-      annualCTC: 180000,
-      monthlyCTC: 15000,
-      designation: 'VP of Software & Cloud Engineering',
+      reportingManager: '',
+      annualCTC: 105000,
+      monthlyCTC: 8750,
+      designation: 'Senior Cloud Infrastructure Engineer',
       location: 'United States',
       donor: 'Tech & Digital Innovation Fund',
       activity: '8.1 Cloud Architecture & Infrastructure',
@@ -368,18 +372,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-US-004',
-      name: 'Marcus Vance',
-      band: 'NH4',
-      level: 'Level 3',
-      doj: '2021-08-01',
+      employeeCode: 'NH-US-104',
+      name: 'Tyler Brooks',
+      band: 'NH2',
+      level: 'Level 2',
+      doj: '2023-01-10',
       entityId: 'noora-us',
+      countryCode: 'US',
       deptId: 'dp-gp-product',
       department: 'Platform Dev & Management (Global Product)',
-      reportingManager: 'David Kim',
-      annualCTC: 140000,
-      monthlyCTC: 11667,
-      designation: 'Principal Global Product Manager',
+      reportingManager: '',
+      annualCTC: 88000,
+      monthlyCTC: 7333,
+      designation: 'Product Analyst Ã¢â‚¬â€ Global Digital Tools',
       location: 'United States',
       donor: 'Tech & Digital Innovation Fund',
       activity: '8.2 Global Digital Tool Roadmap',
@@ -387,18 +392,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-US-005',
-      name: 'Sarah Jenkins',
-      band: 'NH4',
+      employeeCode: 'NH-US-105',
+      name: 'Anika Nwosu',
+      band: 'NH3',
       level: 'Level 2',
-      doj: '2021-04-15',
+      doj: '2022-04-01',
       entityId: 'noora-us',
+      countryCode: 'NG',
       deptId: 'gl-hcw-trng',
       department: 'Health Care Worker Products & Training',
-      reportingManager: 'Dr. Maya Lin',
-      annualCTC: 120000,
-      monthlyCTC: 10000,
-      designation: 'Global HCW Training Solutions Lead',
+      reportingManager: '',
+      annualCTC: 84000,
+      monthlyCTC: 7000,
+      designation: 'HCW Curriculum Developer',
       location: 'United States',
       donor: 'Global Core Fund',
       activity: '9.1 Global HCW Curricula',
@@ -406,18 +412,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-US-006',
-      name: 'Arthur Pendelton',
-      band: 'NH3',
-      level: 'Level 3',
-      doj: '2022-09-01',
+      employeeCode: 'NH-US-106',
+      name: 'Samuel Chen',
+      band: 'NH2',
+      level: 'Level 2',
+      doj: '2023-05-15',
       entityId: 'noora-us',
+      countryCode: 'US',
       deptId: 'gl-niab',
       department: 'Noora In a Box (NIAB)',
-      reportingManager: 'Edith Elliott',
-      annualCTC: 105000,
-      monthlyCTC: 8750,
-      designation: 'NIAB Product & Global Scale Manager',
+      reportingManager: '',
+      annualCTC: 76000,
+      monthlyCTC: 6333,
+      designation: 'NIAB Operations & Logistics Coordinator',
       location: 'United States',
       donor: 'Global Scale Innovation Fund',
       activity: '12.1 NIAB Toolkits & Modular Kits',
@@ -425,18 +432,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-US-007',
-      name: 'Rachel Weiss',
-      band: 'NH4',
-      level: 'Level 3',
-      doj: '2021-05-10',
+      employeeCode: 'NH-US-107',
+      name: 'Sofia Almeida',
+      band: 'NH3',
+      level: 'Level 2',
+      doj: '2022-11-01',
       entityId: 'noora-us',
+      countryCode: 'BR',
       deptId: 'gl-labs',
       department: 'Design research on caregiving',
-      reportingManager: 'Dr. Maya Lin',
-      annualCTC: 130000,
-      monthlyCTC: 10833,
-      designation: 'Global Caregiving Labs Director',
+      reportingManager: '',
+      annualCTC: 90000,
+      monthlyCTC: 7500,
+      designation: 'Caregiving Behavioral Research Associate',
       location: 'United States',
       donor: 'Caregiving Research Grant',
       activity: '13.1 Caregiver Behavioral Studies',
@@ -444,18 +452,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-US-008',
-      name: 'Dr. Jonathan Miller',
-      band: 'NH4',
-      level: 'Level 4',
-      doj: '2019-10-01',
+      employeeCode: 'NH-US-108',
+      name: 'Nadia Petrov',
+      band: 'NH3',
+      level: 'Level 3',
+      doj: '2021-06-01',
       entityId: 'noora-us',
+      countryCode: 'US',
       deptId: 'gl-res-eval',
       department: 'Evaluation (Global)',
-      reportingManager: 'Dr. Maya Lin',
-      annualCTC: 145000,
-      monthlyCTC: 12083,
-      designation: 'Lead Global Biostatistician & Evaluator',
+      reportingManager: '',
+      annualCTC: 96000,
+      monthlyCTC: 8000,
+      designation: 'Global Evaluation & Research Specialist',
       location: 'United States',
       donor: 'Global Core Fund',
       activity: '14.1 Cross-Country Clinical Evaluations',
@@ -463,18 +472,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-US-009',
-      name: 'Emily Thornton',
-      band: 'NH4',
-      level: 'Level 3',
-      doj: '2021-11-15',
+      employeeCode: 'NH-US-109',
+      name: 'Marcus Webb',
+      band: 'NH2',
+      level: 'Level 2',
+      doj: '2023-02-01',
       entityId: 'noora-us',
+      countryCode: 'US',
       deptId: 'gl-comms-brand',
       department: 'Communications & Brand',
-      reportingManager: 'Edith Elliott',
-      annualCTC: 125000,
-      monthlyCTC: 10417,
-      designation: 'Global Brand & Communications Director',
+      reportingManager: '',
+      annualCTC: 74000,
+      monthlyCTC: 6167,
+      designation: 'Communications & Content Associate',
       location: 'United States',
       donor: 'Global Core Fund',
       activity: '16.1 Global Communications & PR',
@@ -482,18 +492,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-US-010',
-      name: 'Robert Sterling',
-      band: 'NH5',
-      level: 'Level 4',
-      doj: '2018-03-01',
+      employeeCode: 'NH-US-110',
+      name: 'Diana Park',
+      band: 'NH3',
+      level: 'Level 2',
+      doj: '2022-08-15',
       entityId: 'noora-us',
+      countryCode: 'KR',
       deptId: 'gl-ops-fin',
       department: 'Global Support (Finance)',
-      reportingManager: 'Edith Elliott',
-      annualCTC: 175000,
-      monthlyCTC: 14583,
-      designation: 'Chief Financial Officer (Global)',
+      reportingManager: '',
+      annualCTC: 85000,
+      monthlyCTC: 7083,
+      designation: 'Global Finance & Accounting Analyst',
       location: 'United States',
       donor: 'Global Core Fund',
       activity: '18.1 Global Treasury & Financial Audits',
@@ -501,18 +512,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-US-011',
-      name: 'Jessica Morales',
-      band: 'NH4',
-      level: 'Level 4',
-      doj: '2020-01-15',
+      employeeCode: 'NH-US-111',
+      name: 'Oliver Grant',
+      band: 'NH2',
+      level: 'Level 2',
+      doj: '2023-03-20',
       entityId: 'noora-us',
+      countryCode: 'US',
       deptId: 'gl-ops-pc',
       department: 'Global Support (People & Culture)',
-      reportingManager: 'Edith Elliott',
-      annualCTC: 135000,
-      monthlyCTC: 11250,
-      designation: 'Global People & Talent Operations Director',
+      reportingManager: '',
+      annualCTC: 72000,
+      monthlyCTC: 6000,
+      designation: 'People Operations & Talent Associate',
       location: 'United States',
       donor: 'Global Core Fund',
       activity: '18.2 Global Talent Development & DEI',
@@ -520,18 +532,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-US-012',
-      name: 'Brandon Taylor',
-      band: 'NH3',
-      level: 'Level 2',
-      doj: '2022-06-01',
+      employeeCode: 'NH-US-112',
+      name: 'Clara Hudson',
+      band: 'NH2',
+      level: 'Level 1',
+      doj: '2023-07-01',
       entityId: 'noora-us',
+      countryCode: 'US',
       deptId: 'gl-ops-admin',
       department: 'Global Support (Administration)',
-      reportingManager: 'Robert Sterling',
-      annualCTC: 90000,
-      monthlyCTC: 7500,
-      designation: 'Global Operations & Compliance Associate',
+      reportingManager: '',
+      annualCTC: 65000,
+      monthlyCTC: 5417,
+      designation: 'Global Operations Assistant',
       location: 'United States',
       donor: 'Global Core Fund',
       activity: '18.3 Governance, Legal & Board Liaison',
@@ -539,18 +552,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-US-013',
-      name: 'Amanda Wright',
-      band: 'NH4',
-      level: 'Level 4',
-      doj: '2020-11-01',
+      employeeCode: 'NH-US-113',
+      name: 'Ethan Morris',
+      band: 'NH3',
+      level: 'Level 2',
+      doj: '2022-06-01',
       entityId: 'noora-us',
+      countryCode: 'US',
       deptId: 'gl-prg-exp',
       department: 'Strategic Global Development',
-      reportingManager: 'Edith Elliott',
-      annualCTC: 150000,
-      monthlyCTC: 12500,
-      designation: 'VP of Strategic Global Partnerships',
+      reportingManager: '',
+      annualCTC: 91000,
+      monthlyCTC: 7583,
+      designation: 'Global Partnerships & Strategy Associate',
       location: 'United States',
       donor: 'Global Core Fund',
       activity: '17.1 Multilateral Agency & WHO Partnerships',
@@ -558,22 +572,23 @@ const SEED_DATA = {
       status: 'Active'
     },
 
-    // ══════════════════════════════════════════════════════════════════
-    // 2. INDIA — NHIPL (Noora Health India Pvt Ltd) (Currency: INR)
-    // ══════════════════════════════════════════════════════════════════
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // 2. INDIA Ã¢â‚¬â€ NHIPL (Noora Health India Pvt Ltd) (Currency: INR)
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     {
-      employeeCode: 'NH-IN-101',
-      name: 'Dr. Shahed Alam',
-      band: 'NH5',
-      level: 'Level 5',
-      doj: '2019-01-01',
+      employeeCode: 'NH-IN-201',
+      name: 'Ananya Krishnamurthy',
+      band: 'NH2',
+      level: 'Level 2',
+      doj: '2023-01-15',
       entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'pdd-med',
       department: 'Framework designing & Content creation (Medical)',
-      reportingManager: 'Edith Elliott',
-      annualCTC: 6500000,
-      monthlyCTC: 541667,
-      designation: 'Vice President - Medical Content & Clinical Standards',
+      reportingManager: '',
+      annualCTC: 1200000,
+      monthlyCTC: 100000,
+      designation: 'Clinical Content Writer (Maternal Health)',
       location: 'India KA',
       donor: 'NHIPL Core Fund',
       activity: '1.1 Clinical Protocol Design',
@@ -581,37 +596,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-102',
-      name: 'Simerneet Bajwa',
-      band: 'NH4',
-      level: 'Level 4',
-      doj: '2021-06-15',
+      employeeCode: 'NH-IN-202',
+      name: 'Rahul Tendulkar',
+      band: 'NH2',
+      level: 'Level 2',
+      doj: '2022-09-01',
       entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'pdd-med',
       department: 'Framework designing & Content creation (Medical)',
-      reportingManager: 'Dr. Shahed Alam',
-      annualCTC: 4312000,
-      monthlyCTC: 359333,
-      designation: 'Senior Health Communications Lead',
-      location: 'India KA',
-      donor: 'NHIPL Core Fund',
-      activity: '1.1 Medical Content Curation',
-      conditionArea: 'Maternal Health',
-      status: 'Active'
-    },
-    {
-      employeeCode: 'NH-IN-103',
-      name: 'Dr. Kavita Deshmukh',
-      band: 'NH3',
-      level: 'Level 3',
-      doj: '2022-02-10',
-      entityId: 'nhipl',
-      deptId: 'pdd-med',
-      department: 'Framework designing & Content creation (Medical)',
-      reportingManager: 'Dr. Shahed Alam',
-      annualCTC: 2100000,
-      monthlyCTC: 175000,
-      designation: 'Clinical Content Specialist (Pediatrics)',
+      reportingManager: '',
+      annualCTC: 1450000,
+      monthlyCTC: 120833,
+      designation: 'Medical Research Associate (Newborn Care)',
       location: 'India MH',
       donor: 'NHIPL Core Fund',
       activity: '1.1 Child Health Protocols',
@@ -619,18 +616,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-104',
-      name: 'Rajesh Varma',
-      band: 'NH4',
-      level: 'Level 4',
-      doj: '2020-04-15',
+      employeeCode: 'NH-IN-203',
+      name: 'Kavya Srinivasan',
+      band: 'NH2',
+      level: 'Level 1',
+      doj: '2023-06-01',
       entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'pdd-hcomm',
       department: 'Framework designing & Content creation (Health Comm)',
-      reportingManager: 'Simerneet Bajwa',
-      annualCTC: 3850000,
-      monthlyCTC: 320833,
-      designation: 'Lead — Healthcare Communications',
+      reportingManager: '',
+      annualCTC: 900000,
+      monthlyCTC: 75000,
+      designation: 'Health Communications Associate',
       location: 'India KA',
       donor: 'NHIPL Core Fund',
       activity: '1.2 Health Comm Framework Design',
@@ -638,37 +636,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-105',
-      name: 'Pooja Sharma',
+      employeeCode: 'NH-IN-204',
+      name: 'Mohammed Farouk',
       band: 'NH2',
       level: 'Level 2',
-      doj: '2023-05-10',
+      doj: '2022-11-15',
       entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'pdd-hcomm',
       department: 'Framework designing & Content creation (Health Comm)',
-      reportingManager: 'Rajesh Varma',
-      annualCTC: 1200000,
-      monthlyCTC: 100000,
-      designation: 'HCOMM Operations Associate',
-      location: 'India KA',
-      donor: 'NHIPL Core Fund',
-      activity: '1.2 Health Comm Operations',
-      conditionArea: 'Maternal Health',
-      status: 'Active'
-    },
-    {
-      employeeCode: 'NH-IN-106',
-      name: 'Sandeep Kumar Dwivedi',
-      band: 'NH3',
-      level: 'Level 3',
-      doj: '2022-03-01',
-      entityId: 'nhipl',
-      deptId: 'pdd-hcomm',
-      department: 'Framework designing & Content creation (Health Comm)',
-      reportingManager: 'Simerneet Bajwa',
-      annualCTC: 2689139,
-      monthlyCTC: 224095,
-      designation: 'Senior Manager Creative Content & Translation',
+      reportingManager: '',
+      annualCTC: 1100000,
+      monthlyCTC: 91667,
+      designation: 'Vernacular Content Translator & Editor',
       location: 'India DL',
       donor: 'NHIPL Core Fund',
       activity: '1.2 Vernacular Content Translation',
@@ -676,18 +656,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-107',
-      name: 'Tarana Rajkumar Emmanuel',
-      band: 'NH3',
-      level: 'Level 1',
-      doj: '2023-01-10',
+      employeeCode: 'NH-IN-205',
+      name: 'Shruthi Nambiar',
+      band: 'NH2',
+      level: 'Level 2',
+      doj: '2023-02-10',
       entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'pdd-cdes',
       department: 'Tool Development (Creative Design)',
-      reportingManager: 'Simerneet Bajwa',
-      annualCTC: 1574941,
-      monthlyCTC: 131245,
-      designation: 'Associate Manager Creative Content & Illustration',
+      reportingManager: '',
+      annualCTC: 1050000,
+      monthlyCTC: 87500,
+      designation: 'Graphic & Illustration Designer',
       location: 'India KA',
       donor: 'NHIPL Core Fund',
       activity: '2.1 Creative Illustration & Flipcharts',
@@ -695,18 +676,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-108',
-      name: 'Rohan Mehra',
-      band: 'NH3',
-      level: 'Level 2',
-      doj: '2022-07-01',
+      employeeCode: 'NH-IN-206',
+      name: 'Aditya Rajan',
+      band: 'NH2',
+      level: 'Level 1',
+      doj: '2023-07-01',
       entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'pdd-cdes',
       department: 'Tool Development (Creative Design)',
-      reportingManager: 'Tarana Rajkumar Emmanuel',
-      annualCTC: 1800000,
-      monthlyCTC: 150000,
-      designation: 'Senior Visual Designer & Infographics Lead',
+      reportingManager: '',
+      annualCTC: 850000,
+      monthlyCTC: 70833,
+      designation: 'Digital Print Tool Production Associate',
       location: 'India KA',
       donor: 'NHIPL Core Fund',
       activity: '2.1 Digital & Print Tool Production',
@@ -714,18 +696,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-109',
-      name: 'Kabir Sen',
-      band: 'NH3',
-      level: 'Level 3',
-      doj: '2021-09-15',
+      employeeCode: 'NH-IN-207',
+      name: 'Preeti Yadav',
+      band: 'NH2',
+      level: 'Level 2',
+      doj: '2023-03-01',
       entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'pdd-film',
       department: 'Tool Development (Film)',
-      reportingManager: 'Simerneet Bajwa',
-      annualCTC: 2250000,
-      monthlyCTC: 187500,
-      designation: 'Multimedia & Video Production Lead',
+      reportingManager: '',
+      annualCTC: 1250000,
+      monthlyCTC: 104167,
+      designation: 'Video Production & Editing Specialist',
       location: 'India DL',
       donor: 'NHIPL Core Fund',
       activity: '2.2 Hospital Ward Film Production',
@@ -733,18 +716,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-110',
-      name: 'Nandini Sundaram',
-      band: 'NH3',
+      employeeCode: 'NH-IN-208',
+      name: 'Laxmi Bai Patel',
+      band: 'NH2',
       level: 'Level 2',
-      doj: '2022-11-01',
+      doj: '2022-08-15',
       entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'pdd-ssdes',
       department: 'Needs finding, Testing & prototyping',
-      reportingManager: 'Rajesh Varma',
-      annualCTC: 1650000,
-      monthlyCTC: 137500,
-      designation: 'Service Design & Field Prototyping Lead',
+      reportingManager: '',
+      annualCTC: 1100000,
+      monthlyCTC: 91667,
+      designation: 'Service Design Field Researcher',
       location: 'India KA',
       donor: 'NHIPL Core Fund',
       activity: '3.1 User Needs Assessment & Field Testing',
@@ -752,75 +736,59 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-111',
-      name: 'Amitabh Sen',
-      band: 'NH4',
-      level: 'Level 4',
-      doj: '2021-11-01',
+      employeeCode: 'NH-IN-209',
+      name: 'Sunil Bhatt',
+      band: 'NH2',
+      level: 'Level 2',
+      doj: '2022-12-01',
       entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'pdel-trng',
       department: 'Training design and delivery',
-      reportingManager: 'Dr. Shahed Alam',
-      annualCTC: 4200000,
-      monthlyCTC: 350000,
-      designation: 'Lead — Training & Program Delivery',
-      location: 'India DL',
-      donor: 'NHIPL Core Fund',
-      activity: '9.1 Master Trainer Curriculum',
-      conditionArea: 'Newborn Care',
-      status: 'Active'
-    },
-    {
-      employeeCode: 'NH-IN-112',
-      name: 'Vikram Malhotra',
-      band: 'NH3',
-      level: 'Level 3',
-      doj: '2022-07-15',
-      entityId: 'nhipl',
-      deptId: 'pdel-trng',
-      department: 'Training design and delivery',
-      reportingManager: 'Amitabh Sen',
-      annualCTC: 2400000,
-      monthlyCTC: 200000,
-      designation: 'Senior Master Trainer',
-      location: 'India MP',
+      reportingManager: '',
+      annualCTC: 1350000,
+      monthlyCTC: 112500,
+      designation: 'Field Master Trainer (Karnataka)',
+      location: 'India KA',
       donor: 'NHIPL Core Fund',
       activity: '9.2 State Level Master Training',
       conditionArea: 'Newborn Care',
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-113',
-      name: 'Meera Swaminathan',
-      band: 'NH3',
-      level: 'Level 3',
-      doj: '2021-04-10',
+      employeeCode: 'NH-IN-210',
+      name: 'Geeta Kumari',
+      band: 'NH2',
+      level: 'Level 1',
+      doj: '2023-04-01',
       entityId: 'nhipl',
-      deptId: 'pdel-imp',
-      department: 'Implementation (ToTs, Supervision, etc.)',
-      reportingManager: 'Amitabh Sen',
-      annualCTC: 2100000,
-      monthlyCTC: 175000,
-      designation: 'State Implementation Manager (Punjab & Haryana)',
-      location: 'India PB',
+      countryCode: 'IN',
+      deptId: 'pdel-trng',
+      department: 'Training design and delivery',
+      reportingManager: '',
+      annualCTC: 780000,
+      monthlyCTC: 65000,
+      designation: 'Training Coordinator (Madhya Pradesh)',
+      location: 'India MP',
       donor: 'NHIPL Core Fund',
-      activity: '10.1 District Hospital Implementation',
+      activity: '9.2 Hospital ToT Sessions',
       conditionArea: 'Maternal Health',
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-114',
-      name: 'Suresh Chander',
+      employeeCode: 'NH-IN-211',
+      name: 'Ramakrishna Prasad',
       band: 'NH2',
-      level: 'Level 3',
-      doj: '2023-03-01',
+      level: 'Level 2',
+      doj: '2022-07-15',
       entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'pdel-imp',
       department: 'Implementation (ToTs, Supervision, etc.)',
-      reportingManager: 'Meera Swaminathan',
-      annualCTC: 1050000,
-      monthlyCTC: 87500,
-      designation: 'District Facility Master Coach',
+      reportingManager: '',
+      annualCTC: 980000,
+      monthlyCTC: 81667,
+      designation: 'District Facility Implementation Officer (Rajasthan)',
       location: 'India RJ',
       donor: 'NHIPL Core Fund',
       activity: '10.2 Ward Level Supervision',
@@ -828,18 +796,39 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-115',
-      name: 'Ritu Sengupta',
-      band: 'NH3',
-      level: 'Level 2',
-      doj: '2022-08-15',
+      employeeCode: 'NH-IN-212',
+      name: 'Meghna Pillai',
+      band: 'NH2',
+      level: 'Level 1',
+      doj: '2023-08-01',
       entityId: 'nhipl',
+      countryCode: 'IN',
+      deptId: 'pdel-imp',
+      department: 'Implementation (ToTs, Supervision, etc.)',
+      reportingManager: '',
+      annualCTC: 720000,
+      monthlyCTC: 60000,
+      designation: 'Field Coaching Specialist (Bihar)',
+      location: 'India PB',
+      donor: 'NHIPL Core Fund',
+      activity: '10.1 District Hospital Implementation',
+      conditionArea: 'Maternal Health',
+      status: 'Active'
+    },
+    {
+      employeeCode: 'NH-IN-213',
+      name: 'Arun Joshi',
+      band: 'NH2',
+      level: 'Level 2',
+      doj: '2022-10-01',
+      entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'pdel-partner',
       department: 'Partner Implementation',
-      reportingManager: 'Amitabh Sen',
-      annualCTC: 1950000,
-      monthlyCTC: 162500,
-      designation: 'NGO & Health Partner Coordination Manager',
+      reportingManager: '',
+      annualCTC: 1050000,
+      monthlyCTC: 87500,
+      designation: 'NGO Field Partner Liaison Officer (Odisha)',
       location: 'India OR',
       donor: 'NHIPL Core Fund',
       activity: '10.3 Partner Rollout & Training',
@@ -847,18 +836,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-116',
-      name: 'Deepa Nair',
-      band: 'NH4',
-      level: 'Level 4',
-      doj: '2019-08-20',
+      employeeCode: 'NH-IN-214',
+      name: 'Reena Saxena',
+      band: 'NH2',
+      level: 'Level 2',
+      doj: '2022-05-15',
       entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'ops-admin',
       department: 'Country Support (Administration)',
-      reportingManager: 'Priya Iyer',
-      annualCTC: 3600000,
-      monthlyCTC: 300000,
-      designation: 'HR & People Operations Manager',
+      reportingManager: '',
+      annualCTC: 1100000,
+      monthlyCTC: 91667,
+      designation: 'HR Operations Associate',
       location: 'India KA',
       donor: 'NHIPL Core Fund',
       activity: '11.1 General Administration',
@@ -866,34 +856,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-117',
-      name: 'Sneha Rao',
-      band: 'NH4',
-      level: 'Level 4',
-      doj: '2020-02-01',
-      entityId: 'nhipl',
-      deptId: 'ops-fin',
-      department: 'Country Support (Finance)',
-      reportingManager: 'Priya Iyer',
-      annualCTC: 4500000,
-      monthlyCTC: 375000,
-      designation: 'Finance & Compliance Manager',
-      location: 'India KA',
-      donor: 'NHIPL Core Fund',
-      activity: '11.2 Financial Management & Audit',
-      conditionArea: 'General Health',
-      status: 'Active'
-    },
-    {
-      employeeCode: 'NH-IN-118',
-      name: 'Karthik Subramanian',
+      employeeCode: 'NH-IN-215',
+      name: 'Karthik Rangan',
       band: 'NH2',
       level: 'Level 3',
       doj: '2023-06-01',
       entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'ops-fin',
       department: 'Country Support (Finance)',
-      reportingManager: 'Sneha Rao',
+      reportingManager: '',
       annualCTC: 1100000,
       monthlyCTC: 91667,
       designation: 'Senior Accountant & Tax Associate',
@@ -904,15 +876,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-119',
+      employeeCode: 'NH-IN-216',
       name: 'Sunita Krishnan',
       band: 'NH3',
       level: 'Level 3',
       doj: '2021-05-15',
       entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'ops-pc',
       department: 'Country Support (People & Culture)',
-      reportingManager: 'Deepa Nair',
+      reportingManager: '',
       annualCTC: 2200000,
       monthlyCTC: 183333,
       designation: 'Talent Acquisition & People Partner',
@@ -923,18 +896,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-120',
-      name: 'Varun Grover',
-      band: 'NH4',
+      employeeCode: 'NH-IN-217',
+      name: 'Vinay Prakash',
+      band: 'NH3',
       level: 'Level 3',
       doj: '2021-12-01',
       entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'ops-fr',
       department: 'Fundraising & Development',
-      reportingManager: 'Priya Iyer',
-      annualCTC: 3400000,
-      monthlyCTC: 283333,
-      designation: 'India Institutional Fundraising Lead',
+      reportingManager: '',
+      annualCTC: 2600000,
+      monthlyCTC: 216667,
+      designation: 'CSR & Institutional Grants Associate',
       location: 'India DL',
       donor: 'NHIPL Core Fund',
       activity: '15.1 CSR & Institutional Grants',
@@ -942,18 +916,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-121',
-      name: 'Priya Iyer',
-      band: 'NH5',
-      level: 'Level 4',
-      doj: '2018-09-01',
+      employeeCode: 'NH-IN-218',
+      name: 'Rohit Shastri',
+      band: 'NH3',
+      level: 'Level 2',
+      doj: '2022-04-01',
       entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'rmm',
       department: 'RMM (Advocacy, Collaboration, Admin Mgmt)',
-      reportingManager: 'Edith Elliott',
-      annualCTC: 5800000,
-      monthlyCTC: 483333,
-      designation: 'Director — Government Relations & Alliances',
+      reportingManager: '',
+      annualCTC: 2400000,
+      monthlyCTC: 200000,
+      designation: 'Government Relations & NHM Liaison Officer',
       location: 'India DL',
       donor: 'NHIPL Core Fund',
       activity: '7.1 State NHM & Ministry Advocacy',
@@ -961,18 +936,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-122',
-      name: 'Alok Verma',
-      band: 'NH4',
-      level: 'Level 3',
-      doj: '2022-01-15',
+      employeeCode: 'NH-IN-219',
+      name: 'Manisha Goyal',
+      band: 'NH3',
+      level: 'Level 2',
+      doj: '2022-08-01',
       entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'dp-cp-prodmngt',
       department: 'Remote Engagement Service (Country Product Mgmt)',
-      reportingManager: 'David Kim',
-      annualCTC: 3200000,
-      monthlyCTC: 266667,
-      designation: 'Country Product Manager (IVRS & WhatsApp Chatbot)',
+      reportingManager: '',
+      annualCTC: 2000000,
+      monthlyCTC: 166667,
+      designation: 'Digital Product Associate (WhatsApp Chatbot)',
       location: 'India KA',
       donor: 'Digital Tech Grant',
       activity: '4.1 Caregiver WhatsApp Service Rollout',
@@ -980,18 +956,19 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-123',
-      name: 'Neha Aggarwal',
-      band: 'NH3',
-      level: 'Level 3',
-      doj: '2022-10-01',
+      employeeCode: 'NH-IN-220',
+      name: 'Naveen Tiwari',
+      band: 'NH2',
+      level: 'Level 2',
+      doj: '2023-04-01',
       entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'dp-cp-product',
       department: 'Platform Dev & Management (Country Product)',
-      reportingManager: 'Alok Verma',
-      annualCTC: 2500000,
-      monthlyCTC: 208333,
-      designation: 'Senior Mobile UX & Product Specialist',
+      reportingManager: '',
+      annualCTC: 1500000,
+      monthlyCTC: 125000,
+      designation: 'Mobile UX & Product Design Associate',
       location: 'India KA',
       donor: 'Digital Tech Grant',
       activity: '8.1 Product Feature Specification',
@@ -999,34 +976,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-IN-124',
-      name: 'Arvind Swamy',
-      band: 'NH4',
-      level: 'Level 2',
-      doj: '2021-08-10',
-      entityId: 'nhipl',
-      deptId: 'dp-cp-eng',
-      department: 'Platform Dev & Management (Country Engineering)',
-      reportingManager: 'David Kim',
-      annualCTC: 3600000,
-      monthlyCTC: 300000,
-      designation: 'Lead Full Stack & Backend Engineer',
-      location: 'India KA',
-      donor: 'Digital Tech Grant',
-      activity: '8.2 Microservices & Database Optimization',
-      conditionArea: 'General Health',
-      status: 'Active'
-    },
-    {
-      employeeCode: 'NH-IN-125',
+      employeeCode: 'NH-IN-221',
       name: 'Divya Bhatt',
       band: 'NH3',
       level: 'Level 2',
       doj: '2023-04-15',
       entityId: 'nhipl',
+      countryCode: 'IN',
       deptId: 'dp-cp-eng',
       department: 'Platform Dev & Management (Country Engineering)',
-      reportingManager: 'Arvind Swamy',
+      reportingManager: '',
       annualCTC: 1800000,
       monthlyCTC: 150000,
       designation: 'Frontend & React Native Developer',
@@ -1036,20 +995,61 @@ const SEED_DATA = {
       conditionArea: 'General Health',
       status: 'Active'
     },
-
-    // ══════════════════════════════════════════════════════════════════
-    // 3. INDIA — YAIF (Yo Shade Innovation Foundation) (Currency: INR)
-    // ══════════════════════════════════════════════════════════════════
     {
-      employeeCode: 'NH-YA-101',
+      employeeCode: 'NH-IN-222',
+      name: 'Saumya Chatterjee',
+      band: 'NH2',
+      level: 'Level 2',
+      doj: '2022-10-01',
+      entityId: 'nhipl',
+      countryCode: 'IN',
+      deptId: 'me-monitoring',
+      department: 'Monitoring',
+      reportingManager: '',
+      annualCTC: 1200000,
+      monthlyCTC: 100000,
+      designation: 'M&E Data Analyst (Field)',
+      location: 'India KA',
+      donor: 'NHIPL Core Fund',
+      activity: '5.1 Monitoring System Maintenance',
+      conditionArea: 'Maternal Health',
+      status: 'Active'
+    },
+    {
+      employeeCode: 'NH-IN-223',
+      name: 'Parag Saxena',
+      band: 'NH3',
+      level: 'Level 2',
+      doj: '2022-06-01',
+      entityId: 'nhipl',
+      countryCode: 'IN',
+      deptId: 'me-eval',
+      department: 'Research (Evaluation)',
+      reportingManager: '',
+      annualCTC: 2100000,
+      monthlyCTC: 175000,
+      designation: 'Public Health Research Associate',
+      location: 'India DL',
+      donor: 'NHIPL Core Fund',
+      activity: '6.1 Randomized Controlled Trials',
+      conditionArea: 'Maternal & Newborn Care',
+      status: 'Active'
+    },
+
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // 3. INDIA Ã¢â‚¬â€ YAIF (Yo Shade Innovation Foundation) (Currency: INR)
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    {
+      employeeCode: 'NH-YA-201',
       name: 'Gauri Shankar',
       band: 'NH3',
       level: 'Level 3',
       doj: '2022-04-01',
       entityId: 'yaif',
+      countryCode: 'IN',
       deptId: 'pdel-trng',
       department: 'Training design and delivery',
-      reportingManager: 'Dr. Rakesh Kulkarni',
+      reportingManager: '',
       annualCTC: 2200000,
       monthlyCTC: 183333,
       designation: 'Senior Community Health Trainer',
@@ -1060,15 +1060,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-YA-102',
+      employeeCode: 'NH-YA-202',
       name: 'Manoj Kumar Jha',
       band: 'NH3',
       level: 'Level 2',
       doj: '2022-09-15',
       entityId: 'yaif',
+      countryCode: 'IN',
       deptId: 'pdel-imp',
       department: 'Implementation (ToTs, Supervision, etc.)',
-      reportingManager: 'Gauri Shankar',
+      reportingManager: '',
       annualCTC: 1800000,
       monthlyCTC: 150000,
       designation: 'Eastern Region Program Coordinator',
@@ -1079,15 +1080,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-YA-103',
+      employeeCode: 'NH-YA-203',
       name: 'Shashi Prabha',
       band: 'NH2',
       level: 'Level 2',
       doj: '2023-07-01',
       entityId: 'yaif',
+      countryCode: 'IN',
       deptId: 'pdel-imp',
       department: 'Implementation (ToTs, Supervision, etc.)',
-      reportingManager: 'Manoj Kumar Jha',
+      reportingManager: '',
       annualCTC: 950000,
       monthlyCTC: 79167,
       designation: 'District Hospital Field Trainer',
@@ -1098,15 +1100,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-YA-104',
+      employeeCode: 'NH-YA-204',
       name: 'Animesh Roy',
       band: 'NH3',
       level: 'Level 1',
       doj: '2023-02-10',
       entityId: 'yaif',
+      countryCode: 'IN',
       deptId: 'pdel-partner',
       department: 'Partner Implementation',
-      reportingManager: 'Dr. Rakesh Kulkarni',
+      reportingManager: '',
       annualCTC: 1500000,
       monthlyCTC: 125000,
       designation: 'State Partner Liaison Lead',
@@ -1117,15 +1120,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-YA-105',
+      employeeCode: 'NH-YA-205',
       name: 'Ananya Sharma',
       band: 'NH2',
       level: 'Level 2',
       doj: '2023-08-01',
       entityId: 'yaif',
+      countryCode: 'IN',
       deptId: 'me-monitoring',
       department: 'Monitoring',
-      reportingManager: 'Dr. Rakesh Kulkarni',
+      reportingManager: '',
       annualCTC: 960000,
       monthlyCTC: 80000,
       designation: 'Data Analyst & M&E Associate',
@@ -1136,15 +1140,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-YA-106',
+      employeeCode: 'NH-YA-206',
       name: 'Pradeep Choudhury',
       band: 'NH2',
       level: 'Level 1',
       doj: '2023-11-01',
       entityId: 'yaif',
+      countryCode: 'IN',
       deptId: 'me-monitoring',
       department: 'Monitoring',
-      reportingManager: 'Ananya Sharma',
+      reportingManager: '',
       annualCTC: 840000,
       monthlyCTC: 70000,
       designation: 'Field Monitoring & Audit Specialist',
@@ -1155,34 +1160,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-YA-107',
-      name: 'Dr. Rakesh Kulkarni',
-      band: 'NH4',
-      level: 'Level 3',
-      doj: '2021-06-01',
-      entityId: 'yaif',
-      deptId: 'me-eval',
-      department: 'Research (Evaluation)',
-      reportingManager: 'Priya Iyer',
-      annualCTC: 3300000,
-      monthlyCTC: 275000,
-      designation: 'Research Director — Public Health Studies',
-      location: 'India DL',
-      donor: 'YAIF Research Trust',
-      activity: '6.1 Randomized Controlled Trials',
-      conditionArea: 'Maternal & Newborn Care',
-      status: 'Active'
-    },
-    {
-      employeeCode: 'NH-YA-108',
+      employeeCode: 'NH-YA-207',
       name: 'Vandana Dixit',
       band: 'NH3',
       level: 'Level 2',
       doj: '2022-05-15',
       entityId: 'yaif',
+      countryCode: 'IN',
       deptId: 'ops-admin',
       department: 'Country Support (Administration)',
-      reportingManager: 'Balram Gupta',
+      reportingManager: '',
       annualCTC: 1600000,
       monthlyCTC: 133333,
       designation: 'Operations & Logistics Manager',
@@ -1193,15 +1180,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-YA-109',
+      employeeCode: 'NH-YA-208',
       name: 'Balram Gupta',
       band: 'NH3',
       level: 'Level 3',
       doj: '2021-10-01',
       entityId: 'yaif',
+      countryCode: 'IN',
       deptId: 'ops-fin',
       department: 'Country Support (Finance)',
-      reportingManager: 'Sneha Rao',
+      reportingManager: '',
       annualCTC: 2400000,
       monthlyCTC: 200000,
       designation: 'Senior Finance & Grant Accounting Lead',
@@ -1212,15 +1200,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-YA-110',
+      employeeCode: 'NH-YA-209',
       name: 'Shweta Tiwari',
       band: 'NH3',
       level: 'Level 2',
       doj: '2022-12-01',
       entityId: 'yaif',
+      countryCode: 'IN',
       deptId: 'ops-pc',
       department: 'Country Support (People & Culture)',
-      reportingManager: 'Vandana Dixit',
+      reportingManager: '',
       annualCTC: 1750000,
       monthlyCTC: 145833,
       designation: 'People Operations Associate',
@@ -1231,15 +1220,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-YA-111',
+      employeeCode: 'NH-YA-210',
       name: 'Harish Narang',
       band: 'NH3',
       level: 'Level 3',
       doj: '2022-08-20',
       entityId: 'yaif',
+      countryCode: 'IN',
       deptId: 'dp-cp-prodmngt',
       department: 'Remote Engagement Service (Country Product Mgmt)',
-      reportingManager: 'Alok Verma',
+      reportingManager: '',
       annualCTC: 2100000,
       monthlyCTC: 175000,
       designation: 'Digital Engagement Associate Manager',
@@ -1249,39 +1239,41 @@ const SEED_DATA = {
       conditionArea: 'General Health',
       status: 'Active'
     },
-
-    // ══════════════════════════════════════════════════════════════════
-    // 4. BANGLADESH — NHBD (Noora Health Bangladesh) (Currency: BDT)
-    // ══════════════════════════════════════════════════════════════════
     {
-      employeeCode: 'NH-BD-101',
-      name: 'Dr. Farhana Rahman',
-      band: 'NH4',
-      level: 'Level 3',
-      doj: '2021-03-01',
-      entityId: 'nhbd',
-      deptId: 'pdel-trng',
-      department: 'Training design and delivery',
-      reportingManager: 'Edith Elliott',
-      annualCTC: 3600000,
-      monthlyCTC: 300000,
-      designation: 'Country Director & Master Training Lead',
-      location: 'DHA-Dhaka',
-      donor: 'Bangladesh Health Mission Grant',
-      activity: '9.1 Bangladesh National Training Model',
+      employeeCode: 'NH-YA-211',
+      name: 'Latha Rajendran',
+      band: 'NH2',
+      level: 'Level 2',
+      doj: '2023-03-10',
+      entityId: 'yaif',
+      countryCode: 'IN',
+      deptId: 'me-eval',
+      department: 'Research (Evaluation)',
+      reportingManager: '',
+      annualCTC: 1200000,
+      monthlyCTC: 100000,
+      designation: 'Research Field Associate (Public Health)',
+      location: 'India DL',
+      donor: 'YAIF Research Trust',
+      activity: '6.1 Randomized Controlled Trials',
       conditionArea: 'Maternal & Newborn Care',
       status: 'Active'
     },
+
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // 4. BANGLADESH Ã¢â‚¬â€ NHBD (Noora Health Bangladesh) (Currency: BDT)
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     {
-      employeeCode: 'NH-BD-102',
+      employeeCode: 'NH-BD-201',
       name: 'Tanvir Ahmed',
       band: 'NH3',
       level: 'Level 2',
       doj: '2022-06-15',
       entityId: 'nhbd',
+      countryCode: 'BD',
       deptId: 'pdel-trng',
       department: 'Training design and delivery',
-      reportingManager: 'Dr. Farhana Rahman',
+      reportingManager: '',
       annualCTC: 1920000,
       monthlyCTC: 160000,
       designation: 'Senior Medical Master Trainer (Chittagong)',
@@ -1292,34 +1284,36 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-BD-103',
-      name: 'Nusrat Jahan',
-      band: 'NH3',
-      level: 'Level 3',
-      doj: '2021-11-10',
+      employeeCode: 'NH-BD-202',
+      name: 'Fatema Begum',
+      band: 'NH2',
+      level: 'Level 2',
+      doj: '2023-01-10',
       entityId: 'nhbd',
-      deptId: 'pdel-imp',
-      department: 'Implementation (ToTs, Supervision, etc.)',
-      reportingManager: 'Dr. Farhana Rahman',
-      annualCTC: 2160000,
-      monthlyCTC: 180000,
-      designation: 'National Hospital Implementation Manager',
+      countryCode: 'BD',
+      deptId: 'pdel-trng',
+      department: 'Training design and delivery',
+      reportingManager: '',
+      annualCTC: 1200000,
+      monthlyCTC: 100000,
+      designation: 'Junior Health Trainer (Rajshahi)',
       location: 'DHA-Dhaka',
       donor: 'Bangladesh Health Mission Grant',
-      activity: '10.1 District Sadar Hospital Implementation',
+      activity: '9.1 Bangladesh National Training Model',
       conditionArea: 'Newborn Care',
       status: 'Active'
     },
     {
-      employeeCode: 'NH-BD-104',
+      employeeCode: 'NH-BD-203',
       name: 'Kazi Mokhlesur',
       band: 'NH2',
       level: 'Level 2',
       doj: '2023-02-01',
       entityId: 'nhbd',
+      countryCode: 'BD',
       deptId: 'pdel-imp',
       department: 'Implementation (ToTs, Supervision, etc.)',
-      reportingManager: 'Nusrat Jahan',
+      reportingManager: '',
       annualCTC: 1200000,
       monthlyCTC: 100000,
       designation: 'Divisional Field Supervisor (Sylhet)',
@@ -1330,15 +1324,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-BD-105',
+      employeeCode: 'NH-BD-204',
       name: 'Shafiul Islam',
       band: 'NH3',
       level: 'Level 1',
       doj: '2022-10-01',
       entityId: 'nhbd',
+      countryCode: 'BD',
       deptId: 'pdel-partner',
       department: 'Partner Implementation',
-      reportingManager: 'Dr. Farhana Rahman',
+      reportingManager: '',
       annualCTC: 1680000,
       monthlyCTC: 140000,
       designation: 'DGHS & MOHFW Partner Liaison Manager',
@@ -1349,15 +1344,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-BD-106',
+      employeeCode: 'NH-BD-205',
       name: 'Sabina Yasmin',
       band: 'NH2',
       level: 'Level 3',
       doj: '2022-04-15',
       entityId: 'nhbd',
+      countryCode: 'BD',
       deptId: 'me-monitoring',
       department: 'Monitoring',
-      reportingManager: 'Dr. Farhana Rahman',
+      reportingManager: '',
       annualCTC: 1320000,
       monthlyCTC: 110000,
       designation: 'Monitoring & Field Survey Specialist',
@@ -1368,15 +1364,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-BD-107',
+      employeeCode: 'NH-BD-206',
       name: 'Mahmudul Hasan',
       band: 'NH3',
       level: 'Level 2',
       doj: '2021-08-01',
       entityId: 'nhbd',
+      countryCode: 'BD',
       deptId: 'ops-admin',
       department: 'Country Support (Administration)',
-      reportingManager: 'Dr. Farhana Rahman',
+      reportingManager: '',
       annualCTC: 1800000,
       monthlyCTC: 150000,
       designation: 'Administration & Procurement Manager',
@@ -1387,15 +1384,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-BD-108',
+      employeeCode: 'NH-BD-207',
       name: 'Asifur Rahman',
       band: 'NH3',
       level: 'Level 3',
       doj: '2021-05-10',
       entityId: 'nhbd',
+      countryCode: 'BD',
       deptId: 'ops-fin',
       department: 'Country Support (Finance)',
-      reportingManager: 'Robert Sterling',
+      reportingManager: '',
       annualCTC: 2400000,
       monthlyCTC: 200000,
       designation: 'Finance & Compliance Lead (Bangladesh)',
@@ -1406,15 +1404,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-BD-109',
+      employeeCode: 'NH-BD-208',
       name: 'Ruksana Begum',
       band: 'NH2',
       level: 'Level 2',
       doj: '2023-01-15',
       entityId: 'nhbd',
+      countryCode: 'BD',
       deptId: 'ops-pc',
       department: 'Country Support (People & Culture)',
-      reportingManager: 'Mahmudul Hasan',
+      reportingManager: '',
       annualCTC: 1140000,
       monthlyCTC: 95000,
       designation: 'People & Culture Officer',
@@ -1425,15 +1424,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-BD-110',
+      employeeCode: 'NH-BD-209',
       name: 'Faisal Karim',
       band: 'NH3',
       level: 'Level 2',
       doj: '2022-09-01',
       entityId: 'nhbd',
+      countryCode: 'BD',
       deptId: 'dp-cp-prodmngt',
       department: 'Remote Engagement Service (Country Product Mgmt)',
-      reportingManager: 'Alok Verma',
+      reportingManager: '',
       annualCTC: 1980000,
       monthlyCTC: 165000,
       designation: 'Digital Product Manager (Bangla Bot Service)',
@@ -1443,39 +1443,41 @@ const SEED_DATA = {
       conditionArea: 'Maternal & Newborn Care',
       status: 'Active'
     },
-
-    // ══════════════════════════════════════════════════════════════════
-    // 5. INDONESIA — NH Indo (Noora Health Indonesia) (Currency: IDR)
-    // ══════════════════════════════════════════════════════════════════
     {
-      employeeCode: 'NH-ID-101',
-      name: 'Dr. Budi Santoso',
-      band: 'NH4',
-      level: 'Level 4',
-      doj: '2021-01-15',
-      entityId: 'nh-indo',
-      deptId: 'pdel-trng',
-      department: 'Training design and delivery',
-      reportingManager: 'Edith Elliott',
-      annualCTC: 480000000,
-      monthlyCTC: 40000000,
-      designation: 'Country Director & Clinical Training Lead',
-      location: 'Indonesia',
-      donor: 'Southeast Asia Health Fund',
-      activity: '9.1 Indonesia Healthcare Training Strategy',
-      conditionArea: 'Maternal & Newborn Care',
+      employeeCode: 'NH-BD-210',
+      name: 'Nusrat Jahan',
+      band: 'NH3',
+      level: 'Level 3',
+      doj: '2021-11-10',
+      entityId: 'nhbd',
+      countryCode: 'BD',
+      deptId: 'pdel-imp',
+      department: 'Implementation (ToTs, Supervision, etc.)',
+      reportingManager: '',
+      annualCTC: 2160000,
+      monthlyCTC: 180000,
+      designation: 'National Hospital Implementation Manager',
+      location: 'DHA-Dhaka',
+      donor: 'Bangladesh Health Mission Grant',
+      activity: '10.1 District Sadar Hospital Implementation',
+      conditionArea: 'Newborn Care',
       status: 'Active'
     },
+
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // 5. INDONESIA Ã¢â‚¬â€ NH Indo (Noora Health Indonesia) (Currency: IDR)
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     {
-      employeeCode: 'NH-ID-102',
+      employeeCode: 'NH-ID-201',
       name: 'Siti Nurhaliza',
       band: 'NH3',
       level: 'Level 3',
       doj: '2022-05-01',
       entityId: 'nh-indo',
+      countryCode: 'ID',
       deptId: 'pdel-trng',
       department: 'Training design and delivery',
-      reportingManager: 'Dr. Budi Santoso',
+      reportingManager: '',
       annualCTC: 264000000,
       monthlyCTC: 22000000,
       designation: 'Senior Health Training Specialist (East Java)',
@@ -1486,15 +1488,36 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-ID-103',
+      employeeCode: 'NH-ID-202',
+      name: 'Rizky Pratama',
+      band: 'NH2',
+      level: 'Level 2',
+      doj: '2023-03-01',
+      entityId: 'nh-indo',
+      countryCode: 'ID',
+      deptId: 'pdel-trng',
+      department: 'Training design and delivery',
+      reportingManager: '',
+      annualCTC: 156000000,
+      monthlyCTC: 13000000,
+      designation: 'Junior Nurse Trainer (West Java)',
+      location: 'Indonesia',
+      donor: 'Southeast Asia Health Fund',
+      activity: '9.1 Indonesia Healthcare Training Strategy',
+      conditionArea: 'Maternal Health',
+      status: 'Active'
+    },
+    {
+      employeeCode: 'NH-ID-203',
       name: 'Agus Setiawan',
       band: 'NH3',
       level: 'Level 2',
       doj: '2022-08-15',
       entityId: 'nh-indo',
+      countryCode: 'ID',
       deptId: 'pdel-imp',
       department: 'Implementation (ToTs, Supervision, etc.)',
-      reportingManager: 'Dr. Budi Santoso',
+      reportingManager: '',
       annualCTC: 216000000,
       monthlyCTC: 18000000,
       designation: 'Hospital Program Implementation Manager (RSUD)',
@@ -1505,15 +1528,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-ID-104',
+      employeeCode: 'NH-ID-204',
       name: 'Dewi Lestari',
       band: 'NH2',
       level: 'Level 2',
       doj: '2023-03-10',
       entityId: 'nh-indo',
+      countryCode: 'ID',
       deptId: 'pdel-imp',
       department: 'Implementation (ToTs, Supervision, etc.)',
-      reportingManager: 'Agus Setiawan',
+      reportingManager: '',
       annualCTC: 144000000,
       monthlyCTC: 12000000,
       designation: 'Puskesmas District Field Officer',
@@ -1524,15 +1548,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-ID-105',
+      employeeCode: 'NH-ID-205',
       name: 'Hendra Wijaya',
       band: 'NH3',
       level: 'Level 1',
       doj: '2023-01-01',
       entityId: 'nh-indo',
+      countryCode: 'ID',
       deptId: 'pdel-partner',
       department: 'Partner Implementation',
-      reportingManager: 'Dr. Budi Santoso',
+      reportingManager: '',
       annualCTC: 192000000,
       monthlyCTC: 16000000,
       designation: 'Kemenkes Ministry of Health Partner Coordinator',
@@ -1543,15 +1568,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-ID-106',
+      employeeCode: 'NH-ID-206',
       name: 'Rina Kusuma',
       band: 'NH2',
       level: 'Level 3',
       doj: '2022-09-20',
       entityId: 'nh-indo',
+      countryCode: 'ID',
       deptId: 'me-monitoring',
       department: 'Monitoring',
-      reportingManager: 'Dr. Budi Santoso',
+      reportingManager: '',
       annualCTC: 156000000,
       monthlyCTC: 13000000,
       designation: 'M&E Field Data Analyst',
@@ -1562,15 +1588,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-ID-107',
+      employeeCode: 'NH-ID-207',
       name: 'Bambang Prasetyo',
       band: 'NH3',
       level: 'Level 2',
       doj: '2021-07-01',
       entityId: 'nh-indo',
+      countryCode: 'ID',
       deptId: 'ops-admin',
       department: 'Country Support (Administration)',
-      reportingManager: 'Dr. Budi Santoso',
+      reportingManager: '',
       annualCTC: 204000000,
       monthlyCTC: 17000000,
       designation: 'Administration & Legal Operations Manager',
@@ -1581,15 +1608,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-ID-108',
+      employeeCode: 'NH-ID-208',
       name: 'Maya Indriani',
       band: 'NH3',
       level: 'Level 3',
       doj: '2021-04-15',
       entityId: 'nh-indo',
+      countryCode: 'ID',
       deptId: 'ops-fin',
       department: 'Country Support (Finance)',
-      reportingManager: 'Robert Sterling',
+      reportingManager: '',
       annualCTC: 288000000,
       monthlyCTC: 24000000,
       designation: 'Country Finance & Tax Lead',
@@ -1600,15 +1628,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-ID-109',
+      employeeCode: 'NH-ID-209',
       name: 'Dian Sastro',
       band: 'NH2',
       level: 'Level 2',
       doj: '2022-11-01',
       entityId: 'nh-indo',
+      countryCode: 'ID',
       deptId: 'ops-pc',
       department: 'Country Support (People & Culture)',
-      reportingManager: 'Bambang Prasetyo',
+      reportingManager: '',
       annualCTC: 150000000,
       monthlyCTC: 12500000,
       designation: 'HR & Recruitment Specialist',
@@ -1619,15 +1648,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-ID-110',
+      employeeCode: 'NH-ID-210',
       name: 'Reza Rahadian',
       band: 'NH3',
       level: 'Level 2',
       doj: '2023-02-15',
       entityId: 'nh-indo',
+      countryCode: 'ID',
       deptId: 'dp-cp-prodmngt',
       department: 'Remote Engagement Service (Country Product Mgmt)',
-      reportingManager: 'Alok Verma',
+      reportingManager: '',
       annualCTC: 240000000,
       monthlyCTC: 20000000,
       designation: 'WhatsApp Health Engagement Product Lead',
@@ -1638,38 +1668,20 @@ const SEED_DATA = {
       status: 'Active'
     },
 
-    // ══════════════════════════════════════════════════════════════════
-    // 6. NEPAL — NH Nepal (Noora Health Nepal) (Currency: NPR)
-    // ══════════════════════════════════════════════════════════════════
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+    // 6. NEPAL Ã¢â‚¬â€ NH Nepal (Noora Health Nepal) (Currency: NPR)
+    // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
     {
-      employeeCode: 'NH-NP-101',
-      name: 'Dr. Pradip Shrestha',
-      band: 'NH4',
-      level: 'Level 3',
-      doj: '2021-06-01',
-      entityId: 'nh-nepal',
-      deptId: 'pdel-trng',
-      department: 'Training design and delivery',
-      reportingManager: 'Edith Elliott',
-      annualCTC: 3000000,
-      monthlyCTC: 250000,
-      designation: 'Nepal Country Representative & Clinical Lead',
-      location: 'Nepal',
-      donor: 'Himalayan Health Initiative Grant',
-      activity: '9.1 Nepal Healthcare Worker Training Model',
-      conditionArea: 'Maternal & Newborn Care',
-      status: 'Active'
-    },
-    {
-      employeeCode: 'NH-NP-102',
+      employeeCode: 'NH-NP-201',
       name: 'Sunita Thapa',
       band: 'NH3',
       level: 'Level 2',
       doj: '2022-04-10',
       entityId: 'nh-nepal',
+      countryCode: 'NP',
       deptId: 'pdel-trng',
       department: 'Training design and delivery',
-      reportingManager: 'Dr. Pradip Shrestha',
+      reportingManager: '',
       annualCTC: 1680000,
       monthlyCTC: 140000,
       designation: 'Senior Nurse & Master Trainer (Pokhara)',
@@ -1680,15 +1692,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-NP-103',
+      employeeCode: 'NH-NP-202',
       name: 'Ramesh Adhikari',
       band: 'NH3',
       level: 'Level 2',
       doj: '2022-07-15',
       entityId: 'nh-nepal',
+      countryCode: 'NP',
       deptId: 'pdel-imp',
       department: 'Implementation (ToTs, Supervision, etc.)',
-      reportingManager: 'Dr. Pradip Shrestha',
+      reportingManager: '',
       annualCTC: 1560000,
       monthlyCTC: 130000,
       designation: 'Terai Region Program Implementation Officer',
@@ -1699,15 +1712,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-NP-104',
+      employeeCode: 'NH-NP-203',
       name: 'Bina Gurung',
       band: 'NH2',
       level: 'Level 2',
       doj: '2023-01-20',
       entityId: 'nh-nepal',
+      countryCode: 'NP',
       deptId: 'pdel-imp',
       department: 'Implementation (ToTs, Supervision, etc.)',
-      reportingManager: 'Ramesh Adhikari',
+      reportingManager: '',
       annualCTC: 960000,
       monthlyCTC: 80000,
       designation: 'District Hospital Field Coach (Chitwan)',
@@ -1718,15 +1732,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-NP-105',
+      employeeCode: 'NH-NP-204',
       name: 'Bikash Karki',
       band: 'NH3',
       level: 'Level 1',
       doj: '2023-03-01',
       entityId: 'nh-nepal',
+      countryCode: 'NP',
       deptId: 'pdel-partner',
       department: 'Partner Implementation',
-      reportingManager: 'Dr. Pradip Shrestha',
+      reportingManager: '',
       annualCTC: 1440000,
       monthlyCTC: 120000,
       designation: 'Provincial Health Directorate Liaison Lead',
@@ -1737,15 +1752,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-NP-106',
+      employeeCode: 'NH-NP-205',
       name: 'Aarav Pant',
       band: 'NH2',
       level: 'Level 2',
       doj: '2022-10-15',
       entityId: 'nh-nepal',
+      countryCode: 'NP',
       deptId: 'me-monitoring',
       department: 'Monitoring',
-      reportingManager: 'Dr. Pradip Shrestha',
+      reportingManager: '',
       annualCTC: 1080000,
       monthlyCTC: 90000,
       designation: 'Field Monitoring & Evaluation Associate',
@@ -1756,15 +1772,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-NP-107',
+      employeeCode: 'NH-NP-206',
       name: 'Kamala Joshi',
       band: 'NH3',
       level: 'Level 2',
       doj: '2021-09-01',
       entityId: 'nh-nepal',
+      countryCode: 'NP',
       deptId: 'ops-admin',
       department: 'Country Support (Administration)',
-      reportingManager: 'Dr. Pradip Shrestha',
+      reportingManager: '',
       annualCTC: 1500000,
       monthlyCTC: 125000,
       designation: 'Country Operations & Admin Lead',
@@ -1775,15 +1792,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-NP-108',
+      employeeCode: 'NH-NP-207',
       name: 'Narayan Aryal',
       band: 'NH3',
       level: 'Level 3',
       doj: '2021-08-15',
       entityId: 'nh-nepal',
+      countryCode: 'NP',
       deptId: 'ops-fin',
       department: 'Country Support (Finance)',
-      reportingManager: 'Robert Sterling',
+      reportingManager: '',
       annualCTC: 2160000,
       monthlyCTC: 180000,
       designation: 'Senior Finance & Compliance Officer',
@@ -1794,15 +1812,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-NP-109',
+      employeeCode: 'NH-NP-208',
       name: 'Pooja Basnet',
       band: 'NH2',
       level: 'Level 1',
       doj: '2023-05-10',
       entityId: 'nh-nepal',
+      countryCode: 'NP',
       deptId: 'ops-pc',
       department: 'Country Support (People & Culture)',
-      reportingManager: 'Kamala Joshi',
+      reportingManager: '',
       annualCTC: 900000,
       monthlyCTC: 75000,
       designation: 'HR & Office Administration Assistant',
@@ -1813,15 +1832,16 @@ const SEED_DATA = {
       status: 'Active'
     },
     {
-      employeeCode: 'NH-NP-110',
+      employeeCode: 'NH-NP-209',
       name: 'Dipendra KC',
       band: 'NH3',
       level: 'Level 2',
       doj: '2022-11-15',
       entityId: 'nh-nepal',
+      countryCode: 'NP',
       deptId: 'dp-cp-prodmngt',
       department: 'Remote Engagement Service (Country Product Mgmt)',
-      reportingManager: 'Alok Verma',
+      reportingManager: '',
       annualCTC: 1800000,
       monthlyCTC: 150000,
       designation: 'Mobile & Voice Messaging Service Manager',
@@ -1833,12 +1853,12 @@ const SEED_DATA = {
     }
   ],
 
-  // ─── Default Admin Benchmark Travel Rates (Location & City / Non-City) ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Default Admin Benchmark Travel Rates (Location & City / Non-City) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   defaultTravelRates: [
-    // India (INR) — Default Fallback Rates
+    // India (INR) Ã¢â‚¬â€ Default Fallback Rates
     { entityId: 'nhipl', location: 'Default (All Locations)', category: 'City', isDefault: true, hotelPerDay: 3500, foodPerDay: 1000, cabPerDay: 1200, airfarePerTrip: 8500, busTrainPerTrip: 2500, currency: 'INR' },
     { entityId: 'nhipl', location: 'Default (All Locations)', category: 'Non-City', isDefault: true, hotelPerDay: 2200, foodPerDay: 700, cabPerDay: 800, airfarePerTrip: 6500, busTrainPerTrip: 1500, currency: 'INR' },
-    // India (INR) — Specific Locations
+    // India (INR) Ã¢â‚¬â€ Specific Locations
     { entityId: 'nhipl', location: 'India KA', category: 'City', hotelPerDay: 3500, foodPerDay: 1000, cabPerDay: 1200, airfarePerTrip: 8500, busTrainPerTrip: 2500, currency: 'INR' },
     { entityId: 'nhipl', location: 'India KA', category: 'Non-City', hotelPerDay: 2200, foodPerDay: 700, cabPerDay: 800, airfarePerTrip: 6500, busTrainPerTrip: 1500, currency: 'INR' },
     { entityId: 'nhipl', location: 'India DL', category: 'City', hotelPerDay: 4000, foodPerDay: 1200, cabPerDay: 1500, airfarePerTrip: 8500, busTrainPerTrip: 2500, currency: 'INR' },
@@ -1857,7 +1877,7 @@ const SEED_DATA = {
     { entityId: 'yaif', location: 'India DL', category: 'City', hotelPerDay: 4000, foodPerDay: 1200, cabPerDay: 1500, airfarePerTrip: 8500, busTrainPerTrip: 2500, currency: 'INR' },
     { entityId: 'yaif', location: 'India DL', category: 'Non-City', hotelPerDay: 2500, foodPerDay: 800, cabPerDay: 900, airfarePerTrip: 6500, busTrainPerTrip: 1500, currency: 'INR' },
 
-    // Bangladesh (BDT) — Default & Specific
+    // Bangladesh (BDT) Ã¢â‚¬â€ Default & Specific
     { entityId: 'nhbd', location: 'Default (All Locations)', category: 'City', isDefault: true, hotelPerDay: 3500, foodPerDay: 1000, cabPerDay: 1200, airfarePerTrip: 7500, busTrainPerTrip: 1800, currency: 'BDT' },
     { entityId: 'nhbd', location: 'Default (All Locations)', category: 'Non-City', isDefault: true, hotelPerDay: 2200, foodPerDay: 700, cabPerDay: 800, airfarePerTrip: 6000, busTrainPerTrip: 1000, currency: 'BDT' },
     { entityId: 'nhbd', location: 'DHA-Dhaka', category: 'City', hotelPerDay: 4000, foodPerDay: 1200, cabPerDay: 1500, airfarePerTrip: 8500, busTrainPerTrip: 2000, currency: 'BDT' },
@@ -1865,7 +1885,7 @@ const SEED_DATA = {
     { entityId: 'nhbd', location: 'CTG-Chittagong', category: 'City', hotelPerDay: 3500, foodPerDay: 1000, cabPerDay: 1200, airfarePerTrip: 7500, busTrainPerTrip: 1800, currency: 'BDT' },
     { entityId: 'nhbd', location: 'CTG-Chittagong', category: 'Non-City', hotelPerDay: 2200, foodPerDay: 700, cabPerDay: 800, airfarePerTrip: 6000, busTrainPerTrip: 1000, currency: 'BDT' },
 
-    // Indonesia (IDR) — Default & Specific
+    // Indonesia (IDR) Ã¢â‚¬â€ Default & Specific
     { entityId: 'nh-indo', location: 'Default (All Locations)', category: 'City', isDefault: true, hotelPerDay: 700000, foodPerDay: 220000, cabPerDay: 280000, airfarePerTrip: 1600000, busTrainPerTrip: 450000, currency: 'IDR' },
     { entityId: 'nh-indo', location: 'Default (All Locations)', category: 'Non-City', isDefault: true, hotelPerDay: 450000, foodPerDay: 160000, cabPerDay: 180000, airfarePerTrip: 1200000, busTrainPerTrip: 300000, currency: 'IDR' },
     { entityId: 'nh-indo', location: 'Indo-Jakarta', category: 'City', hotelPerDay: 750000, foodPerDay: 250000, cabPerDay: 300000, airfarePerTrip: 1800000, busTrainPerTrip: 500000, currency: 'IDR' },
@@ -1873,22 +1893,22 @@ const SEED_DATA = {
     { entityId: 'nh-indo', location: 'Indonesia', category: 'City', hotelPerDay: 700000, foodPerDay: 220000, cabPerDay: 280000, airfarePerTrip: 1600000, busTrainPerTrip: 450000, currency: 'IDR' },
     { entityId: 'nh-indo', location: 'Indonesia', category: 'Non-City', hotelPerDay: 450000, foodPerDay: 160000, cabPerDay: 180000, airfarePerTrip: 1200000, busTrainPerTrip: 300000, currency: 'IDR' },
 
-    // Nepal (NPR) — Default & Specific
+    // Nepal (NPR) Ã¢â‚¬â€ Default & Specific
     { entityId: 'nh-nepal', location: 'Default (All Locations)', category: 'City', isDefault: true, hotelPerDay: 4500, foodPerDay: 1200, cabPerDay: 1500, airfarePerTrip: 10000, busTrainPerTrip: 2000, currency: 'NPR' },
     { entityId: 'nh-nepal', location: 'Default (All Locations)', category: 'Non-City', isDefault: true, hotelPerDay: 2800, foodPerDay: 800, cabPerDay: 1000, airfarePerTrip: 8000, busTrainPerTrip: 1200, currency: 'NPR' },
     { entityId: 'nh-nepal', location: 'Nepal', category: 'City', hotelPerDay: 4500, foodPerDay: 1200, cabPerDay: 1500, airfarePerTrip: 10000, busTrainPerTrip: 2000, currency: 'NPR' },
     { entityId: 'nh-nepal', location: 'Nepal', category: 'Non-City', hotelPerDay: 2800, foodPerDay: 800, cabPerDay: 1000, airfarePerTrip: 8000, busTrainPerTrip: 1200, currency: 'NPR' },
 
-    // US (USD) — Default & Specific
+    // US (USD) Ã¢â‚¬â€ Default & Specific
     { entityId: 'noora-us', location: 'Default (All Locations)', category: 'City', isDefault: true, hotelPerDay: 180, foodPerDay: 70, cabPerDay: 60, airfarePerTrip: 450, busTrainPerTrip: 120, currency: 'USD' },
     { entityId: 'noora-us', location: 'Default (All Locations)', category: 'Non-City', isDefault: true, hotelPerDay: 120, foodPerDay: 50, cabPerDay: 40, airfarePerTrip: 350, busTrainPerTrip: 80, currency: 'USD' },
     { entityId: 'noora-us', location: 'US', category: 'City', hotelPerDay: 180, foodPerDay: 70, cabPerDay: 60, airfarePerTrip: 450, busTrainPerTrip: 120, currency: 'USD' },
     { entityId: 'noora-us', location: 'US', category: 'Non-City', hotelPerDay: 120, foodPerDay: 50, cabPerDay: 40, airfarePerTrip: 350, busTrainPerTrip: 80, currency: 'USD' }
   ],
 
-  // ─── Implementation (IMP) ToT Standard Benchmark Unit Rates (Country Defaults & 5D State Overrides) ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Implementation (IMP) ToT Standard Benchmark Unit Rates (Country Defaults & 5D State Overrides) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   defaultImpUnitRates: [
-    // ─── 🏛️ Tier 1: Country-Level Default Benchmark Rates ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Ã°Å¸Ââ€ºÃ¯Â¸Â Tier 1: Country-Level Default Benchmark Rates Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'country_india',
       entityId: 'nhipl',
@@ -2045,7 +2065,7 @@ const SEED_DATA = {
       leadershipHotelPerDay: 300
     },
 
-    // ─── 📍 Tier 2: Specific 5D State/Location Overrides ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Ã°Å¸â€œÂ Tier 2: Specific 5D State/Location Overrides Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'rate_india_mh',
       entityId: 'nhipl',
@@ -2172,34 +2192,34 @@ const SEED_DATA = {
     }
   ],
 
-  // ─── IMP ToT Standard Built-In Benchmark Rate Fields (Admin Configurable) ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ IMP ToT Standard Built-In Benchmark Rate Fields (Admin Configurable) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   defaultImpStandardBenchmarkFields: [
-    { id: 'hotelPerDay', fieldKey: 'hotelPerDay', name: '🏨 Hotel Accommodation (Double Occupancy)', category: 'travel', defaultGlCode: '93101', parentAccount: 'Travel & Lodging Expenses', unitDesc: 'Per trainer / night', defaultFormula: 'events_days_trainers', defaultMultiplier: 1, isBuiltIn: true },
-    { id: 'cabPerDay', fieldKey: 'cabPerDay', name: '🚕 Local Cab Travel', category: 'travel', defaultGlCode: '93104', parentAccount: 'Travel & Lodging Expenses', unitDesc: 'Per vehicle / day', defaultFormula: 'events_days_trainers', defaultMultiplier: 1, isBuiltIn: true },
-    { id: 'foodPerDay', fieldKey: 'foodPerDay', name: '🍱 Trainer Food Allowance (Per Diem)', category: 'travel', defaultGlCode: '93102', parentAccount: 'Travel & Lodging Expenses', unitDesc: 'Per trainer / day', defaultFormula: 'events_days_trainers', defaultMultiplier: 1, isBuiltIn: true },
-    { id: 'busTrainPerTrip', fieldKey: 'busTrainPerTrip', name: '🚆 Bus / Train Roundtrip Transit', category: 'travel', defaultGlCode: '93105', parentAccount: 'Travel & Lodging Expenses', unitDesc: 'Per trainer / roundtrip', defaultFormula: 'events_trainers', defaultMultiplier: 1, isBuiltIn: true },
-    { id: 'kitCost', fieldKey: 'kitCost', name: '📦 Training Collateral Kits', category: 'printing', defaultGlCode: '93204', parentAccount: 'Supplies & Printing Costs', unitDesc: 'Per facility kit package', defaultFormula: 'facilities_rate', defaultMultiplier: 1, isBuiltIn: true },
-    { id: 'dollCost', fieldKey: 'dollCost', name: '🎎 Doll Model Sets (Per Unit)', category: 'printing', defaultGlCode: '93204', parentAccount: 'Supplies & Printing Costs', unitDesc: 'Per doll model (2 sets/facility)', defaultFormula: 'facilities_multiplier', defaultMultiplier: 2, isBuiltIn: true },
-    { id: 'thaliCost', fieldKey: 'thaliCost', name: '🍽️ Thali Model Sets (Per Unit)', category: 'printing', defaultGlCode: '93204', parentAccount: 'Supplies & Printing Costs', unitDesc: 'Per thali model (3 sets/facility)', defaultFormula: 'facilities_multiplier', defaultMultiplier: 3, isBuiltIn: true },
-    { id: 'bannerCost', fieldKey: 'bannerCost', name: '🏷️ Training Banners (3x6 ft Pair)', category: 'printing', defaultGlCode: '93204', parentAccount: 'Supplies & Printing Costs', unitDesc: 'Per training batch / facility', defaultFormula: 'events_rate', defaultMultiplier: 1, isBuiltIn: true },
-    { id: 'backdropCost', fieldKey: 'backdropCost', name: '🎭 Stage Backdrop Setup', category: 'printing', defaultGlCode: '93204', parentAccount: 'Supplies & Printing Costs', unitDesc: 'Per batch stage setup', defaultFormula: 'events_rate', defaultMultiplier: 1, isBuiltIn: true },
-    { id: 'venueHallPerDay', fieldKey: 'venueHallPerDay', name: '🏢 Training Venue Hall Rental', category: 'venue', defaultGlCode: '93201', parentAccount: 'Other Direct Expenses', unitDesc: 'Per hall / training day', defaultFormula: 'events_days_hall', defaultMultiplier: 1, isBuiltIn: true },
-    { id: 'venueFoodPerPerson', fieldKey: 'venueFoodPerPerson', name: '🍽️ Participant Food & Catering', category: 'venue', defaultGlCode: '93201', parentAccount: 'Other Direct Expenses', unitDesc: 'Per participant / day', defaultFormula: 'events_days_participants', defaultMultiplier: 1, isBuiltIn: true },
-    { id: 'launchCollaterals', fieldKey: 'launchCollaterals', name: '🚀 Facility Launch Collateral Package', category: 'printing', defaultGlCode: '93204', parentAccount: 'Supplies & Printing Costs', unitDesc: 'Per facility launch setup', defaultFormula: 'facilities_rate', defaultMultiplier: 1, isBuiltIn: true },
-    { id: 'courierPerEvent', fieldKey: 'courierPerEvent', name: '📦 Courier & Collateral Dispatch', category: 'communication', defaultGlCode: '93302', parentAccount: 'Communication Cost', unitDesc: 'Per dispatch batch', defaultFormula: 'events_rate', defaultMultiplier: 1, isBuiltIn: true },
-    { id: 'pcCabPerVisit', fieldKey: 'pcCabPerVisit', name: '🚗 Program Coordinator (PC) Cab Visit', category: 'supervision', defaultGlCode: '93104', parentAccount: 'Travel & Lodging Expenses', unitDesc: 'Per monitoring visit', defaultFormula: 'facilities_pc_cab', defaultMultiplier: 1, isBuiltIn: true },
-    { id: 'pcFoodPerVisit', fieldKey: 'pcFoodPerVisit', name: '🍱 PC Food Allowance (Per Visit)', category: 'supervision', defaultGlCode: '93102', parentAccount: 'Travel & Lodging Expenses', unitDesc: 'Per monitoring visit', defaultFormula: 'facilities_pc_food', defaultMultiplier: 1, isBuiltIn: true },
-    { id: 'nonPcHotelPerDay', fieldKey: 'nonPcHotelPerDay', name: '🏨 Specialist / Non-PC Hotel', category: 'travel', defaultGlCode: '93101', parentAccount: 'Travel & Lodging Expenses', unitDesc: 'Per night / person', defaultFormula: 'events_days_trainers', defaultMultiplier: 1, isBuiltIn: true },
-    { id: 'airfareRoundtrip', fieldKey: 'airfareRoundtrip', name: '✈️ Flight Airfare Roundtrip', category: 'travel', defaultGlCode: '93103', parentAccount: 'Travel & Lodging Expenses', unitDesc: 'Per person / roundtrip', defaultFormula: 'events_trainers', defaultMultiplier: 1, isBuiltIn: true },
-    { id: 'leadershipHotelPerDay', fieldKey: 'leadershipHotelPerDay', name: '🏨 Leadership Hotel Accommodation', category: 'travel', defaultGlCode: '93101', parentAccount: 'Travel & Lodging Expenses', unitDesc: 'Per night / person', defaultFormula: 'events_days_trainers', defaultMultiplier: 1, isBuiltIn: true }
+    { id: 'hotelPerDay', fieldKey: 'hotelPerDay', name: 'Ã°Å¸ÂÂ¨ Hotel Accommodation (Double Occupancy)', category: 'travel', defaultGlCode: '93101', parentAccount: 'Travel & Lodging Expenses', unitDesc: 'Per trainer / night', defaultFormula: 'events_days_trainers', defaultMultiplier: 1, isBuiltIn: true },
+    { id: 'cabPerDay', fieldKey: 'cabPerDay', name: 'Ã°Å¸Å¡â€¢ Local Cab Travel', category: 'travel', defaultGlCode: '93104', parentAccount: 'Travel & Lodging Expenses', unitDesc: 'Per vehicle / day', defaultFormula: 'events_days_trainers', defaultMultiplier: 1, isBuiltIn: true },
+    { id: 'foodPerDay', fieldKey: 'foodPerDay', name: 'Ã°Å¸ÂÂ± Trainer Food Allowance (Per Diem)', category: 'travel', defaultGlCode: '93102', parentAccount: 'Travel & Lodging Expenses', unitDesc: 'Per trainer / day', defaultFormula: 'events_days_trainers', defaultMultiplier: 1, isBuiltIn: true },
+    { id: 'busTrainPerTrip', fieldKey: 'busTrainPerTrip', name: 'Ã°Å¸Å¡â€  Bus / Train Roundtrip Transit', category: 'travel', defaultGlCode: '93105', parentAccount: 'Travel & Lodging Expenses', unitDesc: 'Per trainer / roundtrip', defaultFormula: 'events_trainers', defaultMultiplier: 1, isBuiltIn: true },
+    { id: 'kitCost', fieldKey: 'kitCost', name: 'Ã°Å¸â€œÂ¦ Training Collateral Kits', category: 'printing', defaultGlCode: '93204', parentAccount: 'Supplies & Printing Costs', unitDesc: 'Per facility kit package', defaultFormula: 'facilities_rate', defaultMultiplier: 1, isBuiltIn: true },
+    { id: 'dollCost', fieldKey: 'dollCost', name: 'Ã°Å¸Å½Å½ Doll Model Sets (Per Unit)', category: 'printing', defaultGlCode: '93204', parentAccount: 'Supplies & Printing Costs', unitDesc: 'Per doll model (2 sets/facility)', defaultFormula: 'facilities_multiplier', defaultMultiplier: 2, isBuiltIn: true },
+    { id: 'thaliCost', fieldKey: 'thaliCost', name: 'Ã°Å¸ÂÂ½Ã¯Â¸Â Thali Model Sets (Per Unit)', category: 'printing', defaultGlCode: '93204', parentAccount: 'Supplies & Printing Costs', unitDesc: 'Per thali model (3 sets/facility)', defaultFormula: 'facilities_multiplier', defaultMultiplier: 3, isBuiltIn: true },
+    { id: 'bannerCost', fieldKey: 'bannerCost', name: 'Ã°Å¸ÂÂ·Ã¯Â¸Â Training Banners (3x6 ft Pair)', category: 'printing', defaultGlCode: '93204', parentAccount: 'Supplies & Printing Costs', unitDesc: 'Per training batch / facility', defaultFormula: 'events_rate', defaultMultiplier: 1, isBuiltIn: true },
+    { id: 'backdropCost', fieldKey: 'backdropCost', name: 'Ã°Å¸Å½Â­ Stage Backdrop Setup', category: 'printing', defaultGlCode: '93204', parentAccount: 'Supplies & Printing Costs', unitDesc: 'Per batch stage setup', defaultFormula: 'events_rate', defaultMultiplier: 1, isBuiltIn: true },
+    { id: 'venueHallPerDay', fieldKey: 'venueHallPerDay', name: 'Ã°Å¸ÂÂ¢ Training Venue Hall Rental', category: 'venue', defaultGlCode: '93201', parentAccount: 'Other Direct Expenses', unitDesc: 'Per hall / training day', defaultFormula: 'events_days_hall', defaultMultiplier: 1, isBuiltIn: true },
+    { id: 'venueFoodPerPerson', fieldKey: 'venueFoodPerPerson', name: 'Ã°Å¸ÂÂ½Ã¯Â¸Â Participant Food & Catering', category: 'venue', defaultGlCode: '93201', parentAccount: 'Other Direct Expenses', unitDesc: 'Per participant / day', defaultFormula: 'events_days_participants', defaultMultiplier: 1, isBuiltIn: true },
+    { id: 'launchCollaterals', fieldKey: 'launchCollaterals', name: 'Ã°Å¸Å¡â‚¬ Facility Launch Collateral Package', category: 'printing', defaultGlCode: '93204', parentAccount: 'Supplies & Printing Costs', unitDesc: 'Per facility launch setup', defaultFormula: 'facilities_rate', defaultMultiplier: 1, isBuiltIn: true },
+    { id: 'courierPerEvent', fieldKey: 'courierPerEvent', name: 'Ã°Å¸â€œÂ¦ Courier & Collateral Dispatch', category: 'communication', defaultGlCode: '93302', parentAccount: 'Communication Cost', unitDesc: 'Per dispatch batch', defaultFormula: 'events_rate', defaultMultiplier: 1, isBuiltIn: true },
+    { id: 'pcCabPerVisit', fieldKey: 'pcCabPerVisit', name: 'Ã°Å¸Å¡â€” Program Coordinator (PC) Cab Visit', category: 'supervision', defaultGlCode: '93104', parentAccount: 'Travel & Lodging Expenses', unitDesc: 'Per monitoring visit', defaultFormula: 'facilities_pc_cab', defaultMultiplier: 1, isBuiltIn: true },
+    { id: 'pcFoodPerVisit', fieldKey: 'pcFoodPerVisit', name: 'Ã°Å¸ÂÂ± PC Food Allowance (Per Visit)', category: 'supervision', defaultGlCode: '93102', parentAccount: 'Travel & Lodging Expenses', unitDesc: 'Per monitoring visit', defaultFormula: 'facilities_pc_food', defaultMultiplier: 1, isBuiltIn: true },
+    { id: 'nonPcHotelPerDay', fieldKey: 'nonPcHotelPerDay', name: 'Ã°Å¸ÂÂ¨ Specialist / Non-PC Hotel', category: 'travel', defaultGlCode: '93101', parentAccount: 'Travel & Lodging Expenses', unitDesc: 'Per night / person', defaultFormula: 'events_days_trainers', defaultMultiplier: 1, isBuiltIn: true },
+    { id: 'airfareRoundtrip', fieldKey: 'airfareRoundtrip', name: 'Ã¢Å“Ë†Ã¯Â¸Â Flight Airfare Roundtrip', category: 'travel', defaultGlCode: '93103', parentAccount: 'Travel & Lodging Expenses', unitDesc: 'Per person / roundtrip', defaultFormula: 'events_trainers', defaultMultiplier: 1, isBuiltIn: true },
+    { id: 'leadershipHotelPerDay', fieldKey: 'leadershipHotelPerDay', name: 'Ã°Å¸ÂÂ¨ Leadership Hotel Accommodation', category: 'travel', defaultGlCode: '93101', parentAccount: 'Travel & Lodging Expenses', unitDesc: 'Per night / person', defaultFormula: 'events_days_trainers', defaultMultiplier: 1, isBuiltIn: true }
   ],
 
-  // ─── IMP ToT Custom Benchmark Rate Fields (Admin Configurable) ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ IMP ToT Custom Benchmark Rate Fields (Admin Configurable) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   defaultImpCustomRateFields: [
     {
       id: 'doctorHonorarium',
       fieldKey: 'doctorHonorarium',
-      name: '🩺 Doctor / Specialist Honorarium',
+      name: 'Ã°Å¸Â©Âº Doctor / Specialist Honorarium',
       category: 'professional',
       defaultGlCode: '93701',
       parentAccount: 'Professional & Consultancy Charges',
@@ -2210,22 +2230,22 @@ const SEED_DATA = {
     }
   ],
 
-  // ─── IMP Benchmark Rate Field Categories (Admin Configurable) ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ IMP Benchmark Rate Field Categories (Admin Configurable) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   defaultImpRateCategories: [
-    { id: 'travel', code: 'travel', name: 'Travel & Lodging', icon: '🚕', colorClass: 'badge-indigo', isBuiltIn: true },
-    { id: 'printing', code: 'printing', name: 'Supplies, Kits & Printing', icon: '📦', colorClass: 'badge-cyan', isBuiltIn: true },
-    { id: 'venue', code: 'venue', name: 'Venue Hall, AV & Catering', icon: '🏢', colorClass: 'badge-emerald', isBuiltIn: true },
-    { id: 'professional', code: 'professional', name: 'Professional & Doctor Honorarium', icon: '🩺', colorClass: 'badge-indigo', isBuiltIn: true },
-    { id: 'supervision', code: 'supervision', name: 'Supportive Supervision & Monitoring', icon: '🚗', colorClass: 'badge-purple', isBuiltIn: true },
-    { id: 'communication', code: 'communication', name: 'Postage & Courier', icon: '📦', colorClass: 'badge-cyan', isBuiltIn: true },
-    { id: 'digital', code: 'digital', name: 'Digital & Technology', icon: '💻', colorClass: 'badge-cyan', isBuiltIn: false },
-    { id: 'translation', code: 'translation', name: 'Translation & Localization', icon: '🌐', colorClass: 'badge-purple', isBuiltIn: false },
-    { id: 'misc', code: 'misc', name: 'Miscellaneous Direct Expenses', icon: '⚙️', colorClass: 'badge-secondary', isBuiltIn: true }
+    { id: 'travel', code: 'travel', name: 'Travel & Lodging', icon: 'Ã°Å¸Å¡â€¢', colorClass: 'badge-indigo', isBuiltIn: true },
+    { id: 'printing', code: 'printing', name: 'Supplies, Kits & Printing', icon: 'Ã°Å¸â€œÂ¦', colorClass: 'badge-cyan', isBuiltIn: true },
+    { id: 'venue', code: 'venue', name: 'Venue Hall, AV & Catering', icon: 'Ã°Å¸ÂÂ¢', colorClass: 'badge-emerald', isBuiltIn: true },
+    { id: 'professional', code: 'professional', name: 'Professional & Doctor Honorarium', icon: 'Ã°Å¸Â©Âº', colorClass: 'badge-indigo', isBuiltIn: true },
+    { id: 'supervision', code: 'supervision', name: 'Supportive Supervision & Monitoring', icon: 'Ã°Å¸Å¡â€”', colorClass: 'badge-purple', isBuiltIn: true },
+    { id: 'communication', code: 'communication', name: 'Postage & Courier', icon: 'Ã°Å¸â€œÂ¦', colorClass: 'badge-cyan', isBuiltIn: true },
+    { id: 'digital', code: 'digital', name: 'Digital & Technology', icon: 'Ã°Å¸â€™Â»', colorClass: 'badge-cyan', isBuiltIn: false },
+    { id: 'translation', code: 'translation', name: 'Translation & Localization', icon: 'Ã°Å¸Å’Â', colorClass: 'badge-purple', isBuiltIn: false },
+    { id: 'misc', code: 'misc', name: 'Miscellaneous Direct Expenses', icon: 'Ã¢Å¡â„¢Ã¯Â¸Â', colorClass: 'badge-secondary', isBuiltIn: true }
   ],
 
-  // ─── IMP ToT Activity-Specific Master Templates (Activities 10.1 to 10.8) ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ IMP ToT Activity-Specific Master Templates (Activities 10.1 to 10.8) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   defaultImpActivityTemplates: [
-    // ─── GLOBAL DEFAULT TEMPLATES (Activities 10.1 to 10.8) ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ GLOBAL DEFAULT TEMPLATES (Activities 10.1 to 10.8) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'tpl-global-10.1',
       code: '10.1',
@@ -2236,7 +2256,7 @@ const SEED_DATA = {
       activityName: '10.1-Bundled ToT- Master trainers',
       componentId: 'bundled-tot',
       title: 'State Level Bundled ToT (Master Trainers)',
-      icon: '🏛️',
+      icon: 'Ã°Å¸Ââ€ºÃ¯Â¸Â',
       badgeClass: 'badge-indigo',
       hasToolPackage: true,
       scaleDefaults: {
@@ -2248,15 +2268,15 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        { id: 'line-101-hotel', description: '🏨 Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-101-cab', description: '🚕 Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-101-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-101-transit', description: '🚆 Bus / Train Roundtrip Transit', ledgerCode: '93105', parentAccount: 'Travel & Lodging Expenses', rateField: 'busTrainPerTrip', formulaType: 'events_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-101-kits', description: '📦 Training Collateral Kits', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'kitCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
-        { id: 'line-101-dolls', description: '🎎 Doll Model Sets (2 per facility)', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'dollCost', formulaType: 'facilities_multiplier', multiplier: 2, defaultActive: true },
-        { id: 'line-101-thalis', description: '🍽️ Thali Model Sets (3 per facility)', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'thaliCost', formulaType: 'facilities_multiplier', multiplier: 3, defaultActive: true },
-        { id: 'line-101-banners', description: '🏷️ Banners & Stage Backdrops (3x6 ft)', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'bannerCost', secondaryRateField: 'backdropCost', formulaType: 'events_rate_dual', multiplier: 1, defaultActive: true },
-        { id: 'line-101-venue', description: '🏢 Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true }
+        { id: 'line-101-hotel', description: 'Ã°Å¸ÂÂ¨ Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-cab', description: 'Ã°Å¸Å¡â€¢ Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-food', description: 'Ã°Å¸ÂÂ± Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-transit', description: 'Ã°Å¸Å¡â€  Bus / Train Roundtrip Transit', ledgerCode: '93105', parentAccount: 'Travel & Lodging Expenses', rateField: 'busTrainPerTrip', formulaType: 'events_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-kits', description: 'Ã°Å¸â€œÂ¦ Training Collateral Kits', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'kitCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
+        { id: 'line-101-dolls', description: 'Ã°Å¸Å½Å½ Doll Model Sets (2 per facility)', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'dollCost', formulaType: 'facilities_multiplier', multiplier: 2, defaultActive: true },
+        { id: 'line-101-thalis', description: 'Ã°Å¸ÂÂ½Ã¯Â¸Â Thali Model Sets (3 per facility)', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'thaliCost', formulaType: 'facilities_multiplier', multiplier: 3, defaultActive: true },
+        { id: 'line-101-banners', description: 'Ã°Å¸ÂÂ·Ã¯Â¸Â Banners & Stage Backdrops (3x6 ft)', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'bannerCost', secondaryRateField: 'backdropCost', formulaType: 'events_rate_dual', multiplier: 1, defaultActive: true },
+        { id: 'line-101-venue', description: 'Ã°Å¸ÂÂ¢ Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true }
       ]
     },
     {
@@ -2269,7 +2289,7 @@ const SEED_DATA = {
       activityName: '10.2-Non-bundled ToTs-Master Trainers',
       componentId: 'non-bundled-tot',
       title: 'State Level Non-Bundled ToT (Master Trainers)',
-      icon: '🏛️',
+      icon: 'Ã°Å¸Ââ€ºÃ¯Â¸Â',
       badgeClass: 'badge-indigo',
       hasToolPackage: false,
       scaleDefaults: {
@@ -2281,12 +2301,12 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        { id: 'line-102-hotel', description: '🏨 Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-102-cab', description: '🚕 Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-102-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-102-transit', description: '🚆 Bus / Train Roundtrip Transit', ledgerCode: '93105', parentAccount: 'Travel & Lodging Expenses', rateField: 'busTrainPerTrip', formulaType: 'events_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-102-banners', description: '🏷️ Banners & Stage Backdrops (3x6 ft)', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'bannerCost', secondaryRateField: 'backdropCost', formulaType: 'events_rate_dual', multiplier: 1, defaultActive: true },
-        { id: 'line-102-venue', description: '🏢 Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true }
+        { id: 'line-102-hotel', description: 'Ã°Å¸ÂÂ¨ Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-102-cab', description: 'Ã°Å¸Å¡â€¢ Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-102-food', description: 'Ã°Å¸ÂÂ± Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-102-transit', description: 'Ã°Å¸Å¡â€  Bus / Train Roundtrip Transit', ledgerCode: '93105', parentAccount: 'Travel & Lodging Expenses', rateField: 'busTrainPerTrip', formulaType: 'events_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-102-banners', description: 'Ã°Å¸ÂÂ·Ã¯Â¸Â Banners & Stage Backdrops (3x6 ft)', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'bannerCost', secondaryRateField: 'backdropCost', formulaType: 'events_rate_dual', multiplier: 1, defaultActive: true },
+        { id: 'line-102-venue', description: 'Ã°Å¸ÂÂ¢ Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true }
       ]
     },
     {
@@ -2299,7 +2319,7 @@ const SEED_DATA = {
       activityName: '10.3-Booster/ Refresher Training',
       componentId: 'refresher-tot',
       title: 'Booster / Refresher Training',
-      icon: '🔄',
+      icon: 'Ã°Å¸â€â€ž',
       badgeClass: 'badge-cyan',
       hasToolPackage: false,
       scaleDefaults: {
@@ -2311,10 +2331,10 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        { id: 'line-103-cab', description: '🚕 Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-103-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-103-venue', description: '🏢 Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true },
-        { id: 'line-103-materials', description: '📋 Refresher Handouts & Training Materials', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'bannerCost', formulaType: 'events_rate', multiplier: 1, defaultActive: true }
+        { id: 'line-103-cab', description: 'Ã°Å¸Å¡â€¢ Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-103-food', description: 'Ã°Å¸ÂÂ± Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-103-venue', description: 'Ã°Å¸ÂÂ¢ Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true },
+        { id: 'line-103-materials', description: 'Ã°Å¸â€œâ€¹ Refresher Handouts & Training Materials', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'bannerCost', formulaType: 'events_rate', multiplier: 1, defaultActive: true }
       ]
     },
     {
@@ -2327,7 +2347,7 @@ const SEED_DATA = {
       activityName: '10.4-Medical Officer training',
       componentId: 'mo-training',
       title: 'Medical Officer Training (MO Training)',
-      icon: '🩺',
+      icon: 'Ã°Å¸Â©Âº',
       badgeClass: 'badge-emerald',
       hasToolPackage: false,
       scaleDefaults: {
@@ -2339,12 +2359,12 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        { id: 'line-104-cab', description: '🚕 Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-104-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-104-hall', description: '🏢 Medical Training Venue Hall Rental', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', formulaType: 'events_days_hall', multiplier: 1, defaultActive: true },
-        { id: 'line-104-catering', description: '🍽️ MO Participant Catering & High Tea', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueFoodPerPerson', formulaType: 'events_days_participants', multiplier: 1, defaultActive: true },
-        { id: 'line-104-honorarium', description: '🩺 Doctor / Specialist Guest Honorarium', ledgerCode: '93701', parentAccount: 'Professional & Consultancy Charges', rateField: 'doctorHonorarium', formulaType: 'events_days_honorarium', multiplier: 1, defaultActive: true },
-        { id: 'line-104-materials', description: '📚 MO Clinical Protocols & Stationery', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'bannerCost', formulaType: 'events_rate', multiplier: 1, defaultActive: true }
+        { id: 'line-104-cab', description: 'Ã°Å¸Å¡â€¢ Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-104-food', description: 'Ã°Å¸ÂÂ± Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-104-hall', description: 'Ã°Å¸ÂÂ¢ Medical Training Venue Hall Rental', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', formulaType: 'events_days_hall', multiplier: 1, defaultActive: true },
+        { id: 'line-104-catering', description: 'Ã°Å¸ÂÂ½Ã¯Â¸Â MO Participant Catering & High Tea', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueFoodPerPerson', formulaType: 'events_days_participants', multiplier: 1, defaultActive: true },
+        { id: 'line-104-honorarium', description: 'Ã°Å¸Â©Âº Doctor / Specialist Guest Honorarium', ledgerCode: '93701', parentAccount: 'Professional & Consultancy Charges', rateField: 'doctorHonorarium', formulaType: 'events_days_honorarium', multiplier: 1, defaultActive: true },
+        { id: 'line-104-materials', description: 'Ã°Å¸â€œÅ¡ MO Clinical Protocols & Stationery', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'bannerCost', formulaType: 'events_rate', multiplier: 1, defaultActive: true }
       ]
     },
     {
@@ -2357,7 +2377,7 @@ const SEED_DATA = {
       activityName: '10.5-District level training',
       componentId: 'district-tot',
       title: 'District Level Training (HWC / CHO Training)',
-      icon: '🏥',
+      icon: 'Ã°Å¸ÂÂ¥',
       badgeClass: 'badge-emerald',
       hasToolPackage: false,
       scaleDefaults: {
@@ -2369,12 +2389,12 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        { id: 'line-105-hotel', description: '🏨 Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-105-cab', description: '🚕 District Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-105-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-105-kits', description: '📦 HWC / CHO Training Collateral Kits', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'kitCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
-        { id: 'line-105-venue', description: '🏢 District Training Hall Rental & Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true },
-        { id: 'line-105-banners', description: '🏷️ District Banners & Signage', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'bannerCost', formulaType: 'events_rate', multiplier: 1, defaultActive: true }
+        { id: 'line-105-hotel', description: 'Ã°Å¸ÂÂ¨ Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-105-cab', description: 'Ã°Å¸Å¡â€¢ District Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-105-food', description: 'Ã°Å¸ÂÂ± Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-105-kits', description: 'Ã°Å¸â€œÂ¦ HWC / CHO Training Collateral Kits', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'kitCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
+        { id: 'line-105-venue', description: 'Ã°Å¸ÂÂ¢ District Training Hall Rental & Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true },
+        { id: 'line-105-banners', description: 'Ã°Å¸ÂÂ·Ã¯Â¸Â District Banners & Signage', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'bannerCost', formulaType: 'events_rate', multiplier: 1, defaultActive: true }
       ]
     },
     {
@@ -2387,7 +2407,7 @@ const SEED_DATA = {
       activityName: '10.6-Facility Launch',
       componentId: 'facility-launch',
       title: 'Facility Launch & Collateral Deployment',
-      icon: '🚀',
+      icon: 'Ã°Å¸Å¡â‚¬',
       badgeClass: 'badge-cyan',
       hasToolPackage: false,
       scaleDefaults: {
@@ -2399,12 +2419,12 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        { id: 'line-106-launch-pkg', description: '🚀 Facility Launch Collateral Packages', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'launchCollaterals', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
-        { id: 'line-106-dolls', description: '🎎 Doll Model Sets (2 per facility)', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'dollCost', formulaType: 'facilities_multiplier', multiplier: 2, defaultActive: true },
-        { id: 'line-106-thalis', description: '🍽️ Thali Model Sets (3 per facility)', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'thaliCost', formulaType: 'facilities_multiplier', multiplier: 3, defaultActive: true },
-        { id: 'line-106-banners', description: '🏷️ Facility Launch Banners & Backdrops', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'bannerCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
-        { id: 'line-106-supervision', description: '🚗 Launch Supervision & PC Travel Visits', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'pcCabPerVisit', formulaType: 'facilities_pc_cab', multiplier: 1, defaultActive: true },
-        { id: 'line-106-courier', description: '📦 Facility Collateral Dispatch Courier', ledgerCode: '93302', parentAccount: 'Communication Cost', rateField: 'courierPerEvent', formulaType: 'events_rate', multiplier: 1, defaultActive: true }
+        { id: 'line-106-launch-pkg', description: 'Ã°Å¸Å¡â‚¬ Facility Launch Collateral Packages', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'launchCollaterals', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
+        { id: 'line-106-dolls', description: 'Ã°Å¸Å½Å½ Doll Model Sets (2 per facility)', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'dollCost', formulaType: 'facilities_multiplier', multiplier: 2, defaultActive: true },
+        { id: 'line-106-thalis', description: 'Ã°Å¸ÂÂ½Ã¯Â¸Â Thali Model Sets (3 per facility)', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'thaliCost', formulaType: 'facilities_multiplier', multiplier: 3, defaultActive: true },
+        { id: 'line-106-banners', description: 'Ã°Å¸ÂÂ·Ã¯Â¸Â Facility Launch Banners & Backdrops', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'bannerCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
+        { id: 'line-106-supervision', description: 'Ã°Å¸Å¡â€” Launch Supervision & PC Travel Visits', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'pcCabPerVisit', formulaType: 'facilities_pc_cab', multiplier: 1, defaultActive: true },
+        { id: 'line-106-courier', description: 'Ã°Å¸â€œÂ¦ Facility Collateral Dispatch Courier', ledgerCode: '93302', parentAccount: 'Communication Cost', rateField: 'courierPerEvent', formulaType: 'events_rate', multiplier: 1, defaultActive: true }
       ]
     },
     {
@@ -2417,7 +2437,7 @@ const SEED_DATA = {
       activityName: '10.7-Supportive Supervision',
       componentId: 'supervision-visits',
       title: 'Supportive Supervision & Monitoring (PCs & Non-PCs)',
-      icon: '🚗',
+      icon: 'Ã°Å¸Å¡â€”',
       badgeClass: 'badge-indigo',
       hasToolPackage: false,
       scaleDefaults: {
@@ -2429,9 +2449,9 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        { id: 'line-107-pc-cab', description: '🚗 Program Coordinator (PC) Cab Visit', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'pcCabPerVisit', formulaType: 'facilities_pc_cab', multiplier: 1, defaultActive: true },
-        { id: 'line-107-pc-food', description: '🍱 PC Food Allowance (Per Visit)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'pcFoodPerVisit', formulaType: 'facilities_pc_food', multiplier: 1, defaultActive: true },
-        { id: 'line-107-nonpc-hotel', description: '🏨 Specialist / Non-PC Hotel Accommodation', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'nonPcHotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true }
+        { id: 'line-107-pc-cab', description: 'Ã°Å¸Å¡â€” Program Coordinator (PC) Cab Visit', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'pcCabPerVisit', formulaType: 'facilities_pc_cab', multiplier: 1, defaultActive: true },
+        { id: 'line-107-pc-food', description: 'Ã°Å¸ÂÂ± PC Food Allowance (Per Visit)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'pcFoodPerVisit', formulaType: 'facilities_pc_food', multiplier: 1, defaultActive: true },
+        { id: 'line-107-nonpc-hotel', description: 'Ã°Å¸ÂÂ¨ Specialist / Non-PC Hotel Accommodation', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'nonPcHotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true }
       ]
     },
     {
@@ -2444,7 +2464,7 @@ const SEED_DATA = {
       activityName: '10.8-Partnership Visits',
       componentId: 'partnership-visits',
       title: 'Partnership & Leadership Visits',
-      icon: '✈️',
+      icon: 'Ã¢Å“Ë†Ã¯Â¸Â',
       badgeClass: 'badge-cyan',
       hasToolPackage: false,
       scaleDefaults: {
@@ -2458,7 +2478,7 @@ const SEED_DATA = {
       lineItems: [
         {
           id: 'line-108-airfare',
-          description: '✈️ Roundtrip Flight Airfare',
+          description: 'Ã¢Å“Ë†Ã¯Â¸Â Roundtrip Flight Airfare',
           ledgerCode: '93103',
           parentAccount: 'Travel & Lodging Expenses',
           rateField: 'airfareRoundtrip',
@@ -2468,7 +2488,7 @@ const SEED_DATA = {
         },
         {
           id: 'line-108-hotel',
-          description: '🏨 Leadership Hotel Accommodation',
+          description: 'Ã°Å¸ÂÂ¨ Leadership Hotel Accommodation',
           ledgerCode: '93101',
           parentAccount: 'Travel & Lodging Expenses',
           rateField: 'leadershipHotelPerDay',
@@ -2478,7 +2498,7 @@ const SEED_DATA = {
         },
         {
           id: 'line-108-cab',
-          description: '🚕 Local Travel & Vehicle Hire',
+          description: 'Ã°Å¸Å¡â€¢ Local Travel & Vehicle Hire',
           ledgerCode: '93104',
           parentAccount: 'Travel & Lodging Expenses',
           rateField: 'cabPerDay',
@@ -2489,7 +2509,7 @@ const SEED_DATA = {
       ]
     },
 
-    // ─── COUNTRY-SPECIFIC TEMPLATE VARIANTS ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ COUNTRY-SPECIFIC TEMPLATE VARIANTS Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     // India (IN)
     {
       id: 'tpl-in-10.1-hub',
@@ -2501,7 +2521,7 @@ const SEED_DATA = {
       activityName: '10.1-Bundled ToT- Master trainers',
       componentId: 'bundled-tot',
       title: 'District Hub Bundled ToT',
-      icon: '🏛️',
+      icon: 'Ã°Å¸Ââ€ºÃ¯Â¸Â',
       badgeClass: 'badge-indigo',
       hasToolPackage: true,
       scaleDefaults: {
@@ -2513,11 +2533,11 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        { id: 'line-101-hotel', description: '🏨 Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-101-cab', description: '🚕 Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-101-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-101-kits', description: '📦 Training Collateral Kits', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'kitCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
-        { id: 'line-101-venue', description: '🏢 Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true }
+        { id: 'line-101-hotel', description: 'Ã°Å¸ÂÂ¨ Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-cab', description: 'Ã°Å¸Å¡â€¢ Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-food', description: 'Ã°Å¸ÂÂ± Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-kits', description: 'Ã°Å¸â€œÂ¦ Training Collateral Kits', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'kitCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
+        { id: 'line-101-venue', description: 'Ã°Å¸ÂÂ¢ Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true }
       ]
     },
     {
@@ -2530,7 +2550,7 @@ const SEED_DATA = {
       activityName: '10.4-Medical Officer training',
       componentId: 'mo-training',
       title: 'Specialist MO Clinical Workshop',
-      icon: '🩺',
+      icon: 'Ã°Å¸Â©Âº',
       badgeClass: 'badge-emerald',
       hasToolPackage: false,
       scaleDefaults: {
@@ -2542,11 +2562,11 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        { id: 'line-104-cab', description: '🚕 Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-104-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-104-hall', description: '🏢 Medical Training Venue Hall Rental', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', formulaType: 'events_days_hall', multiplier: 1, defaultActive: true },
-        { id: 'line-104-catering', description: '🍽️ MO Participant Catering & High Tea', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueFoodPerPerson', formulaType: 'events_days_participants', multiplier: 1, defaultActive: true },
-        { id: 'line-104-honorarium', description: '🩺 Specialist Guest Speaker Honorarium', ledgerCode: '93701', parentAccount: 'Professional & Consultancy Charges', rateField: 'doctorHonorarium', formulaType: 'events_days_honorarium', multiplier: 1, defaultActive: true }
+        { id: 'line-104-cab', description: 'Ã°Å¸Å¡â€¢ Local Cab Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-104-food', description: 'Ã°Å¸ÂÂ± Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-104-hall', description: 'Ã°Å¸ÂÂ¢ Medical Training Venue Hall Rental', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', formulaType: 'events_days_hall', multiplier: 1, defaultActive: true },
+        { id: 'line-104-catering', description: 'Ã°Å¸ÂÂ½Ã¯Â¸Â MO Participant Catering & High Tea', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueFoodPerPerson', formulaType: 'events_days_participants', multiplier: 1, defaultActive: true },
+        { id: 'line-104-honorarium', description: 'Ã°Å¸Â©Âº Specialist Guest Speaker Honorarium', ledgerCode: '93701', parentAccount: 'Professional & Consultancy Charges', rateField: 'doctorHonorarium', formulaType: 'events_days_honorarium', multiplier: 1, defaultActive: true }
       ]
     },
 
@@ -2561,7 +2581,7 @@ const SEED_DATA = {
       activityName: '10.1-Bundled ToT- Master trainers',
       componentId: 'bundled-tot',
       title: 'Division Master Trainer ToT',
-      icon: '🏛️',
+      icon: 'Ã°Å¸Ââ€ºÃ¯Â¸Â',
       badgeClass: 'badge-indigo',
       hasToolPackage: true,
       scaleDefaults: {
@@ -2573,11 +2593,11 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        { id: 'line-101-hotel', description: '🏨 Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-101-cab', description: '🚕 Local Travel / Vehicle Hire', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-101-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-101-kits', description: '📦 Training Collateral Kits', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'kitCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
-        { id: 'line-101-venue', description: '🏢 Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true }
+        { id: 'line-101-hotel', description: 'Ã°Å¸ÂÂ¨ Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-cab', description: 'Ã°Å¸Å¡â€¢ Local Travel / Vehicle Hire', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-food', description: 'Ã°Å¸ÂÂ± Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-kits', description: 'Ã°Å¸â€œÂ¦ Training Collateral Kits', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'kitCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
+        { id: 'line-101-venue', description: 'Ã°Å¸ÂÂ¢ Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true }
       ]
     },
 
@@ -2592,7 +2612,7 @@ const SEED_DATA = {
       activityName: '10.1-Bundled ToT- Master trainers',
       componentId: 'bundled-tot',
       title: 'Provincial Master Trainer ToT',
-      icon: '🏛️',
+      icon: 'Ã°Å¸Ââ€ºÃ¯Â¸Â',
       badgeClass: 'badge-indigo',
       hasToolPackage: true,
       scaleDefaults: {
@@ -2604,11 +2624,11 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        { id: 'line-101-hotel', description: '🏨 Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-101-cab', description: '🚕 Local Travel / Transport', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-101-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-101-kits', description: '📦 Training Collateral Kits', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'kitCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
-        { id: 'line-101-venue', description: '🏢 Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true }
+        { id: 'line-101-hotel', description: 'Ã°Å¸ÂÂ¨ Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-cab', description: 'Ã°Å¸Å¡â€¢ Local Travel / Transport', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-food', description: 'Ã°Å¸ÂÂ± Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-kits', description: 'Ã°Å¸â€œÂ¦ Training Collateral Kits', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'kitCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
+        { id: 'line-101-venue', description: 'Ã°Å¸ÂÂ¢ Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true }
       ]
     },
 
@@ -2623,7 +2643,7 @@ const SEED_DATA = {
       activityName: '10.1-Bundled ToT- Master trainers',
       componentId: 'bundled-tot',
       title: 'District Level ToT Program',
-      icon: '🏛️',
+      icon: 'Ã°Å¸Ââ€ºÃ¯Â¸Â',
       badgeClass: 'badge-indigo',
       hasToolPackage: true,
       scaleDefaults: {
@@ -2635,16 +2655,16 @@ const SEED_DATA = {
         toolPackage: 'Tool Package - 1 (Standard)'
       },
       lineItems: [
-        { id: 'line-101-hotel', description: '🏨 Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-101-cab', description: '🚕 Local Vehicle Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-101-food', description: '🍱 Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
-        { id: 'line-101-kits', description: '📦 Training Collateral Kits', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'kitCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
-        { id: 'line-101-venue', description: '🏢 Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true }
+        { id: 'line-101-hotel', description: 'Ã°Å¸ÂÂ¨ Hotel Accommodation (Double Occupancy)', ledgerCode: '93101', parentAccount: 'Travel & Lodging Expenses', rateField: 'hotelPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-cab', description: 'Ã°Å¸Å¡â€¢ Local Vehicle Travel', ledgerCode: '93104', parentAccount: 'Travel & Lodging Expenses', rateField: 'cabPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-food', description: 'Ã°Å¸ÂÂ± Trainer Food Allowance (Per Diem)', ledgerCode: '93102', parentAccount: 'Travel & Lodging Expenses', rateField: 'foodPerDay', formulaType: 'events_days_trainers', multiplier: 1, defaultActive: true },
+        { id: 'line-101-kits', description: 'Ã°Å¸â€œÂ¦ Training Collateral Kits', ledgerCode: '93204', parentAccount: 'Supplies & Printing Costs', rateField: 'kitCost', formulaType: 'facilities_rate', multiplier: 1, defaultActive: true },
+        { id: 'line-101-venue', description: 'Ã°Å¸ÂÂ¢ Venue Hall Rental & Participant Catering', ledgerCode: '93201', parentAccount: 'Supplies & Printing Costs', rateField: 'venueHallPerDay', secondaryRateField: 'venueFoodPerPerson', formulaType: 'events_days_hall_catering', multiplier: 1, defaultActive: true }
       ]
     }
   ],
 
-  // ─── Prior Period Costs Seed Data (CY-2025 Actuals for CY-2026 Budget Comparison) ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Prior Period Costs Seed Data (CY-2025 Actuals for CY-2026 Budget Comparison) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   priorYearActuals: [
     { id: 'pya-yaif-pdel-91101', yearId: '2026', entityId: 'yaif', deptId: 'pdel-imp', parentAccount: 'Personnel Expenses', glDescription: 'Salaries and Wages', ledgerCode: '91101', priorCost: 2850000, currency: 'INR', remarks: 'CY-2025 audited actuals' },
     { id: 'pya-yaif-pdel-91301', yearId: '2026', entityId: 'yaif', deptId: 'pdel-imp', parentAccount: 'Personnel Expenses', glDescription: 'Staff Training, Learning and Development', ledgerCode: '91301', priorCost: 120000, currency: 'INR', remarks: 'CY-2025 actuals' },
@@ -2660,9 +2680,9 @@ const SEED_DATA = {
     { id: 'pya-bd-pdd-91101', yearId: '2026', entityId: 'nhbd', deptId: 'bd-pdd-med', parentAccount: 'Personnel Expenses', glDescription: 'Salaries and Wages', ledgerCode: '91101', priorCost: 1800000, currency: 'BDT', remarks: 'CY-2025 actuals' }
   ],
 
-  // ─── RBAC: Standard Role Definitions (8 Tier System) ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ RBAC: Standard Role Definitions (8 Tier System) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   defaultRoles: [
-    // ─── TIER 1: Super Admin ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ TIER 1: Super Admin Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'role-admin',
       name: 'System Administrator',
@@ -2691,7 +2711,7 @@ const SEED_DATA = {
         'config': { view: true, add: true, edit: true, delete: true, remarks: true, review: true, approve: true, finalize: true }
       }
     },
-    // ─── TIER 2: Entity Admin ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ TIER 2: Entity Admin Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'role-entity-admin',
       name: 'Entity Administrator',
@@ -2720,7 +2740,7 @@ const SEED_DATA = {
         'config': { view: true, add: true, edit: true, delete: true, remarks: true, review: true, approve: true, finalize: true }
       }
     },
-    // ─── TIER 3: HR Team ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ TIER 3: HR Team Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'role-hr-team',
       name: 'HR Team',
@@ -2748,7 +2768,7 @@ const SEED_DATA = {
         'config': { view: false, add: false, edit: false, delete: false, remarks: false, review: false, approve: false, finalize: false }
       }
     },
-    // ─── TIER 4: Department Lead ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ TIER 4: Department Lead Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'role-dept-lead',
       name: 'Department Lead',
@@ -2776,7 +2796,7 @@ const SEED_DATA = {
         'config': { view: false, add: false, edit: false, delete: false, remarks: false, review: false, approve: false, finalize: false }
       }
     },
-    // ─── TIER 5: Data Entry / Sub-Assignee ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ TIER 5: Data Entry / Sub-Assignee Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'role-data-entry',
       name: 'Data Entry / Sub-Assignee',
@@ -2804,7 +2824,7 @@ const SEED_DATA = {
         'config': { view: false, add: false, edit: false, delete: false, remarks: false, review: false, approve: false, finalize: false }
       }
     },
-    // ─── TIER 6: Country Director ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ TIER 6: Country Director Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'role-country-director',
       name: 'Country Director',
@@ -2832,7 +2852,7 @@ const SEED_DATA = {
         'config': { view: false, add: false, edit: false, delete: false, remarks: false, review: false, approve: false, finalize: false }
       }
     },
-    // ─── TIER 7: Finance Team ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ TIER 7: Finance Team Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'role-finance-mgr',
       name: 'Finance Team',
@@ -2860,12 +2880,12 @@ const SEED_DATA = {
         'config': { view: true, add: false, edit: false, delete: false, remarks: false, review: false, approve: false, finalize: false }
       }
     },
-    // ─── TIER 8: Finalizer ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ TIER 8: Finalizer Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'role-finalizer',
       name: 'Budget Finalizer',
       tier: 8,
-      description: 'Final global sign-off. Once Finalized, ALL budget data is locked — no edits by anyone (including Entity Admins). Exchange rates, travel rates, and TOT rates are snapshotted at time of finalization.',
+      description: 'Final global sign-off. Once Finalized, ALL budget data is locked Ã¢â‚¬â€ no edits by anyone (including Entity Admins). Exchange rates, travel rates, and TOT rates are snapshotted at time of finalization.',
       isSystem: true,
       badgeColor: 'rose',
       isFinalizer: true,
@@ -2889,7 +2909,7 @@ const SEED_DATA = {
         'config': { view: false, add: false, edit: false, delete: false, remarks: false, review: false, approve: false, finalize: false }
       }
     },
-    // ─── LEGACY COMPAT: Auditor / Viewer ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ LEGACY COMPAT: Auditor / Viewer Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'role-auditor',
       name: 'Auditor / Viewer',
@@ -2918,11 +2938,11 @@ const SEED_DATA = {
     }
   ],
 
-  // ─── Users Seed Data — Multi-Role Assignment Model ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Users Seed Data Ã¢â‚¬â€ Multi-Role Assignment Model Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   // Each user can have multiple roleAssignments, each with its own role, entity scope, dept scope,
   // and optional category/line-item overrides. Backward-compatible: if only 'roleId' present, treated as single global assignment.
   defaultUsers: [
-    // ─── TIER 1: Super Admin ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ TIER 1: Super Admin Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'user-admin',
       name: 'Arun Kumar',
@@ -2942,10 +2962,10 @@ const SEED_DATA = {
         }
       ],
       status: 'active',
-      avatar: '👨‍💼',
+      avatar: 'Ã°Å¸â€˜Â¨Ã¢â‚¬ÂÃ°Å¸â€™Â¼',
       createdAt: '2026-01-01T00:00:00.000Z'
     },
-    // ─── TIER 2: Entity Admin (NHIPL) ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ TIER 2: Entity Admin (NHIPL) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'user-entity-admin-nhipl',
       name: 'Priya Iyer',
@@ -2965,17 +2985,17 @@ const SEED_DATA = {
         }
       ],
       status: 'active',
-      avatar: '👩‍💼',
+      avatar: 'Ã°Å¸â€˜Â©Ã¢â‚¬ÂÃ°Å¸â€™Â¼',
       createdAt: '2026-01-02T00:00:00.000Z'
     },
-    // ─── TIER 3: HR Team ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ TIER 3: HR Team Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'user-hr-team',
       name: 'Deepa Nair',
       email: 'deepa.hr@noorahealth.org',
       password: 'Password@123',
       mobile: '+91 98765 43212',
-      title: 'HR Manager — India',
+      title: 'HR Manager Ã¢â‚¬â€ India',
       roleId: 'role-hr-team',
       roleAssignments: [
         {
@@ -2988,17 +3008,17 @@ const SEED_DATA = {
         }
       ],
       status: 'active',
-      avatar: '👩‍🏫',
+      avatar: 'Ã°Å¸â€˜Â©Ã¢â‚¬ÂÃ°Å¸ÂÂ«',
       createdAt: '2026-01-03T00:00:00.000Z'
     },
-    // ─── TIER 4: Department Lead — HCOMM ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ TIER 4: Department Lead Ã¢â‚¬â€ HCOMM Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'user-lead-hcomm',
       name: 'Rajesh Varma',
       email: 'rajesh.hcomm@noorahealth.org',
       password: 'Password@123',
       mobile: '+91 98765 43213',
-      title: 'Lead — Healthcare Communications',
+      title: 'Lead Ã¢â‚¬â€ Healthcare Communications',
       roleId: 'role-dept-lead',
       roleAssignments: [
         {
@@ -3011,17 +3031,17 @@ const SEED_DATA = {
         }
       ],
       status: 'active',
-      avatar: '👨‍⚕️',
+      avatar: 'Ã°Å¸â€˜Â¨Ã¢â‚¬ÂÃ¢Å¡â€¢Ã¯Â¸Â',
       createdAt: '2026-01-05T00:00:00.000Z'
     },
-    // ─── TIER 4: Department Lead — PDEL (multi-dept example) ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ TIER 4: Department Lead Ã¢â‚¬â€ PDEL (multi-dept example) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'user-lead-pdel',
       name: 'Amitabh Sen',
       email: 'amitabh.pdel@noorahealth.org',
       password: 'Password@123',
       mobile: '+91 98765 43214',
-      title: 'Program Director — Implementation',
+      title: 'Program Director Ã¢â‚¬â€ Implementation',
       roleId: 'role-dept-lead',
       roleAssignments: [
         {
@@ -3034,10 +3054,10 @@ const SEED_DATA = {
         }
       ],
       status: 'active',
-      avatar: '👨‍🏫',
+      avatar: 'Ã°Å¸â€˜Â¨Ã¢â‚¬ÂÃ°Å¸ÂÂ«',
       createdAt: '2026-01-12T00:00:00.000Z'
     },
-    // ─── TIER 5: Data Entry / Sub-Assignee (HCOMM Other Costs only) ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ TIER 5: Data Entry / Sub-Assignee (HCOMM Other Costs only) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'user-pooja-hcomm',
       name: 'Pooja Sharma',
@@ -3066,17 +3086,17 @@ const SEED_DATA = {
         }
       ],
       status: 'active',
-      avatar: '👩‍💻',
+      avatar: 'Ã°Å¸â€˜Â©Ã¢â‚¬ÂÃ°Å¸â€™Â»',
       createdAt: '2026-01-10T00:00:00.000Z'
     },
-    // ─── TIER 6: Country Director ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ TIER 6: Country Director Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'user-country-director',
       name: 'Dr. Kavitha Menon',
       email: 'kavitha.cd@noorahealth.org',
       password: 'Password@123',
       mobile: '+91 98765 43216',
-      title: 'Country Director — India',
+      title: 'Country Director Ã¢â‚¬â€ India',
       roleId: 'role-country-director',
       roleAssignments: [
         {
@@ -3089,17 +3109,17 @@ const SEED_DATA = {
         }
       ],
       status: 'active',
-      avatar: '👩‍⚕️',
+      avatar: 'Ã°Å¸â€˜Â©Ã¢â‚¬ÂÃ¢Å¡â€¢Ã¯Â¸Â',
       createdAt: '2026-01-07T00:00:00.000Z'
     },
-    // ─── TIER 7: Finance Team ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ TIER 7: Finance Team Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'user-fin-mgr',
       name: 'Sneha Rao',
       email: 'sneha.finance@noorahealth.org',
       password: 'Password@123',
       mobile: '+91 98765 43217',
-      title: 'Finance Controller — India',
+      title: 'Finance Controller Ã¢â‚¬â€ India',
       roleId: 'role-finance-mgr',
       roleAssignments: [
         {
@@ -3112,10 +3132,10 @@ const SEED_DATA = {
         }
       ],
       status: 'active',
-      avatar: '👩‍💼',
+      avatar: 'Ã°Å¸â€˜Â©Ã¢â‚¬ÂÃ°Å¸â€™Â¼',
       createdAt: '2026-01-01T00:00:00.000Z'
     },
-    // ─── TIER 8: Finalizer ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ TIER 8: Finalizer Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'user-finalizer',
       name: 'Suresh Babu',
@@ -3135,10 +3155,10 @@ const SEED_DATA = {
         }
       ],
       status: 'active',
-      avatar: '🏦',
+      avatar: 'Ã°Å¸ÂÂ¦',
       createdAt: '2026-01-01T00:00:00.000Z'
     },
-    // ─── EXAMPLE: Multi-role User (HR for NHIPL + Lead for PDEL) ───
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ EXAMPLE: Multi-role User (HR for NHIPL + Lead for PDEL) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     {
       id: 'user-auditor',
       name: 'Vikram Mehta',
@@ -3158,13 +3178,13 @@ const SEED_DATA = {
         }
       ],
       status: 'active',
-      avatar: '🕵️',
+      avatar: 'Ã°Å¸â€¢ÂµÃ¯Â¸Â',
       createdAt: '2026-01-15T00:00:00.000Z'
     }
   ],
 
 
-  // ─── Initial Sample Audit Trail Entries ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Initial Sample Audit Trail Entries Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   sampleAuditLogs: [
     {
       id: 'audit-001',
@@ -3204,7 +3224,7 @@ const SEED_DATA = {
     }
   ],
 
-  // ─── Initial Line Item Remark Threads & Action Items ───
+  // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Initial Line Item Remark Threads & Action Items Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   sampleRemarksThreads: [
     {
       id: 'rem-001',
