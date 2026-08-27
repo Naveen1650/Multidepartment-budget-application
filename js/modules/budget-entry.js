@@ -838,7 +838,7 @@ const BudgetEntryModule = {
           </td>
           ${nameCell}
           <td class="editable"><input type="text" class="field-emp-code" value="${r.employeeCode || ''}" placeholder="EMP Code" ${lockAttr} style="min-width: 85px; font-family: monospace; font-size: 11px;"></td>
-          <td class="editable"><input type="text" class="field-dept" value="${r.department || deptName || ''}" placeholder="Department" ${lockAttr} style="min-width: 110px; font-size: 11px;"></td>
+          <td class="editable"><input type="text" class="field-dept" value="${deptName || ''}" title="${r.department || deptName || ''}" placeholder="Department" ${lockAttr} style="min-width: 110px; font-size: 11px;"></td>
           <td class="editable"><input type="text" class="field-designation ${mandClass}" value="${r.designation || ''}" placeholder="Designation" ${req} ${lockAttr}></td>
           <td class="editable"><input type="date" class="field-doj ${mandClass}" value="${r.dateOfJoining || ''}" style="padding: 2px 4px; font-size: 11px;" ${req} ${lockAttr}></td>
           <td>
@@ -865,7 +865,7 @@ const BudgetEntryModule = {
         <tr data-id="${r.id}" data-sub-category="${r.subCategory || 'gratuity-bonus'}">
           <td class="sticky-col-1">${this.buildEmpNameCell(r, masterEmployees, deptEmployees, deptName, '', '', isLocked)}</td>
           <td class="editable"><input type="text" class="field-emp-code" value="${r.employeeCode || ''}" placeholder="EMP Code" ${lockAttr} style="min-width: 85px; font-family: monospace; font-size: 11px;"></td>
-          <td class="editable"><input type="text" class="field-dept" value="${r.department || deptName || ''}" placeholder="Department" ${lockAttr} style="min-width: 110px; font-size: 11px;"></td>
+          <td class="editable"><input type="text" class="field-dept" value="${deptName || ''}" title="${r.department || deptName || ''}" placeholder="Department" ${lockAttr} style="min-width: 110px; font-size: 11px;"></td>
           <td class="sticky-col-2 editable"><input type="text" class="field-designation" value="${r.designation || ''}" placeholder="Designation" ${lockAttr}></td>
           <td class="editable"><input type="date" class="field-doj" value="${r.dateOfJoining || ''}" style="padding: 2px 4px; font-size: 11px;" ${lockAttr}></td>
           <td class="num font-bold field-total-cy">${Utils.formatNumber(r.totalCY || 0)}</td>
@@ -878,7 +878,7 @@ const BudgetEntryModule = {
         <tr data-id="${r.id}" data-sub-category="${r.subCategory || 'other-staff-expenses'}">
           <td class="sticky-col-1">${this.buildEmpNameCell(r, masterEmployees, deptEmployees, deptName, '', '', isLocked)}</td>
           <td class="editable"><input type="text" class="field-emp-code" value="${r.employeeCode || ''}" placeholder="EMP Code" ${lockAttr} style="min-width: 85px; font-family: monospace; font-size: 11px;"></td>
-          <td class="editable"><input type="text" class="field-dept" value="${r.department || deptName || ''}" placeholder="Department" ${lockAttr} style="min-width: 110px; font-size: 11px;"></td>
+          <td class="editable"><input type="text" class="field-dept" value="${deptName || ''}" title="${r.department || deptName || ''}" placeholder="Department" ${lockAttr} style="min-width: 110px; font-size: 11px;"></td>
           <td class="sticky-col-2 editable"><input type="text" class="field-designation" value="${r.designation || ''}" placeholder="Expense Line / Designation" ${lockAttr}></td>
           <td class="num font-bold field-total-cy">${Utils.formatNumber(r.totalCY || 0)}</td>
           ${monthlyInputs}
