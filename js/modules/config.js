@@ -2745,7 +2745,7 @@ const ConfigModule = {
           </div>
           <div class="form-group">
             <label class="form-label font-bold">Name of the Employee</label>
-            <input type="text" class="form-input" id="mEmpName" value="${existing?.name || ''}" placeholder="e.g. Simerneet Bajwa" required>
+            <input type="text" class="form-input" id="mEmpName" value="${existing?.name || ''}" placeholder="Full name of the employee" required>
           </div>
         </div>
 
@@ -2797,10 +2797,11 @@ const ConfigModule = {
         <div class="form-row">
           <div class="form-group">
             <label class="form-label font-bold">Reporting Manager</label>
-            <input type="text" class="form-input" id="mEmpManager" list="managerSuggestions" value="${existing?.reportingManager || ''}" placeholder="e.g. Dr. Shahed Alam">
+            <input type="text" class="form-input" id="mEmpManager" list="managerSuggestions" value="${existing?.reportingManager || ''}" placeholder="Name of the reporting manager">
             <datalist id="managerSuggestions">
               ${managerNames.map(m => `<option value="${m}">`).join('')}
             </datalist>
+            <div class="text-tertiary mt-xs" style="font-size: 11px;">Start typing to see suggestions from existing employee names.</div>
           </div>
         </div>
 
