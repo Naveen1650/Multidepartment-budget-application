@@ -2532,6 +2532,7 @@ const ConfigModule = {
                     <th style="width: 60px; text-align: center; white-space: nowrap;" title="Country of Employment (ISO 2-letter code)">Country</th>
                     <th style="width: 105px; white-space: nowrap;">Date of Joining</th>
                     <th style="width: 115px; text-align: center; white-space: nowrap;">Department</th>
+                    <th style="width: 150px; white-space: nowrap;">Reporting Manager</th>
                     <th class="num font-bold" style="width: 130px; text-align: right; white-space: nowrap;">${isAllEntities ? 'Annual CTC (USD)' : `Annual CTC (${activeEntity.currency})`}</th>
                     <th class="num font-bold" style="width: 130px; text-align: right; color: var(--accent-primary); white-space: nowrap;">${isAllEntities ? 'Monthly CTC (USD)' : `Monthly CTC (${activeEntity.currency})`}</th>
                     <th style="width: 85px; text-align: center; white-space: nowrap;">Status</th>
@@ -2541,7 +2542,7 @@ const ConfigModule = {
                 <tbody>
                   ${filtered.length === 0 ? `
                     <tr>
-                      <td colspan="${isAllEntities ? 11 : 10}" class="text-center text-muted" style="padding: 32px;">
+                      <td colspan="${isAllEntities ? 12 : 11}" class="text-center text-muted" style="padding: 32px;">
                         <div style="font-size: 2rem; margin-bottom: 8px;">👤</div>
                         <div>No employee records found matching your filters.</div>
                         <button class="btn btn-primary btn-sm mt-sm" onclick="ConfigModule.showEmployeeMasterForm()">➕ + Add First Employee</button>
@@ -2582,6 +2583,9 @@ const ConfigModule = {
                         </td>
                         <td style="text-align: center; width: 115px; white-space: nowrap;">
                           <span class="badge badge-subtle font-mono font-bold" style="font-size: 11px; padding: 2px 6px;" title="${e.department || deptObj.name || ''}">${deptShort}</span>
+                        </td>
+                        <td style="width: 150px; font-size: 12px;">
+                          ${e.reportingManager ? `<span class="flex items-center gap-xs"><span>👔</span><span>${e.reportingManager}</span></span>` : '<span class="text-tertiary">—</span>'}
                         </td>
                         <td class="num font-mono" style="width: 130px; text-align: right;">
                           ${isAllEntities ? `
