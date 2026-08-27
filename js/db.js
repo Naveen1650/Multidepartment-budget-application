@@ -569,11 +569,85 @@ class BudgetDB {
       }
     }
 
+    // Ensure departments have hasTotAccess flag initialized
+    if (this.db.objectStoreNames.contains(STORES.departments)) {
+      const allDepts = await this.getAll(STORES.departments);
+      for (const d of allDepts) {
+        if (d.hasTotAccess === undefined) {
+          const id = String(d.id || '').toLowerCase();
+          const name = String(d.name || '').toLowerCase();
+          const isDefaultTot = id.includes('imp') || id.includes('trng') || id.includes('tot') || name.includes('implementation') || name.includes('training') || name.includes('tot');
+          d.hasTotAccess = isDefaultTot;
+          await this.put(STORES.departments, d);
+        }
+      }
+    }
+
     console.log('Database readiness verified!');
     return true;
   }
 
   // ─── Helper Methods ───
+
+  async getDepartments() {
+    await this.ready;
+    if (!this.db || !this.db.objectStoreNames.contains(STORES.departments)) {
+      return SEED_DATA.departments || [];
+    }
+    const depts = await this.getAll(STORES.departments);
+    return depts.length > 0 ? depts : (SEED_DATA.departments || []);
+  }
+
+  async getTotEnabledDepartmentIds() {
+    try {
+      const depts = await this.getDepartments();
+      const enabled = depts.filter(d => {
+        if (d.hasTotAccess !== undefined) return Boolean(d.hasTotAccess);
+        const id = String(d.id || '').toLowerCase();
+        const name = String(d.name || '').toLowerCase();
+        return id.includes('imp') || id.includes('trng') || id.includes('tot') || name.includes('implementation') || name.includes('training');
+      }).map(d => d.id);
+      return enabled;
+    } catch {
+      return ['pdel-imp', 'pdel-trng', 'pdel-partner', 'gl-hcw-trng'];
+    }
+  }
+
+  async setDepartmentTotAccess(deptId, hasAccess) {
+    await this.ready;
+    if (!this.db || !this.db.objectStoreNames.contains(STORES.departments)) return;
+    const dept = await this.get(STORES.departments, deptId);
+    if (dept) {
+      dept.hasTotAccess = Boolean(hasAccess);
+      await this.put(STORES.departments, dept);
+      await this.logAudit({
+        category: 'config',
+        action: 'UPDATE_DEPT_TOT_ACCESS',
+        recordId: deptId,
+        description: `${hasAccess ? 'Enabled' : 'Disabled'} ToT Budget Template Access for department "${dept.name}" (${dept.codeTemplate || deptId})`,
+        changes: { hasTotAccess: Boolean(hasAccess) }
+      });
+    }
+  }
+
+  async bulkSetDepartmentsTotAccess(deptIds, hasAccess) {
+    await this.ready;
+    if (!this.db || !this.db.objectStoreNames.contains(STORES.departments)) return;
+    for (const deptId of deptIds) {
+      const dept = await this.get(STORES.departments, deptId);
+      if (dept) {
+        dept.hasTotAccess = Boolean(hasAccess);
+        await this.put(STORES.departments, dept);
+      }
+    }
+    await this.logAudit({
+      category: 'config',
+      action: 'BULK_UPDATE_DEPT_TOT_ACCESS',
+      recordId: 'multiple',
+      description: `${hasAccess ? 'Enabled' : 'Disabled'} ToT Budget Template Access for ${deptIds.length} departments`,
+      changes: { deptIds, hasTotAccess: Boolean(hasAccess) }
+    });
+  }
 
   async getLocationsForEntity(entityId) {
     return this.getByIndex(STORES.locations, 'entityId', entityId);

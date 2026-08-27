@@ -20,65 +20,65 @@ const SEED_DATA = {
   departments: [
     // ─── 1. Country-Specific Departments ───
     // PDD (Product Design & Development / Content / Tools)
-    { id: 'pdd-med', number: '1', codeTemplate: '{CC}-PDD-MED', name: 'Framework designing & Content creation (Medical)', scope: 'country', entityMapping: { nhipl: true, yaif: false } },
-    { id: 'pdd-hcomm', number: '1', codeTemplate: '{CC}-PDD-HCOMM', name: 'Framework designing & Content creation (Health Comm)', scope: 'country', entityMapping: { nhipl: true, yaif: false } },
-    { id: 'pdd-cdes', number: '2', codeTemplate: '{CC}-PDD-CDES', name: 'Tool Development (Creative Design)', scope: 'country', entityMapping: { nhipl: true, yaif: false } },
-    { id: 'pdd-film', number: '2', codeTemplate: '{CC}-PDD-FILM', name: 'Tool Development (Film)', scope: 'country', entityMapping: { nhipl: true, yaif: false } },
-    { id: 'pdd-ssdes', number: '3', codeTemplate: '{CC}-PDD-SSDES', name: 'Needs finding, Testing & prototyping', scope: 'country', entityMapping: { nhipl: true, yaif: false } },
+    { id: 'pdd-med', number: '1', codeTemplate: '{CC}-PDD-MED', name: 'Framework designing & Content creation (Medical)', scope: 'country', entityMapping: { nhipl: true, yaif: false }, hasTotAccess: false },
+    { id: 'pdd-hcomm', number: '1', codeTemplate: '{CC}-PDD-HCOMM', name: 'Framework designing & Content creation (Health Comm)', scope: 'country', entityMapping: { nhipl: true, yaif: false }, hasTotAccess: false },
+    { id: 'pdd-cdes', number: '2', codeTemplate: '{CC}-PDD-CDES', name: 'Tool Development (Creative Design)', scope: 'country', entityMapping: { nhipl: true, yaif: false }, hasTotAccess: false },
+    { id: 'pdd-film', number: '2', codeTemplate: '{CC}-PDD-FILM', name: 'Tool Development (Film)', scope: 'country', entityMapping: { nhipl: true, yaif: false }, hasTotAccess: false },
+    { id: 'pdd-ssdes', number: '3', codeTemplate: '{CC}-PDD-SSDES', name: 'Needs finding, Testing & prototyping', scope: 'country', entityMapping: { nhipl: true, yaif: false }, hasTotAccess: false },
 
     // PD (Program Delivery / Implementation / Training)
-    { id: 'pdel-trng', number: '9', codeTemplate: '{CC}-PDEL-TRNG', name: 'Training design and delivery', scope: 'country', entityMapping: { nhipl: true, yaif: true, nhbd: true, 'nh-indo': true, 'nh-nepal': true, 'noora-us': true } },
-    { id: 'pdel-imp', number: '10', codeTemplate: '{CC}-PDEL-IMP', name: 'Implementation (ToTs, Supervision, etc.)', scope: 'country', entityMapping: { nhipl: true, yaif: true, nhbd: true, 'nh-indo': true, 'nh-nepal': true, 'noora-us': true } },
-    { id: 'pdel-partner', number: '', codeTemplate: '{CC}-PDEL-PARTNER IMP', name: 'Partner Implementation', scope: 'country', entityMapping: { nhipl: true, yaif: true, nhbd: true, 'nh-indo': true, 'nh-nepal': true, 'noora-us': true } },
+    { id: 'pdel-trng', number: '9', codeTemplate: '{CC}-PDEL-TRNG', name: 'Training design and delivery', scope: 'country', entityMapping: { nhipl: true, yaif: true, nhbd: true, 'nh-indo': true, 'nh-nepal': true, 'noora-us': true }, hasTotAccess: true },
+    { id: 'pdel-imp', number: '10', codeTemplate: '{CC}-PDEL-IMP', name: 'Implementation (ToTs, Supervision, etc.)', scope: 'country', entityMapping: { nhipl: true, yaif: true, nhbd: true, 'nh-indo': true, 'nh-nepal': true, 'noora-us': true }, hasTotAccess: true },
+    { id: 'pdel-partner', number: '', codeTemplate: '{CC}-PDEL-PARTNER IMP', name: 'Partner Implementation', scope: 'country', entityMapping: { nhipl: true, yaif: true, nhbd: true, 'nh-indo': true, 'nh-nepal': true, 'noora-us': true }, hasTotAccess: true },
 
     // M&E (Monitoring & Evaluation / Research)
-    { id: 'me-monitoring', number: '5', codeTemplate: '{CC}-M&E-MONITORING', name: 'Monitoring', scope: 'country', entityMapping: { nhipl: false, yaif: true } },
-    { id: 'me-eval', number: '6', codeTemplate: '{CC}-M&E-EVAL', name: 'Research (Evaluation)', scope: 'country', entityMapping: { nhipl: false, yaif: true } },
+    { id: 'me-monitoring', number: '5', codeTemplate: '{CC}-M&E-MONITORING', name: 'Monitoring', scope: 'country', entityMapping: { nhipl: false, yaif: true }, hasTotAccess: false },
+    { id: 'me-eval', number: '6', codeTemplate: '{CC}-M&E-EVAL', name: 'Research (Evaluation)', scope: 'country', entityMapping: { nhipl: false, yaif: true }, hasTotAccess: false },
 
     // OPS (Operations / Support / Finance / P&C / Fundraising)
-    { id: 'ops-admin', number: '11', codeTemplate: '{CC}-OPS-ADMIN', name: 'Country Support (Administration)', scope: 'country', entityMapping: { nhipl: true, yaif: true } },
-    { id: 'ops-fin', number: '11', codeTemplate: '{CC}-OPS-FIN', name: 'Country Support (Finance)', scope: 'country', entityMapping: { nhipl: true, yaif: true } },
-    { id: 'ops-pc', number: '11', codeTemplate: '{CC}-OPS-P&C', name: 'Country Support (People & Culture)', scope: 'country', entityMapping: { nhipl: true, yaif: true } },
-    { id: 'ops-fr', number: '15', codeTemplate: '{CC}-OPS-FR', name: 'Fundraising & Development', scope: 'country', entityMapping: { nhipl: true, yaif: false } },
+    { id: 'ops-admin', number: '11', codeTemplate: '{CC}-OPS-ADMIN', name: 'Country Support (Administration)', scope: 'country', entityMapping: { nhipl: true, yaif: true }, hasTotAccess: false },
+    { id: 'ops-fin', number: '11', codeTemplate: '{CC}-OPS-FIN', name: 'Country Support (Finance)', scope: 'country', entityMapping: { nhipl: true, yaif: true }, hasTotAccess: false },
+    { id: 'ops-pc', number: '11', codeTemplate: '{CC}-OPS-P&C', name: 'Country Support (People & Culture)', scope: 'country', entityMapping: { nhipl: true, yaif: true }, hasTotAccess: false },
+    { id: 'ops-fr', number: '15', codeTemplate: '{CC}-OPS-FR', name: 'Fundraising & Development', scope: 'country', entityMapping: { nhipl: true, yaif: false }, hasTotAccess: false },
 
     // RMM (Resource Mobilization & Marketing)
-    { id: 'rmm', number: '7', codeTemplate: '{CC}-RMM', name: 'RMM (Advocacy, Collaboration, Admin Mgmt)', scope: 'country', entityMapping: { nhipl: true, yaif: false } },
+    { id: 'rmm', number: '7', codeTemplate: '{CC}-RMM', name: 'RMM (Advocacy, Collaboration, Admin Mgmt)', scope: 'country', entityMapping: { nhipl: true, yaif: false }, hasTotAccess: false },
 
     // ─── 2. Digital Product — Country-Specific (DP-CP) ───
-    { id: 'dp-cp-prodmngt', number: '4', codeTemplate: 'DP-CP-PRODMNGT', name: 'Remote Engagement Service (Country Product Mgmt)', scope: 'dp-cp', entityMapping: { nhipl: true, yaif: true } },
-    { id: 'dp-cp-product', number: '8', codeTemplate: 'DP-CP-PRODUCT', name: 'Platform Dev & Management (Country Product)', scope: 'dp-cp', entityMapping: { nhipl: true, yaif: false } },
-    { id: 'dp-cp-eng', number: '8', codeTemplate: 'DP-CP-ENG', name: 'Platform Dev & Management (Country Engineering)', scope: 'dp-cp', entityMapping: { nhipl: true, yaif: false } },
+    { id: 'dp-cp-prodmngt', number: '4', codeTemplate: 'DP-CP-PRODMNGT', name: 'Remote Engagement Service (Country Product Mgmt)', scope: 'dp-cp', entityMapping: { nhipl: true, yaif: true }, hasTotAccess: false },
+    { id: 'dp-cp-product', number: '8', codeTemplate: 'DP-CP-PRODUCT', name: 'Platform Dev & Management (Country Product)', scope: 'dp-cp', entityMapping: { nhipl: true, yaif: false }, hasTotAccess: false },
+    { id: 'dp-cp-eng', number: '8', codeTemplate: 'DP-CP-ENG', name: 'Platform Dev & Management (Country Engineering)', scope: 'dp-cp', entityMapping: { nhipl: true, yaif: false }, hasTotAccess: false },
 
     // ─── 3. Digital Product — Global (DP-GP) ───
-    { id: 'dp-gp-product', number: '8', codeTemplate: 'DP-GP-PRODUCT', name: 'Platform Dev & Management (Global Product)', scope: 'dp-gp' },
-    { id: 'dp-gp-eng', number: '8', codeTemplate: 'DP-GP-ENG', name: 'Platform Dev & Management (Global Engineering)', scope: 'dp-gp' },
+    { id: 'dp-gp-product', number: '8', codeTemplate: 'DP-GP-PRODUCT', name: 'Platform Dev & Management (Global Product)', scope: 'dp-gp', hasTotAccess: false },
+    { id: 'dp-gp-eng', number: '8', codeTemplate: 'DP-GP-ENG', name: 'Platform Dev & Management (Global Engineering)', scope: 'dp-gp', hasTotAccess: false },
 
     // ─── 4. Global Departments (GL) ───
     // I&L (Insights & Learning / Training / Strategy / NIAB)
-    { id: 'gl-learn-impact', number: '20', codeTemplate: 'GL-I&L-LEARN &IMPACT STGY', name: 'Knowledge sharing and dissemination', scope: 'gl' },
-    { id: 'gl-hcw-trng', number: '9', codeTemplate: 'GL-I&L-HCW PROD & TRNG', name: 'Health Care Worker Products & Training', scope: 'gl' },
-    { id: 'gl-niab', number: '12', codeTemplate: 'GL-I&L-NIAB', name: 'Noora In a Box (NIAB)', scope: 'gl' },
+    { id: 'gl-learn-impact', number: '20', codeTemplate: 'GL-I&L-LEARN &IMPACT STGY', name: 'Knowledge sharing and dissemination', scope: 'gl', hasTotAccess: false },
+    { id: 'gl-hcw-trng', number: '9', codeTemplate: 'GL-I&L-HCW PROD & TRNG', name: 'Health Care Worker Products & Training', scope: 'gl', hasTotAccess: true },
+    { id: 'gl-niab', number: '12', codeTemplate: 'GL-I&L-NIAB', name: 'Noora In a Box (NIAB)', scope: 'gl', hasTotAccess: false },
 
     // C&I (Creative & Innovation / Research / Comms)
-    { id: 'gl-labs', number: '13', codeTemplate: 'GL-C&I-LABS', name: 'Design research on caregiving', scope: 'gl' },
-    { id: 'gl-res-eval', number: '14', codeTemplate: 'GL-C&I-RES & EVAL', name: 'Evaluation (Global)', scope: 'gl' },
-    { id: 'gl-comms-brand', number: '16', codeTemplate: 'GL-C&I-COMMS & BRAND', name: 'Communications & Brand', scope: 'gl' },
+    { id: 'gl-labs', number: '13', codeTemplate: 'GL-C&I-LABS', name: 'Design research on caregiving', scope: 'gl', hasTotAccess: false },
+    { id: 'gl-res-eval', number: '14', codeTemplate: 'GL-C&I-RES & EVAL', name: 'Evaluation (Global)', scope: 'gl', hasTotAccess: false },
+    { id: 'gl-comms-brand', number: '16', codeTemplate: 'GL-C&I-COMMS & BRAND', name: 'Communications & Brand', scope: 'gl', hasTotAccess: false },
 
     // OPS (Global Operations / Support / Finance / P&C)
-    { id: 'gl-ops-fin', number: '18', codeTemplate: 'GL-OPS-FIN', name: 'Global Support (Finance)', scope: 'gl' },
-    { id: 'gl-ops-pc', number: '18', codeTemplate: 'GL-OPS-P&C', name: 'Global Support (People & Culture)', scope: 'gl' },
-    { id: 'gl-ops-admin', number: '18', codeTemplate: 'GL-OPS-ADMIN', name: 'Global Support (Administration)', scope: 'gl' },
+    { id: 'gl-ops-fin', number: '18', codeTemplate: 'GL-OPS-FIN', name: 'Global Support (Finance)', scope: 'gl', hasTotAccess: false },
+    { id: 'gl-ops-pc', number: '18', codeTemplate: 'GL-OPS-P&C', name: 'Global Support (People & Culture)', scope: 'gl', hasTotAccess: false },
+    { id: 'gl-ops-admin', number: '18', codeTemplate: 'GL-OPS-ADMIN', name: 'Global Support (Administration)', scope: 'gl', hasTotAccess: false },
 
     // RMM (Global Resource Mobilization)
-    { id: 'gl-rmm', number: '7', codeTemplate: 'GL-RMM', name: 'RMM (Global)', scope: 'gl' },
+    { id: 'gl-rmm', number: '7', codeTemplate: 'GL-RMM', name: 'RMM (Global)', scope: 'gl', hasTotAccess: false },
 
     // Others
-    { id: 'gl-prg-exp', number: '17', codeTemplate: 'GL-PRG EXP-EXP & IMP', name: 'Strategic Global Development', scope: 'gl' },
+    { id: 'gl-prg-exp', number: '17', codeTemplate: 'GL-PRG EXP-EXP & IMP', name: 'Strategic Global Development', scope: 'gl', hasTotAccess: false },
 
     // ─── 5. General (Cross-cutting) ───
-    { id: 'gen-payroll', number: '21', codeTemplate: 'Payroll & Benefits', name: 'Payroll & Benefits', scope: 'general' },
-    { id: 'gen-immersion', number: '22', codeTemplate: 'Program Immersion', name: 'Program Immersion', scope: 'general' },
-    { id: 'gen-atr', number: '23', codeTemplate: 'All Team Retreat', name: 'All Team Retreat', scope: 'general' }
+    { id: 'gen-payroll', number: '21', codeTemplate: 'Payroll & Benefits', name: 'Payroll & Benefits', scope: 'general', hasTotAccess: false },
+    { id: 'gen-immersion', number: '22', codeTemplate: 'Program Immersion', name: 'Program Immersion', scope: 'general', hasTotAccess: false },
+    { id: 'gen-atr', number: '23', codeTemplate: 'All Team Retreat', name: 'All Team Retreat', scope: 'general', hasTotAccess: false }
   ],
 
   // ─── Locations per Entity ───

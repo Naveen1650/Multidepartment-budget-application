@@ -87,14 +87,29 @@ const ImpTotModule = {
     }
   },
 
-  // Check if department is Implementation department
+  // Check if department is Implementation / has access to ToT Budget Template
   isImpDept(dept) {
     if (!dept) return false;
+    
+    // 1. Direct explicit property check if passed on dept object
+    if (typeof dept === 'object' && dept !== null && typeof dept.hasTotAccess === 'boolean') {
+      return dept.hasTotAccess;
+    }
+
     if (typeof dept === 'string') {
       const s = dept.toLowerCase();
+      // Check in-memory configured cache if available
+      if (this._totDeptCache && this._totDeptCache[s] !== undefined) {
+        return this._totDeptCache[s];
+      }
       return s.includes('imp') || s.includes('pdel') || s.includes('implementation') || s.includes('training') || s.includes('tot');
     }
+
     const id = String(dept.id || dept.deptId || '').toLowerCase();
+    if (this._totDeptCache && this._totDeptCache[id] !== undefined) {
+      return this._totDeptCache[id];
+    }
+
     const name = String(dept.name || dept.department || '').toLowerCase();
     const code = String(dept.codeTemplate || dept.code || '').toLowerCase();
     return id.includes('imp') || id.includes('pdel') || id.includes('tot') || name.includes('implementation') || name.includes('training') || name.includes('tot') || code.includes('imp') || code.includes('pdel');

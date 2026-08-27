@@ -215,27 +215,168 @@ const ConfigModule = {
   },
 
   // ─── 2. Departments Configuration ───
+  deptTotFilter: 'all', // 'all', 'enabled', 'disabled'
+  deptScopeFilter: 'all',
+  deptSearchQuery: '',
+
+  async toggleDeptTotAccess(deptId, forcedState = null) {
+    const dept = await db.get(STORES.departments, deptId);
+    if (!dept) return;
+    const currentState = dept.hasTotAccess !== undefined ? Boolean(dept.hasTotAccess) : (dept.id.includes('imp') || dept.id.includes('trng') || dept.name.toLowerCase().includes('implementation') || dept.name.toLowerCase().includes('training'));
+    const newState = forcedState !== null ? Boolean(forcedState) : !currentState;
+    await db.setDepartmentTotAccess(deptId, newState);
+    Utils.showToast(`${newState ? '🎯 Enabled' : '🚫 Disabled'} ToT Budget Template for "${dept.name}"`, 'success');
+    if (typeof ImpTotModule !== 'undefined' && ImpTotModule._totDeptCache) {
+      ImpTotModule._totDeptCache[deptId.toLowerCase()] = newState;
+    }
+    const pageContent = document.getElementById('pageContent');
+    if (pageContent) {
+      if (this.impRateActiveTab === 'departments') {
+        this.renderImpUnitRates(pageContent);
+      } else {
+        this.renderDepartments(pageContent);
+      }
+    }
+  },
+
+  async bulkToggleDeptTotAccess(enableAll) {
+    const depts = await db.getAll(STORES.departments);
+    const ids = depts.map(d => d.id);
+    await db.bulkSetDepartmentsTotAccess(ids, enableAll);
+    Utils.showToast(`${enableAll ? '🎯 Enabled ToT for all' : '🚫 Disabled ToT for all'} ${ids.length} departments!`, 'success');
+    if (typeof ImpTotModule !== 'undefined' && ImpTotModule._totDeptCache) {
+      ids.forEach(id => { ImpTotModule._totDeptCache[id.toLowerCase()] = enableAll; });
+    }
+    const pageContent = document.getElementById('pageContent');
+    if (pageContent) {
+      if (this.impRateActiveTab === 'departments') {
+        this.renderImpUnitRates(pageContent);
+      } else {
+        this.renderDepartments(pageContent);
+      }
+    }
+  },
+
+  async resetDeptTotAccessToDefaults() {
+    const depts = await db.getAll(STORES.departments);
+    for (const d of depts) {
+      const id = String(d.id || '').toLowerCase();
+      const name = String(d.name || '').toLowerCase();
+      const isDefault = id.includes('imp') || id.includes('trng') || id.includes('tot') || name.includes('implementation') || name.includes('training') || name.includes('tot');
+      await db.setDepartmentTotAccess(d.id, isDefault);
+      if (typeof ImpTotModule !== 'undefined' && ImpTotModule._totDeptCache) {
+        ImpTotModule._totDeptCache[d.id.toLowerCase()] = isDefault;
+      }
+    }
+    Utils.showToast('🔄 Reset department ToT access to standard default departments (Implementation / Training)!', 'info');
+    const pageContent = document.getElementById('pageContent');
+    if (pageContent) {
+      if (this.impRateActiveTab === 'departments') {
+        this.renderImpUnitRates(pageContent);
+      } else {
+        this.renderDepartments(pageContent);
+      }
+    }
+  },
+
   async renderDepartments(container) {
-    const departments = Utils.sortDepartments(await db.getAll(STORES.departments));
+    const allDepartments = Utils.sortDepartments(await db.getAll(STORES.departments));
     const entities = await db.getAll(STORES.entities);
 
+    const totEnabledCount = allDepartments.filter(d => {
+      if (d.hasTotAccess !== undefined) return Boolean(d.hasTotAccess);
+      const id = String(d.id || '').toLowerCase();
+      const name = String(d.name || '').toLowerCase();
+      return id.includes('imp') || id.includes('trng') || id.includes('tot') || name.includes('implementation') || name.includes('training');
+    }).length;
+
+    // Filter departments by search, scope, and ToT status
+    const q = (this.deptSearchQuery || '').toLowerCase().trim();
+    const filteredDepts = allDepartments.filter(d => {
+      const isTot = d.hasTotAccess !== undefined ? Boolean(d.hasTotAccess) : (d.id.includes('imp') || d.id.includes('trng') || d.name.toLowerCase().includes('implementation') || d.name.toLowerCase().includes('training'));
+      const matchTot = this.deptTotFilter === 'all' || (this.deptTotFilter === 'enabled' && isTot) || (this.deptTotFilter === 'disabled' && !isTot);
+      const matchScope = this.deptScopeFilter === 'all' || d.scope === this.deptScopeFilter;
+      const matchSearch = !q || d.name.toLowerCase().includes(q) || d.codeTemplate.toLowerCase().includes(q) || (d.number && d.number.includes(q)) || d.id.toLowerCase().includes(q);
+      return matchTot && matchScope && matchSearch;
+    });
+
     container.innerHTML = `
-      <div class="page-header">
-        <h2>Departments Master Configuration</h2>
-        <p>Define global, digital product, and country-specific department templates</p>
+      <div class="page-header flex justify-between items-center" style="flex-wrap: wrap; gap: 12px;">
+        <div>
+          <h2>Departments Master Configuration</h2>
+          <p>Define global, digital product, and country-specific department templates &amp; manage ToT template access</p>
+        </div>
+        <div class="flex gap-xs">
+          <button class="btn btn-primary font-bold" id="addDeptBtn">➕ + Add Department</button>
+        </div>
+      </div>
+
+      <!-- 🎯 TOP CARD: ToT Budget Template Access Manager -->
+      <div class="card p-md mb-lg" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(16, 185, 129, 0.06)); border: 1.5px solid rgba(99, 102, 241, 0.35); border-radius: 12px;">
+        <div class="flex justify-between items-center mb-sm" style="flex-wrap: wrap; gap: 10px;">
+          <div>
+            <div class="flex items-center gap-xs">
+              <span style="font-size: 1.25rem;">🎯</span>
+              <strong style="font-size: 14px; color: var(--text-primary);">ToT Budget Template Access by Department</strong>
+              <span class="badge badge-emerald font-bold" style="font-size: 11px;">${totEnabledCount} of ${allDepartments.length} Departments Active</span>
+            </div>
+            <div class="text-secondary mt-xs" style="font-size: 12px; line-height: 1.4;">
+              Configure which departments see the <strong>"🎯 ToT Program Budget (IMP)"</strong> tab under Other Costs to budget Training events, batches, and use Activity Templates (10.1 to 10.8). Toggle access below or inside each department template.
+            </div>
+          </div>
+          <div class="flex items-center gap-xs" style="flex-wrap: wrap;">
+            <button class="btn btn-sm btn-secondary font-bold text-success" onclick="ConfigModule.bulkToggleDeptTotAccess(true)" title="Enable ToT template access for all departments">
+              ✅ Enable All
+            </button>
+            <button class="btn btn-sm btn-secondary font-bold text-danger" onclick="ConfigModule.bulkToggleDeptTotAccess(false)" title="Disable ToT template access for all departments">
+              🚫 Disable All
+            </button>
+            <button class="btn btn-sm btn-ghost font-bold" onclick="ConfigModule.resetDeptTotAccessToDefaults()" title="Reset to default Training & Implementation departments">
+              🔄 Reset Defaults
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter and Search Toolbar -->
+      <div class="card p-sm mb-md flex justify-between items-center" style="background: var(--bg-secondary); border: 1px solid var(--border-default); flex-wrap: wrap; gap: 10px;">
+        <div class="flex items-center gap-sm" style="flex-wrap: wrap;">
+          <input type="text" class="form-input" id="deptSearchInput" value="${this.deptSearchQuery || ''}" placeholder="🔍 Search department by name or code..." style="max-width: 280px; font-size: 12.5px;">
+          
+          <select class="form-select" id="deptScopeFilterSelect" style="max-width: 200px; font-size: 12.5px;">
+            <option value="all" ${this.deptScopeFilter === 'all' ? 'selected' : ''}>🌐 All Department Scopes</option>
+            <option value="country" ${this.deptScopeFilter === 'country' ? 'selected' : ''}>🏢 Country Specific</option>
+            <option value="gl" ${this.deptScopeFilter === 'gl' ? 'selected' : ''}>🌍 Global (GL)</option>
+            <option value="dp-cp" ${this.deptScopeFilter === 'dp-cp' ? 'selected' : ''}>📱 Digital Product (Country)</option>
+            <option value="dp-gp" ${this.deptScopeFilter === 'dp-gp' ? 'selected' : ''}>📱 Digital Product (Global)</option>
+            <option value="general" ${this.deptScopeFilter === 'general' ? 'selected' : ''}>🏷️ General / Cross-Cutting</option>
+          </select>
+
+          <select class="form-select font-bold" id="deptTotFilterSelect" style="max-width: 220px; font-size: 12.5px;">
+            <option value="all" ${this.deptTotFilter === 'all' ? 'selected' : ''}>🎯 All ToT Access States</option>
+            <option value="enabled" ${this.deptTotFilter === 'enabled' ? 'selected' : ''}>✅ ToT Enabled Only (${totEnabledCount})</option>
+            <option value="disabled" ${this.deptTotFilter === 'disabled' ? 'selected' : ''}>🚫 ToT Disabled Only (${allDepartments.length - totEnabledCount})</option>
+          </select>
+        </div>
+        <div class="text-tertiary" style="font-size: 12px;">
+          Showing <strong>${filteredDepts.length}</strong> of <strong>${allDepartments.length}</strong> departments
+        </div>
       </div>
 
       <div class="card mb-lg">
-        <div class="card-header">
+        <div class="card-header flex justify-between items-center">
           <div>
-            <div class="card-title">Master Department Templates (${departments.length})</div>
-            <div class="card-subtitle">Country-specific departments auto-prefix with each country's code</div>
+            <div class="card-title">Master Department Templates (${filteredDepts.length})</div>
+            <div class="card-subtitle">Click "Toggle ToT Access" to quickly give or remove access to the ToT Budget Template</div>
           </div>
-          <button class="btn btn-primary" id="addDeptBtn">+ Add Department</button>
         </div>
 
         <div class="config-list" id="departmentsList">
-          ${departments.map(d => {
+          ${filteredDepts.length === 0 ? `
+            <div class="p-lg text-center text-secondary">
+              No departments found matching the selected search or filter criteria.
+            </div>
+          ` : filteredDepts.map(d => {
             const scopeBadges = {
               'country': '<span class="badge badge-cyan">Country Specific</span>',
               'gl': '<span class="badge badge-violet">Global</span>',
@@ -244,15 +385,28 @@ const ConfigModule = {
               'general': '<span class="badge">General</span>'
             };
 
+            const isTotActive = d.hasTotAccess !== undefined ? Boolean(d.hasTotAccess) : (d.id.includes('imp') || d.id.includes('trng') || d.name.toLowerCase().includes('implementation') || d.name.toLowerCase().includes('training'));
+
             return `
-              <div class="config-list-item">
+              <div class="config-list-item" style="border-left: 4px solid ${isTotActive ? 'var(--accent-primary)' : 'transparent'};">
                 <div class="item-info">
                   <div>
-                    <div class="item-name">${d.number ? d.number + '. ' : ''}<code>${d.codeTemplate}</code> — ${d.name} ${scopeBadges[d.scope] || ''}</div>
-                    <div class="item-detail">Scope: ${d.scope} | Target Template: <code>${d.codeTemplate}</code></div>
+                    <div class="item-name flex items-center gap-xs" style="flex-wrap: wrap;">
+                      <span>${d.number ? d.number + '. ' : ''}<code>${d.codeTemplate}</code> — <strong>${d.name}</strong></span>
+                      ${scopeBadges[d.scope] || ''}
+                      ${isTotActive ? `
+                        <span class="badge badge-emerald font-bold" style="font-size: 11px; padding: 2px 8px;">🎯 ToT Enabled</span>
+                      ` : `
+                        <span class="badge badge-secondary" style="font-size: 11px; padding: 2px 8px; opacity: 0.7;">🚫 ToT Disabled</span>
+                      `}
+                    </div>
+                    <div class="item-detail mt-xs">Scope: <code>${d.scope}</code> | Code Template: <code>${d.codeTemplate}</code> | ID: <code>${d.id}</code></div>
                   </div>
                 </div>
-                <div class="item-actions">
+                <div class="item-actions flex items-center gap-xs">
+                  <button class="btn btn-sm ${isTotActive ? 'btn-secondary font-bold text-danger' : 'btn-secondary font-bold text-success'}" onclick="ConfigModule.toggleDeptTotAccess('${d.id}')" title="Click to ${isTotActive ? 'disable' : 'enable'} ToT Program Budget access for this department">
+                    ${isTotActive ? '🚫 Remove ToT' : '🎯 Enable ToT'}
+                  </button>
                   <button class="btn btn-ghost btn-sm" onclick="ConfigModule.editDepartment('${d.id}')">✏️ Edit</button>
                   <button class="btn btn-danger btn-sm" onclick="ConfigModule.deleteDepartment('${d.id}')">🗑️ Delete</button>
                 </div>
@@ -263,36 +417,68 @@ const ConfigModule = {
       </div>
     `;
 
-    Utils.$('#addDeptBtn').addEventListener('click', () => this.showDeptForm());
+    Utils.$('#addDeptBtn')?.addEventListener('click', () => this.showDeptForm());
+    
+    // Attach event listeners for search and filters
+    const searchInput = container.querySelector('#deptSearchInput');
+    searchInput?.addEventListener('input', (e) => {
+      this.deptSearchQuery = e.target.value;
+      if (this._deptSearchTimer) clearTimeout(this._deptSearchTimer);
+      this._deptSearchTimer = setTimeout(() => this.renderDepartments(container), 200);
+    });
+
+    const scopeSelect = container.querySelector('#deptScopeFilterSelect');
+    scopeSelect?.addEventListener('change', (e) => {
+      this.deptScopeFilter = e.target.value;
+      this.renderDepartments(container);
+    });
+
+    const totSelect = container.querySelector('#deptTotFilterSelect');
+    totSelect?.addEventListener('change', (e) => {
+      this.deptTotFilter = e.target.value;
+      this.renderDepartments(container);
+    });
   },
 
   showDeptForm(dept = null) {
     const isEdit = !!dept;
+    const isTotActive = dept ? (dept.hasTotAccess !== undefined ? Boolean(dept.hasTotAccess) : (dept.id.includes('imp') || dept.id.includes('trng') || dept.name.toLowerCase().includes('implementation') || dept.name.toLowerCase().includes('training'))) : false;
+
     const content = `
       <form id="deptForm">
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Number / Order Prefix</label>
+            <label class="form-label font-bold">Number / Order Prefix</label>
             <input type="text" class="form-input" id="deptNum" value="${dept?.number || ''}" placeholder="e.g. 1">
           </div>
           <div class="form-group">
-            <label class="form-label">Code Template (Use {CC} for Country Code)</label>
-            <input type="text" class="form-input" id="deptCode" value="${dept?.codeTemplate || ''}" placeholder="e.g. {CC}-PDD-MED" required>
+            <label class="form-label font-bold">Code Template (Use {CC} for Country Code) <span class="text-danger">*</span></label>
+            <input type="text" class="form-input font-bold" id="deptCode" value="${dept?.codeTemplate || ''}" placeholder="e.g. {CC}-PDD-MED" required>
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Department / Activity Name</label>
-          <input type="text" class="form-input" id="deptName" value="${dept?.name || ''}" placeholder="e.g. Framework designing & Content creation" required>
+          <label class="form-label font-bold">Department / Activity Name <span class="text-danger">*</span></label>
+          <input type="text" class="form-input font-bold" id="deptName" value="${dept?.name || ''}" placeholder="e.g. Framework designing & Content creation" required>
         </div>
         <div class="form-group">
-          <label class="form-label">Scope</label>
-          <select class="form-select" id="deptScope">
+          <label class="form-label font-bold">Scope</label>
+          <select class="form-select font-bold" id="deptScope">
             <option value="country" ${dept?.scope === 'country' ? 'selected' : ''}>Country Specific ({CC} Prefix)</option>
             <option value="gl" ${dept?.scope === 'gl' ? 'selected' : ''}>Global (GL)</option>
             <option value="dp-cp" ${dept?.scope === 'dp-cp' ? 'selected' : ''}>Digital Product — Country (DP-CP)</option>
             <option value="dp-gp" ${dept?.scope === 'dp-gp' ? 'selected' : ''}>Digital Product — Global (DP-GP)</option>
             <option value="general" ${dept?.scope === 'general' ? 'selected' : ''}>General / Cross-Cutting</option>
           </select>
+        </div>
+
+        <div class="form-group p-sm mb-sm" style="background: var(--bg-surface); border: 1.5px solid rgba(99, 102, 241, 0.3); border-radius: var(--radius-md); margin-top: 8px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700; color: var(--text-primary);">
+            <input type="checkbox" id="deptHasTotAccess" ${isTotActive ? 'checked' : ''} style="width: 18px; height: 18px;">
+            <span>🎯 Enable ToT Program Budget &amp; Activity Templates (10.1–10.8) Access</span>
+          </label>
+          <div class="text-secondary" style="font-size: 11.5px; margin-left: 26px; margin-top: 4px;">
+            When checked, employees budgeting for this department will see the <strong>"🎯 ToT Program Budget (IMP)"</strong> tab under Other Costs, enabling them to plan Training events, batches, and use Activity Templates.
+          </div>
         </div>
       </form>
     `;
@@ -303,17 +489,23 @@ const ConfigModule = {
           className: 'btn btn-ghost', textContent: 'Cancel', onClick: close
         }));
         footer.appendChild(Utils.createElement('button', {
-          className: 'btn btn-primary',
+          className: 'btn btn-primary font-bold',
           textContent: isEdit ? 'Save Changes' : 'Add Department',
           onClick: async () => {
+            const hasTotAccess = Utils.$('#deptHasTotAccess')?.checked || false;
             const data = {
               id: dept?.id || Utils.slugify(Utils.$('#deptCode').value),
               number: Utils.$('#deptNum').value.trim(),
               codeTemplate: Utils.$('#deptCode').value.trim(),
               name: Utils.$('#deptName').value.trim(),
-              scope: Utils.$('#deptScope').value
+              scope: Utils.$('#deptScope').value,
+              hasTotAccess: hasTotAccess
             };
             await db.put(STORES.departments, data);
+
+            if (typeof ImpTotModule !== 'undefined' && ImpTotModule._totDeptCache) {
+              ImpTotModule._totDeptCache[data.id.toLowerCase()] = hasTotAccess;
+            }
 
             // Automatically activate this new department across all budget cycles and entities
             const allYears = await db.getAll(STORES.budgetYears);
@@ -338,11 +530,11 @@ const ConfigModule = {
               category: 'config',
               action: isEdit ? 'UPDATE_DEPT' : 'CREATE_DEPT',
               recordId: data.id,
-              description: `${isEdit ? 'Updated' : 'Created'} department template "${data.name}" (<code>${data.codeTemplate}</code>) across ${allEntities.length} entities`,
+              description: `${isEdit ? 'Updated' : 'Created'} department template "${data.name}" (<code>${data.codeTemplate}</code>) — ToT Access: ${hasTotAccess ? 'Enabled' : 'Disabled'}`,
               changes: data
             });
 
-            Utils.showToast(`Department "${data.name}" saved & activated across all entities!`, 'success');
+            Utils.showToast(`Department "${data.name}" saved!`, 'success');
             close();
             if (typeof App !== 'undefined' && App.renderCurrentPage) await App.renderCurrentPage();
           }
@@ -3245,6 +3437,14 @@ const ConfigModule = {
     const standardFields = await db.getAllImpStandardBenchmarkFields();
     const customFields = await db.getAllImpCustomRateFields();
     const templates = await db.getAllImpActivityTemplates();
+    const allDepts = Utils.sortDepartments(await db.getAll(STORES.departments));
+
+    const totEnabledCount = allDepts.filter(d => {
+      if (d.hasTotAccess !== undefined) return Boolean(d.hasTotAccess);
+      const id = String(d.id || '').toLowerCase();
+      const name = String(d.name || '').toLowerCase();
+      return id.includes('imp') || id.includes('trng') || id.includes('tot') || name.includes('implementation') || name.includes('training');
+    }).length;
 
     container.innerHTML = `
       <div class="page-header flex justify-between items-center" style="flex-wrap: wrap; gap: 12px;">
@@ -3254,12 +3454,13 @@ const ConfigModule = {
             <span class="badge badge-cyan font-bold">${allRates.length} State Benchmark Sheets</span>
             <span class="badge badge-indigo font-bold">${standardFields.length + customFields.length} Rate Fields</span>
             <span class="badge badge-purple font-bold">${templates.length} Activity Templates</span>
+            <span class="badge badge-amber font-bold">${totEnabledCount}/${allDepts.length} ToT Departments</span>
           </div>
           <h2 class="mt-xs" style="font-size: 1.35rem; color: var(--text-primary);">
-            ⚙️ Implementation (IMP) Benchmark Rates & Calculation Master
+            ⚙️ Implementation (IMP) Benchmark Rates &amp; Calculation Master
           </h2>
           <p class="text-secondary" style="font-size: 12.5px;">
-            Admin Control Center: Configure Country Default Rates &bull; 5D State Location Overrides &bull; Edit Standard & Custom Benchmark Fields &bull; Set Calculation Formulas &bull; Build Activity Templates (10.1 to 10.8)
+            Admin Control Center: Configure Country Default Rates &bull; 5D State Location Overrides &bull; Edit Standard & Custom Benchmark Fields &bull; Set Calculation Formulas &bull; Build Activity Templates (10.1 to 10.8) &bull; Department Access Control
           </p>
         </div>
         <div class="flex items-center gap-sm">
@@ -3274,24 +3475,34 @@ const ConfigModule = {
             <button class="btn btn-primary btn-sm font-bold" onclick="ConfigModule.showCustomRateFieldModal()">
               ➕ + Add Custom Benchmark Field
             </button>
-          ` : `
+          ` : (this.impRateActiveTab === 'templates' ? `
             <button class="btn btn-primary btn-sm font-bold" onclick="ConfigModule.showTemplateLineItemModal()">
               ➕ + Add Template Cost Line Item
             </button>
-          `)}
+          ` : `
+            <button class="btn btn-secondary btn-sm font-bold text-success" onclick="ConfigModule.bulkToggleDeptTotAccess(true)">
+              ✅ Enable All Departments
+            </button>
+            <button class="btn btn-secondary btn-sm font-bold text-danger" onclick="ConfigModule.bulkToggleDeptTotAccess(false)">
+              🚫 Disable All
+            </button>
+          `))}
         </div>
       </div>
 
       <!-- ─── Admin Navigation Tabs ─── -->
-      <div class="tabs mb-md" style="display: flex; gap: 8px; border-bottom: 2px solid var(--border-subtle); padding-bottom: 2px;">
+      <div class="tabs mb-md" style="display: flex; gap: 8px; border-bottom: 2px solid var(--border-subtle); padding-bottom: 2px; flex-wrap: wrap;">
         <button class="tab-btn ${this.impRateActiveTab === 'matrix' ? 'active font-bold' : ''}" onclick="ConfigModule.switchImpRateTab('matrix')" style="padding: 8px 16px; border-radius: 6px 6px 0 0; cursor: pointer; border: 1px solid ${this.impRateActiveTab === 'matrix' ? 'var(--accent-primary)' : 'transparent'}; background: ${this.impRateActiveTab === 'matrix' ? 'var(--bg-secondary)' : 'transparent'}; color: ${this.impRateActiveTab === 'matrix' ? 'var(--accent-primary)' : 'var(--text-secondary)'}; font-size: 13px;">
-          📊 1. Country Defaults & 5D State Rates Matrix (${allRates.length})
+          📊 1. Country Defaults &amp; 5D State Rates Matrix (${allRates.length})
         </button>
         <button class="tab-btn ${this.impRateActiveTab === 'custom-fields' ? 'active font-bold' : ''}" onclick="ConfigModule.switchImpRateTab('custom-fields')" style="padding: 8px 16px; border-radius: 6px 6px 0 0; cursor: pointer; border: 1px solid ${this.impRateActiveTab === 'custom-fields' ? 'var(--accent-primary)' : 'transparent'}; background: ${this.impRateActiveTab === 'custom-fields' ? 'var(--bg-secondary)' : 'transparent'}; color: ${this.impRateActiveTab === 'custom-fields' ? 'var(--accent-primary)' : 'var(--text-secondary)'}; font-size: 13px;">
-          ⚙️ 2. Benchmark Rate Fields & Calculation Engine (${standardFields.length + customFields.length})
+          ⚙️ 2. Benchmark Rate Fields &amp; Calculation Engine (${standardFields.length + customFields.length})
         </button>
         <button class="tab-btn ${this.impRateActiveTab === 'templates' ? 'active font-bold' : ''}" onclick="ConfigModule.switchImpRateTab('templates')" style="padding: 8px 16px; border-radius: 6px 6px 0 0; cursor: pointer; border: 1px solid ${this.impRateActiveTab === 'templates' ? 'var(--accent-primary)' : 'transparent'}; background: ${this.impRateActiveTab === 'templates' ? 'var(--bg-secondary)' : 'transparent'}; color: ${this.impRateActiveTab === 'templates' ? 'var(--accent-primary)' : 'var(--text-secondary)'}; font-size: 13px;">
-          📋 3. Activity Templates & Line Items Builder (10.1 to 10.8)
+          📋 3. Activity Templates &amp; Line Items Builder (10.1 to 10.8)
+        </button>
+        <button class="tab-btn ${this.impRateActiveTab === 'departments' ? 'active font-bold' : ''}" onclick="ConfigModule.switchImpRateTab('departments')" style="padding: 8px 16px; border-radius: 6px 6px 0 0; cursor: pointer; border: 1px solid ${this.impRateActiveTab === 'departments' ? 'var(--accent-primary)' : 'transparent'}; background: ${this.impRateActiveTab === 'departments' ? 'var(--bg-secondary)' : 'transparent'}; color: ${this.impRateActiveTab === 'departments' ? 'var(--accent-primary)' : 'var(--text-secondary)'}; font-size: 13px;">
+          🏢 4. Department ToT Access (${totEnabledCount}/${allDepts.length} Enabled)
         </button>
       </div>
 
@@ -3308,6 +3519,8 @@ const ConfigModule = {
       await this.renderImpCustomFieldsTab(tabContainer, standardFields, customFields);
     } else if (this.impRateActiveTab === 'templates') {
       await this.renderImpActivityTemplatesTab(tabContainer, templates, standardFields, customFields);
+    } else if (this.impRateActiveTab === 'departments') {
+      await this.renderImpDeptAccessTab(tabContainer, allDepts);
     }
   },
 
@@ -6086,6 +6299,162 @@ const ConfigModule = {
     this.selectedTemplateId = null;
     const pageContent = Utils.$('#pageContent');
     if (pageContent) ConfigModule.renderImpUnitRates(pageContent);
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TAB 4: Department Access Control for ToT Program Budget & Activity Templates
+  // ═══════════════════════════════════════════════════════════════════════════
+  impDeptScopeFilter: 'all',
+  impDeptTotFilter: 'all',
+  impDeptSearchQuery: '',
+
+  async renderImpDeptAccessTab(container, allDepartments) {
+    if (!allDepartments) {
+      allDepartments = Utils.sortDepartments(await db.getAll(STORES.departments));
+    }
+
+    const totEnabledCount = allDepartments.filter(d => {
+      if (d.hasTotAccess !== undefined) return Boolean(d.hasTotAccess);
+      const id = String(d.id || '').toLowerCase();
+      const name = String(d.name || '').toLowerCase();
+      return id.includes('imp') || id.includes('trng') || id.includes('tot') || name.includes('implementation') || name.includes('training');
+    }).length;
+
+    const q = (this.impDeptSearchQuery || '').toLowerCase().trim();
+    const filtered = allDepartments.filter(d => {
+      const isTot = d.hasTotAccess !== undefined ? Boolean(d.hasTotAccess) : (d.id.includes('imp') || d.id.includes('trng') || d.name.toLowerCase().includes('implementation') || d.name.toLowerCase().includes('training'));
+      const matchTot = this.impDeptTotFilter === 'all' || (this.impDeptTotFilter === 'enabled' && isTot) || (this.impDeptTotFilter === 'disabled' && !isTot);
+      const matchScope = this.impDeptScopeFilter === 'all' || d.scope === this.impDeptScopeFilter;
+      const matchSearch = !q || d.name.toLowerCase().includes(q) || d.codeTemplate.toLowerCase().includes(q) || (d.number && d.number.includes(q)) || d.id.toLowerCase().includes(q);
+      return matchTot && matchScope && matchSearch;
+    });
+
+    container.innerHTML = `
+      <!-- Header Banner -->
+      <div class="card p-md mb-md" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(16, 185, 129, 0.08)); border: 1.5px solid rgba(99, 102, 241, 0.3); border-radius: var(--radius-md);">
+        <div class="flex justify-between items-center mb-sm" style="flex-wrap: wrap; gap: 10px;">
+          <div>
+            <div class="flex items-center gap-xs">
+              <span style="font-size: 1.3rem;">🏢</span>
+              <strong style="font-size: 14px; color: var(--text-primary);">Department Access Control for ToT Program Budget &amp; Templates (10.1–10.8)</strong>
+              <span class="badge badge-emerald font-bold" style="font-size: 11px;">${totEnabledCount} of ${allDepartments.length} Departments Enabled</span>
+            </div>
+            <div class="text-secondary mt-xs" style="font-size: 12px; line-height: 1.4;">
+              Select which departments have permission to view the <strong>"🎯 ToT Program Budget (IMP)"</strong> tab under Other Costs to budget Training events, batches, and use Activity Templates (10.1 to 10.8). Toggle access with a single click below.
+            </div>
+          </div>
+          <div class="flex items-center gap-xs" style="flex-wrap: wrap;">
+            <button class="btn btn-sm btn-secondary font-bold text-success" onclick="ConfigModule.bulkToggleDeptTotAccess(true)" title="Enable ToT template access for all departments">
+              ✅ Enable All
+            </button>
+            <button class="btn btn-sm btn-secondary font-bold text-danger" onclick="ConfigModule.bulkToggleDeptTotAccess(false)" title="Disable ToT template access for all departments">
+              🚫 Disable All
+            </button>
+            <button class="btn btn-sm btn-ghost font-bold" onclick="ConfigModule.resetDeptTotAccessToDefaults()" title="Reset to default Training & Implementation departments">
+              🔄 Reset Defaults
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters & Search Toolbar -->
+      <div class="card p-sm mb-md flex justify-between items-center" style="background: var(--bg-secondary); border: 1px solid var(--border-default); flex-wrap: wrap; gap: 10px;">
+        <div class="flex items-center gap-sm" style="flex-wrap: wrap;">
+          <input type="text" class="form-input" id="impDeptSearchInput" value="${this.impDeptSearchQuery || ''}" placeholder="🔍 Search department by name or code..." style="max-width: 280px; font-size: 12.5px;">
+          
+          <select class="form-select" id="impDeptScopeSelect" style="max-width: 200px; font-size: 12.5px;">
+            <option value="all" ${this.impDeptScopeFilter === 'all' ? 'selected' : ''}>🌐 All Scopes</option>
+            <option value="country" ${this.impDeptScopeFilter === 'country' ? 'selected' : ''}>🏢 Country Specific</option>
+            <option value="gl" ${this.impDeptScopeFilter === 'gl' ? 'selected' : ''}>🌍 Global (GL)</option>
+            <option value="dp-cp" ${this.impDeptScopeFilter === 'dp-cp' ? 'selected' : ''}>📱 Digital Product (Country)</option>
+            <option value="dp-gp" ${this.impDeptScopeFilter === 'dp-gp' ? 'selected' : ''}>📱 Digital Product (Global)</option>
+            <option value="general" ${this.impDeptScopeFilter === 'general' ? 'selected' : ''}>🏷️ General / Cross-Cutting</option>
+          </select>
+
+          <select class="form-select font-bold" id="impDeptTotSelect" style="max-width: 220px; font-size: 12.5px;">
+            <option value="all" ${this.impDeptTotFilter === 'all' ? 'selected' : ''}>🎯 All ToT Access States</option>
+            <option value="enabled" ${this.impDeptTotFilter === 'enabled' ? 'selected' : ''}>✅ ToT Enabled Only (${totEnabledCount})</option>
+            <option value="disabled" ${this.impDeptTotFilter === 'disabled' ? 'selected' : ''}>🚫 ToT Disabled Only (${allDepartments.length - totEnabledCount})</option>
+          </select>
+        </div>
+        <div class="text-tertiary" style="font-size: 12px;">
+          Showing <strong>${filtered.length}</strong> of <strong>${allDepartments.length}</strong> departments
+        </div>
+      </div>
+
+      <!-- Department Access Grid / Table -->
+      <div class="card mb-lg">
+        <div class="table-responsive">
+          <table class="table" style="font-size: 12.5px;">
+            <thead>
+              <tr style="background: var(--bg-surface);">
+                <th style="width: 40px; text-align: center;">#</th>
+                <th style="width: 200px;">Code Template</th>
+                <th>Department Name</th>
+                <th style="width: 140px;">Scope</th>
+                <th style="width: 180px; text-align: center;">ToT Budget Access</th>
+                <th style="width: 130px; text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filtered.length === 0 ? `
+                <tr><td colspan="6" class="text-center p-lg text-secondary">No departments found matching the filter criteria.</td></tr>
+              ` : filtered.map((d, idx) => {
+                const scopeBadges = {
+                  'country': '<span class="badge badge-cyan">Country Specific</span>',
+                  'gl': '<span class="badge badge-violet">Global</span>',
+                  'dp-gp': '<span class="badge badge-amber">Digital Product (Global)</span>',
+                  'dp-cp': '<span class="badge badge-emerald">Digital Product (Country)</span>',
+                  'general': '<span class="badge">General</span>'
+                };
+                const isTotActive = d.hasTotAccess !== undefined ? Boolean(d.hasTotAccess) : (d.id.includes('imp') || d.id.includes('trng') || d.name.toLowerCase().includes('implementation') || d.name.toLowerCase().includes('training'));
+
+                return `
+                  <tr style="${isTotActive ? 'background: rgba(16, 185, 129, 0.03);' : ''}">
+                    <td style="text-align: center; color: var(--text-tertiary);">${d.number || (idx + 1)}</td>
+                    <td><code style="font-weight: 700; font-size: 11.5px;">${d.codeTemplate}</code></td>
+                    <td>
+                      <strong style="color: var(--text-primary);">${d.name}</strong>
+                      <div class="text-tertiary" style="font-size: 11px;">ID: <code>${d.id}</code></div>
+                    </td>
+                    <td>${scopeBadges[d.scope] || `<span class="badge">${d.scope}</span>`}</td>
+                    <td style="text-align: center;">
+                      ${isTotActive ? `
+                        <span class="badge badge-emerald font-bold" style="font-size: 11px; padding: 4px 10px;">🎯 ToT Enabled</span>
+                      ` : `
+                        <span class="badge badge-secondary" style="font-size: 11px; padding: 4px 10px; opacity: 0.7;">🚫 ToT Disabled</span>
+                      `}
+                    </td>
+                    <td style="text-align: right;">
+                      <button class="btn btn-sm ${isTotActive ? 'btn-secondary text-danger font-bold' : 'btn-primary font-bold'}" onclick="ConfigModule.toggleDeptTotAccess('${d.id}')" title="Click to ${isTotActive ? 'remove' : 'grant'} ToT budget template access">
+                        ${isTotActive ? '🚫 Remove ToT' : '🎯 Enable ToT'}
+                      </button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    // Event listeners
+    container.querySelector('#impDeptSearchInput')?.addEventListener('input', (e) => {
+      this.impDeptSearchQuery = e.target.value;
+      if (this._impDeptSearchTimer) clearTimeout(this._impDeptSearchTimer);
+      this._impDeptSearchTimer = setTimeout(() => this.renderImpDeptAccessTab(container, allDepartments), 200);
+    });
+
+    container.querySelector('#impDeptScopeSelect')?.addEventListener('change', (e) => {
+      this.impDeptScopeFilter = e.target.value;
+      this.renderImpDeptAccessTab(container, allDepartments);
+    });
+
+    container.querySelector('#impDeptTotSelect')?.addEventListener('change', (e) => {
+      this.impDeptTotFilter = e.target.value;
+      this.renderImpDeptAccessTab(container, allDepartments);
+    });
   },
 
     // ════════════════════════════════════════════════════════════

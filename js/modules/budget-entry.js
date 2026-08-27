@@ -130,9 +130,10 @@ const BudgetEntryModule = {
     }
 
     if (this.activeTab === 'other-costs') {
+      const isDeptTotEnabled = typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(selectedDept);
       const ocMap = {
         'grid': canViewOtherCosts,
-        'tot': canViewTot,
+        'tot': (canViewTot || canViewOtherCosts) && isDeptTotEnabled,
         'travel': canViewTravel,
         'supplies': canViewSupplies,
         'communication': canViewComm,
