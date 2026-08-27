@@ -102,7 +102,7 @@ const BudgetEntryModule = {
     const canViewOffice = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'office', entityId: this.currentEntityId, deptId: this.currentDeptId });
     const canViewProf = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'professional', entityId: this.currentEntityId, deptId: this.currentDeptId });
     const canViewOtherLines = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'other-costs', entityId: this.currentEntityId, deptId: this.currentDeptId });
-    const canViewTot = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'imp-tot-rates', entityId: this.currentEntityId, deptId: this.currentDeptId });
+    const canViewTot = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'imp-tot-rates', entityId: this.currentEntityId, deptId: this.currentDeptId }) || canViewOtherLines || canViewTravel || canViewSupplies;
     const canViewOtherCosts = canViewTravel || canViewSupplies || canViewComm || canViewOffice || canViewProf || canViewOtherLines || canViewTot;
 
     const tabAccessMap = {
@@ -193,10 +193,11 @@ const BudgetEntryModule = {
 
           <div>
             <label class="form-label">Department</label>
-            <select class="form-select" id="entryDeptSelect" style="min-width: 280px;">
+            <select class="form-select" id="entryDeptSelect">
               ${activeDepts.map(d => {
-                const name = Utils.getDeptName(d, selectedEntity.deptPrefix);
-                return `<option value="${d.id}" ${d.id === this.currentDeptId ? 'selected' : ''}>${name}</option>`;
+                const codePrefix = selectedEntity.deptPrefix || 'GEN';
+                const deptCode = d.codeTemplate ? d.codeTemplate.replace('{CC}', codePrefix) : d.id.toUpperCase();
+                return `<option value="${d.id}" ${d.id === this.currentDeptId ? 'selected' : ''}>${deptCode} — ${d.name}</option>`;
               }).join('')}
             </select>
           </div>
@@ -233,7 +234,7 @@ const BudgetEntryModule = {
           ${canViewOffice ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'office' ? 'active' : ''}" data-subtab="office">🏢 Office Expenses</button>` : ''}
           ${canViewProf ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'professional' ? 'active' : ''}" data-subtab="professional">💼 Professional Charges</button>` : ''}
           ${canViewOtherLines ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'other' ? 'active' : ''}" data-subtab="other">📑 Other Expense Lines</button>` : ''}
-          ${(canViewTot && typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(selectedDept)) ? `
+          ${((canViewTot || canViewOtherCosts) && typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(selectedDept)) ? `
             <button class="sub-tab ${this.activeOtherCostSubTab === 'tot' || this.activeOtherCostSubTab === 'imp-tot' ? 'active' : ''}" data-subtab="tot">🎯 ToT Program Budget (IMP)</button>
           ` : ''}
         </div>

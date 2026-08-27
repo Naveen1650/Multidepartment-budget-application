@@ -502,7 +502,7 @@ const Auth = {
           if (targetCat && role.permissions[targetCat] && typeof role.permissions[targetCat][operation] === 'boolean') {
             return role.permissions[targetCat][operation];
           }
-          if (category === 'other-costs' && !directKey && (role.permissions['other-costs']?.[operation] === true || role.permissions['travel']?.[operation] === true || role.permissions['supplies']?.[operation] === true || role.permissions['communication']?.[operation] === true || role.permissions['office']?.[operation] === true || role.permissions['professional']?.[operation] === true)) {
+          if ((category === 'other-costs' || category === 'imp-tot-rates') && !directKey && (role.permissions['other-costs']?.[operation] === true || role.permissions['imp-tot-rates']?.[operation] === true || role.permissions['travel']?.[operation] === true || role.permissions['supplies']?.[operation] === true || role.permissions['communication']?.[operation] === true || role.permissions['office']?.[operation] === true || role.permissions['professional']?.[operation] === true)) {
             return true;
           }
           if (context?.parentAccount && role.permissions[context.parentAccount] && typeof role.permissions[context.parentAccount][operation] === 'boolean') {

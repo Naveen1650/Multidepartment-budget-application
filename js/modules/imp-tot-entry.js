@@ -90,10 +90,14 @@ const ImpTotModule = {
   // Check if department is Implementation department
   isImpDept(dept) {
     if (!dept) return false;
-    const id = (dept.id || '').toLowerCase();
-    const name = (dept.name || '').toLowerCase();
-    const code = (dept.codeTemplate || '').toLowerCase();
-    return id.includes('imp') || id.includes('pdel') || name.includes('implementation') || name.includes('training') || code.includes('imp');
+    if (typeof dept === 'string') {
+      const s = dept.toLowerCase();
+      return s.includes('imp') || s.includes('pdel') || s.includes('implementation') || s.includes('training') || s.includes('tot');
+    }
+    const id = String(dept.id || dept.deptId || '').toLowerCase();
+    const name = String(dept.name || dept.department || '').toLowerCase();
+    const code = String(dept.codeTemplate || dept.code || '').toLowerCase();
+    return id.includes('imp') || id.includes('pdel') || id.includes('tot') || name.includes('implementation') || name.includes('training') || name.includes('tot') || code.includes('imp') || code.includes('pdel');
   },
 
   // Switch View Mode: 'matrix' vs 'registry'
@@ -427,7 +431,12 @@ const ImpTotModule = {
         }
       }
 
-      // Load master employees list with department staff prioritized for matrix planner
+      activityRowTotals[code] = { batches: rowBatches, cost: rowCost };
+      totalAnnualBatches += rowBatches;
+      totalAnnualCost += rowCost;
+    });
+
+    // Load master employees list with department staff prioritized for matrix planner
     const allMasterEmployees = (await db.getEmployeesMaster())
       .filter(e => e.entityId === entity.id && e.status !== 'Inactive');
     const personnel = await db.getBudgetData(STORES.payrollPersonnel, this._yearId || '2026', entity.id, dept.id);
