@@ -546,7 +546,31 @@ const CloudSyncModule = {
       Object.assign(sanitized, snake);
     }
 
-    // Handle ID casting based on table key type
+    // Default values for NOT NULL columns
+    if (table === 'payroll_personnel') {
+      sanitized.sub_category = sanitized.sub_category || record.subCategory || 'salaries-wages';
+      sanitized.name = sanitized.name || record.name || 'Staff';
+      sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
+    } else if (table === 'payroll_eha') {
+      sanitized.name = sanitized.name || record.name || 'Consultant';
+      sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
+    } else if (table === 'payroll_fixed_assets') {
+      sanitized.quantity = sanitized.quantity !== null && sanitized.quantity !== undefined ? sanitized.quantity : 1;
+      sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
+    } else if (table === 'non_payroll_costs') {
+      sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
+    } else if (table === 'entity_dept_configs') {
+      sanitized.is_active = sanitized.is_active !== false;
+    } else if (table === 'budget_lock_status') {
+      sanitized.is_locked = Boolean(sanitized.is_locked);
+    } else if (table === 'roles') {
+      sanitized.tier = sanitized.tier || 1;
+      sanitized.permissions = sanitized.permissions || {};
+    } else if (table === 'users') {
+      sanitized.email = sanitized.email || 'user@noorahealth.org';
+      sanitized.name = sanitized.name || 'User';
+    }
+
     if (SERIAL_TABLES.includes(table)) {
       sanitized.id = this._toIntegerId(record.id);
     } else if (STRING_ID_TABLES.includes(table)) {
@@ -573,6 +597,31 @@ const CloudSyncModule = {
         }
       } else {
         Object.assign(sanitized, snake);
+      }
+
+      // Default values for NOT NULL columns in batch
+      if (table === 'payroll_personnel') {
+        sanitized.sub_category = sanitized.sub_category || record.subCategory || 'salaries-wages';
+        sanitized.name = sanitized.name || record.name || 'Staff';
+        sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
+      } else if (table === 'payroll_eha') {
+        sanitized.name = sanitized.name || record.name || 'Consultant';
+        sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
+      } else if (table === 'payroll_fixed_assets') {
+        sanitized.quantity = sanitized.quantity !== null && sanitized.quantity !== undefined ? sanitized.quantity : 1;
+        sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
+      } else if (table === 'non_payroll_costs') {
+        sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
+      } else if (table === 'entity_dept_configs') {
+        sanitized.is_active = sanitized.is_active !== false;
+      } else if (table === 'budget_lock_status') {
+        sanitized.is_locked = Boolean(sanitized.is_locked);
+      } else if (table === 'roles') {
+        sanitized.tier = sanitized.tier || 1;
+        sanitized.permissions = sanitized.permissions || {};
+      } else if (table === 'users') {
+        sanitized.email = sanitized.email || 'user@noorahealth.org';
+        sanitized.name = sanitized.name || 'User';
       }
 
       if (isSerial) {
