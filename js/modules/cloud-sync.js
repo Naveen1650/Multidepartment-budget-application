@@ -12,6 +12,26 @@ const DEFAULT_CLOUD_CONFIG = {
   provider: 'supabase'
 };
 
+const SERIAL_TABLES = [
+  'chart_of_accounts',
+  'entity_dept_configs',
+  'payroll_personnel',
+  'payroll_eha',
+  'payroll_fixed_assets',
+  'non_payroll_costs',
+  'employees_master',
+  'imp_tot_events',
+  'budget_lock_status'
+];
+
+const STRING_ID_TABLES = [
+  'entities',
+  'departments',
+  'budget_years',
+  'roles',
+  'users'
+];
+
 const TABLE_COLUMNS = {
   entities: ['id', 'name', 'short_name', 'country_code', 'dept_prefix', 'country', 'currency', 'flag'],
   departments: ['id', 'number', 'code_template', 'name', 'scope', 'entity_mapping'],
@@ -20,7 +40,7 @@ const TABLE_COLUMNS = {
   entity_dept_configs: ['id', 'year_id', 'entity_id', 'dept_id', 'is_active'],
   payroll_personnel: [
     'id', 'year_id', 'entity_id', 'dept_id', 'sub_category', 'employee_code',
-    'department', 'name', 'designation', 'employee_status', 'date_of_joining',
+    'name', 'designation', 'employee_status', 'date_of_joining',
     'banding', 'level', 'current_monthly_ctc', 'increment_pct', 'increment_value',
     'new_monthly_ctc', 'expense_type', 'location', 'donor', 'activity',
     'condition_area', 'monthly_values', 'total_cy', 'remarks'
@@ -90,7 +110,7 @@ const CloudSyncModule = {
   _lastError: null,
   _isSyncing: false,
   _initialSyncDone: false,
-  _pushQueue: new Map(), // store:id -> { storeName, record, timer }
+  _pushQueue: new Map(),
   _realtimeSubscription: null,
 
   init() {
@@ -155,7 +175,7 @@ const CloudSyncModule = {
         throw new Error('Supabase client SDK not available');
       }
 
-      // Test connectivity by querying budget_years
+      // Test connectivity
       const { data, error } = await this._client.from('budget_years').select('id').limit(1);
       if (error && error.code !== 'PGRST116') {
         console.warn('Cloud connection check:', error.message);
@@ -187,7 +207,7 @@ const CloudSyncModule = {
       // 1. Download latest from cloud to ensure local DB has all team data
       await this.downloadAllFromCloud(() => {}, true);
 
-      // 2. Also ensure any master records in local DB that are not yet in cloud get pushed
+      // 2. Upload any local records not yet in cloud
       await this.uploadAllToCloud(() => {}, true);
 
       this._status = 'connected';
@@ -219,7 +239,6 @@ const CloudSyncModule = {
       if (typeof Utils !== 'undefined' && Utils.showToast) {
         Utils.showToast('🔄 Synchronizing data with Cloud Database...', 'info');
       }
-      // Download first, then upload
       await this.downloadAllFromCloud();
       await this.uploadAllToCloud();
       
@@ -256,13 +275,12 @@ const CloudSyncModule = {
         if (error) {
           console.warn(`[CloudSync] Error pushing record to ${table}:`, error.message);
         } else {
-          // Success dot pulse
           this._flashSyncIndicator();
         }
       } catch (err) {
         console.warn(`[CloudSync] Exception pushing to ${table}:`, err);
       }
-    }, 250); // 250ms debounce for rapid edits
+    }, 250);
 
     this._pushQueue.set(queueKey, { storeName, record, timer });
   },
@@ -277,7 +295,6 @@ const CloudSyncModule = {
       const sanitized = this._sanitizeBatch(table, records);
       if (!sanitized || sanitized.length === 0) return;
 
-      // Chunk in groups of 100 for reliable transport
       for (let i = 0; i < sanitized.length; i += 100) {
         const chunk = sanitized.slice(i, i + 100);
         const { error } = await this._client.from(table).upsert(chunk);
@@ -291,12 +308,15 @@ const CloudSyncModule = {
 
   // ─── Real-Time Cloud Deletion ───
   async deleteFromCloud(storeName, id) {
-    if (!this._client || !id) return false;
+    if (!this._client || id === undefined || id === null) return false;
     const table = STORE_TABLE_MAP[storeName] || STORE_TABLE_MAP[STORES[storeName]];
     if (!table) return false;
 
     try {
-      const { error } = await this._client.from(table).delete().eq('id', id);
+      const targetId = SERIAL_TABLES.includes(table) ? this._toIntegerId(id) : id;
+      if (targetId === undefined) return false;
+
+      const { error } = await this._client.from(table).delete().eq('id', targetId);
       if (error) {
         console.warn(`[CloudSync] Error deleting id="${id}" from ${table}:`, error.message);
         return false;
@@ -359,7 +379,6 @@ const CloudSyncModule = {
     try {
       const channel = this._client.channel('noora_cloud_sync_realtime');
 
-      // Listen to changes across all tables
       const tablesToListen = [
         'budget_years', 'entities', 'departments', 'entity_dept_configs',
         'payroll_personnel', 'payroll_eha', 'payroll_fixed_assets',
@@ -368,16 +387,18 @@ const CloudSyncModule = {
 
       tablesToListen.forEach(table => {
         channel.on('postgres_changes', { event: '*', schema: 'public', table }, async (payload) => {
-          console.log(`[Realtime] Remote change detected on table "${table}":`, payload.eventType);
+          console.log(`[Realtime] Remote change on "${table}":`, payload.eventType);
 
-          // Find matching local store
-          const storeName = Object.keys(STORE_TABLE_MAP).find(k => STORE_TABLE_MAP[k] === table);
-          if (storeName && typeof db !== 'undefined' && STORES[storeName]) {
-            const actualStore = STORES[storeName];
+          const storeKey = Object.keys(STORE_TABLE_MAP).find(k => STORE_TABLE_MAP[k] === table);
+          if (storeKey && typeof db !== 'undefined' && STORES[storeKey]) {
+            const actualStore = STORES[storeKey];
             if (payload.eventType === 'DELETE' && payload.old && payload.old.id) {
               await db.delete(actualStore, payload.old.id);
             } else if ((payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') && payload.new) {
               const camel = CloudSyncModule._toCamelCase(payload.new);
+              if (table === 'entity_dept_configs' && camel.yearId && camel.entityId && camel.deptId) {
+                camel.id = `${camel.yearId}_${camel.entityId}_${camel.deptId}`;
+              }
               camel._fromCloud = true;
               await db.put(actualStore, camel);
             }
@@ -387,7 +408,6 @@ const CloudSyncModule = {
             Auth.invalidateLockCache();
           }
 
-          // Debounced re-render of active view
           if (typeof App !== 'undefined' && App.renderActiveModule) {
             App.renderActiveModule();
           }
@@ -469,7 +489,10 @@ const CloudSyncModule = {
         if (!error && data && data.length > 0) {
           for (const raw of data) {
             const camel = this._toCamelCase(raw);
-            camel._fromCloud = true; // prevent bounce-back push
+            if (table === 'entity_dept_configs' && camel.yearId && camel.entityId && camel.deptId) {
+              camel.id = `${camel.yearId}_${camel.entityId}_${camel.deptId}`;
+            }
+            camel._fromCloud = true;
             await db.put(storeName, camel);
           }
         }
@@ -490,6 +513,22 @@ const CloudSyncModule = {
     }
   },
 
+  // ─── Deterministic Integer ID Generator for Serial Tables ───
+  _toIntegerId(id) {
+    if (id === null || id === undefined || id === '') return undefined;
+    if (typeof id === 'number' && Number.isInteger(id)) return id;
+    if (typeof id === 'string') {
+      if (/^\d+$/.test(id)) return parseInt(id, 10);
+      let hash = 0;
+      for (let i = 0; i < id.length; i++) {
+        hash = ((hash << 5) - hash) + id.charCodeAt(i);
+        hash = hash & 0x7FFFFFFF;
+      }
+      return hash || 1;
+    }
+    return undefined;
+  },
+
   // ─── Schema Sanitizers & Key Normalizers ───
   _sanitizeRecord(table, record) {
     if (!record || typeof record !== 'object') return null;
@@ -507,10 +546,12 @@ const CloudSyncModule = {
       Object.assign(sanitized, snake);
     }
 
-    // Ensure valid id
-    if (sanitized.id === undefined || sanitized.id === null || sanitized.id === '') {
-      if (record.id !== undefined && record.id !== null && record.id !== '') {
-        sanitized.id = record.id;
+    // Handle ID casting based on table key type
+    if (SERIAL_TABLES.includes(table)) {
+      sanitized.id = this._toIntegerId(record.id);
+    } else if (STRING_ID_TABLES.includes(table)) {
+      if (record.id !== undefined && record.id !== null) {
+        sanitized.id = String(record.id);
       }
     }
 
@@ -520,6 +561,7 @@ const CloudSyncModule = {
   _sanitizeBatch(table, records) {
     if (!records || !Array.isArray(records)) return [];
     const allowed = TABLE_COLUMNS[table] || [];
+    const isSerial = SERIAL_TABLES.includes(table);
 
     return records.map((record, index) => {
       const snake = this._toSnakeCase(record);
@@ -533,12 +575,10 @@ const CloudSyncModule = {
         Object.assign(sanitized, snake);
       }
 
-      if (sanitized.id === null || sanitized.id === undefined || sanitized.id === '') {
-        if (record.id) {
-          sanitized.id = record.id;
-        } else if (['chart_of_accounts', 'entity_dept_configs', 'payroll_personnel', 'payroll_eha', 'payroll_fixed_assets', 'non_payroll_costs', 'employees_master', 'imp_tot_events', 'budget_lock_status'].includes(table)) {
-          sanitized.id = index + 1;
-        }
+      if (isSerial) {
+        sanitized.id = this._toIntegerId(record.id) || (index + 1);
+      } else if (STRING_ID_TABLES.includes(table)) {
+        sanitized.id = record.id ? String(record.id) : `rec_${index + 1}`;
       }
 
       return sanitized;
@@ -550,7 +590,7 @@ const CloudSyncModule = {
     if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
     const res = {};
     for (const [k, v] of Object.entries(obj)) {
-      if (k.startsWith('_')) continue; // Skip internal flags like _fromCloud
+      if (k.startsWith('_')) continue;
       const snakeKey = k.replace(/([A-Z])/g, '_$1').toLowerCase();
       res[snakeKey] = v;
     }
