@@ -296,7 +296,13 @@ class BudgetDB {
       const tx = this.db.transaction(storeName, 'readwrite');
       const store = tx.objectStore(storeName);
       const request = store.put(item);
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => {
+        const resultId = request.result || item.id;
+        if (!item._fromCloud && typeof CloudSyncModule !== 'undefined' && CloudSyncModule.pushRecordToCloud) {
+          CloudSyncModule.pushRecordToCloud(storeName, { ...item, id: resultId });
+        }
+        resolve(resultId);
+      };
       request.onerror = () => reject(request.error);
     });
   }
@@ -329,7 +335,13 @@ class BudgetDB {
       const tx = this.db.transaction(storeName, 'readwrite');
       const store = tx.objectStore(storeName);
       const request = store.add(item);
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => {
+        const resultId = request.result;
+        if (!item._fromCloud && typeof CloudSyncModule !== 'undefined' && CloudSyncModule.pushRecordToCloud) {
+          CloudSyncModule.pushRecordToCloud(storeName, { ...item, id: resultId });
+        }
+        resolve(resultId);
+      };
       request.onerror = () => reject(request.error);
     });
   }
@@ -359,7 +371,12 @@ class BudgetDB {
       const tx = this.db.transaction(storeName, 'readwrite');
       const store = tx.objectStore(storeName);
       const request = store.delete(key);
-      request.onsuccess = () => resolve();
+      request.onsuccess = () => {
+        if (typeof CloudSyncModule !== 'undefined' && CloudSyncModule.deleteFromCloud) {
+          CloudSyncModule.deleteFromCloud(storeName, key);
+        }
+        resolve();
+      };
       request.onerror = () => reject(request.error);
     });
   }
@@ -434,7 +451,13 @@ class BudgetDB {
           store.put(copy);
         }
       });
-      tx.oncomplete = () => resolve();
+      tx.oncomplete = () => {
+        const nonCloud = items.filter(it => !it._fromCloud);
+        if (nonCloud.length > 0 && typeof CloudSyncModule !== 'undefined' && CloudSyncModule.pushManyToCloud) {
+          CloudSyncModule.pushManyToCloud(storeName, nonCloud);
+        }
+        resolve();
+      };
       tx.onerror = () => reject(tx.error);
     });
   }

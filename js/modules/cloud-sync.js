@@ -12,6 +12,70 @@ const DEFAULT_CLOUD_CONFIG = {
   provider: 'supabase'
 };
 
+const TABLE_COLUMNS = {
+  entities: ['id', 'name', 'short_name', 'country_code', 'dept_prefix', 'country', 'currency', 'flag'],
+  departments: ['id', 'number', 'code_template', 'name', 'scope', 'entity_mapping'],
+  chart_of_accounts: ['id', 'parent_account', 'gl_description', 'ledger_code', 'linked_input_source'],
+  budget_years: ['id', 'year', 'name', 'is_active', 'status', 'conversion_rates'],
+  entity_dept_configs: ['id', 'year_id', 'entity_id', 'dept_id', 'is_active'],
+  payroll_personnel: [
+    'id', 'year_id', 'entity_id', 'dept_id', 'sub_category', 'employee_code',
+    'department', 'name', 'designation', 'employee_status', 'date_of_joining',
+    'banding', 'level', 'current_monthly_ctc', 'increment_pct', 'increment_value',
+    'new_monthly_ctc', 'expense_type', 'location', 'donor', 'activity',
+    'condition_area', 'monthly_values', 'total_cy', 'remarks'
+  ],
+  payroll_eha: [
+    'id', 'year_id', 'entity_id', 'dept_id', 'name', 'designation', 'contract_type',
+    'monthly_rate', 'location', 'donor', 'activity', 'condition_area',
+    'monthly_values', 'total_cy', 'remarks'
+  ],
+  payroll_fixed_assets: [
+    'id', 'year_id', 'entity_id', 'dept_id', 'category', 'description', 'quantity',
+    'unit_cost', 'location', 'donor', 'activity', 'condition_area',
+    'monthly_values', 'total_cy', 'remarks'
+  ],
+  non_payroll_costs: [
+    'id', 'year_id', 'entity_id', 'dept_id', 'parent_account', 'gl_description',
+    'ledger_code', 'sub_category', 'description', 'quantity', 'unit_rate',
+    'basis_of_expense', 'location', 'donor', 'activity', 'condition_area',
+    'monthly_values', 'total_cy', 'remarks'
+  ],
+  employees_master: [
+    'id', 'employee_code', 'name', 'entity_id', 'dept_id', 'designation',
+    'status', 'date_of_joining', 'band', 'level', 'monthly_ctc', 'location'
+  ],
+  imp_tot_events: [
+    'id', 'year_id', 'entity_id', 'dept_id', 'program_name', 'event_name', 'state',
+    'target_cadre', 'batches', 'participants_per_batch', 'days', 'location',
+    'donor', 'activity', 'condition_area', 'monthly_values', 'total_cy', 'remarks'
+  ],
+  roles: ['id', 'name', 'tier', 'description', 'badge_color', 'is_system', 'permissions'],
+  users: [
+    'id', 'name', 'email', 'role_id', 'role_name',
+    'assigned_entities', 'assigned_departments', 'category_overrides',
+    'is_active', 'last_login'
+  ],
+  budget_lock_status: ['id', 'year_id', 'entity_id', 'dept_id', 'is_locked', 'locked_by', 'locked_at', 'reason']
+};
+
+const STORE_TABLE_MAP = {
+  entities: 'entities',
+  departments: 'departments',
+  chartOfAccounts: 'chart_of_accounts',
+  budgetYears: 'budget_years',
+  entityDeptConfig: 'entity_dept_configs',
+  payrollPersonnel: 'payroll_personnel',
+  payrollEHA: 'payroll_eha',
+  payrollFixedAsset: 'payroll_fixed_assets',
+  nonPayrollCost: 'non_payroll_costs',
+  employeesMaster: 'employees_master',
+  impTotEvents: 'imp_tot_events',
+  roles: 'roles',
+  users: 'users',
+  budgetLockStatus: 'budget_lock_status'
+};
+
 const CloudSyncModule = {
   _client: null,
   _config: {
@@ -20,13 +84,14 @@ const CloudSyncModule = {
     anonKey: '',
     autoSync: true,
     lastSyncTimestamp: null,
-    provider: 'supabase' // 'supabase' | 'rest-postgresql'
+    provider: 'supabase'
   },
   _status: 'local', // 'local' | 'connecting' | 'connected' | 'syncing' | 'error'
   _lastError: null,
-  _syncQueue: [],
   _isSyncing: false,
   _initialSyncDone: false,
+  _pushQueue: new Map(), // store:id -> { storeName, record, timer }
+  _realtimeSubscription: null,
 
   init() {
     this.loadConfig();
@@ -38,11 +103,9 @@ const CloudSyncModule = {
 
   loadConfig() {
     try {
-      // Apply built-in default config first (so other users connect automatically)
       if (DEFAULT_CLOUD_CONFIG.url && DEFAULT_CLOUD_CONFIG.anonKey) {
         this._config = { ...this._config, ...DEFAULT_CLOUD_CONFIG, enabled: true };
       }
-      // Apply browser-specific user overrides if saved and valid
       const saved = localStorage.getItem('noora_cloud_sync_config');
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -63,7 +126,7 @@ const CloudSyncModule = {
       console.warn('Could not save cloud sync config:', e);
     }
     if (this._config.enabled && this._config.url && this._config.anonKey) {
-      this._client = null; // reset client to re-connect with new credentials
+      this._client = null;
       this.connect();
     } else {
       this.disconnect();
@@ -92,10 +155,10 @@ const CloudSyncModule = {
         throw new Error('Supabase client SDK not available');
       }
 
-      // Test connectivity by checking server ping / budget_years table
+      // Test connectivity by querying budget_years
       const { data, error } = await this._client.from('budget_years').select('id').limit(1);
       if (error && error.code !== 'PGRST116') {
-        console.warn('Cloud connection warning:', error.message);
+        console.warn('Cloud connection check:', error.message);
       }
 
       this._status = 'connected';
@@ -103,16 +166,10 @@ const CloudSyncModule = {
       this.updateNavbarBadge();
       this.subscribeRealtime();
 
-      // One-time initial background sync on app load (without infinite loop)
+      // Perform initial bidirectional auto-sync on connection
       if (this._config.autoSync && !this._initialSyncDone) {
         this._initialSyncDone = true;
-        this.downloadAllFromCloud().then(() => {
-          if (typeof App !== 'undefined' && App.renderCurrentPage) {
-            App.renderCurrentPage();
-          }
-        }).catch(err => {
-          console.warn('Initial cloud sync download warning:', err);
-        });
+        this.performInitialSync();
       }
     } catch (err) {
       console.error('Cloud connection failed:', err);
@@ -122,7 +179,31 @@ const CloudSyncModule = {
     }
   },
 
-   async syncNow() {
+  async performInitialSync() {
+    try {
+      this._status = 'syncing';
+      this.updateNavbarBadge();
+
+      // 1. Download latest from cloud to ensure local DB has all team data
+      await this.downloadAllFromCloud(() => {}, true);
+
+      // 2. Also ensure any master records in local DB that are not yet in cloud get pushed
+      await this.uploadAllToCloud(() => {}, true);
+
+      this._status = 'connected';
+      this.updateNavbarBadge();
+
+      if (typeof App !== 'undefined' && App.renderCurrentPage) {
+        App.renderCurrentPage();
+      }
+    } catch (err) {
+      console.warn('Initial cloud sync notice:', err.message);
+      this._status = 'connected';
+      this.updateNavbarBadge();
+    }
+  },
+
+  async syncNow() {
     if (!this._client) {
       if (this._config.url && this._config.anonKey) {
         await this.connect();
@@ -136,77 +217,110 @@ const CloudSyncModule = {
     }
     try {
       if (typeof Utils !== 'undefined' && Utils.showToast) {
-        Utils.showToast('🔄 Syncing latest data from Cloud Database...', 'info');
+        Utils.showToast('🔄 Synchronizing data with Cloud Database...', 'info');
       }
+      // Download first, then upload
       await this.downloadAllFromCloud();
+      await this.uploadAllToCloud();
+      
       if (typeof Utils !== 'undefined' && Utils.showToast) {
-        Utils.showToast('✓ Cloud data successfully synchronized!', 'success');
+        Utils.showToast('✓ Cloud data successfully synchronized with all team members!', 'success');
       }
       if (typeof App !== 'undefined' && App.renderCurrentPage) {
         App.renderCurrentPage();
       }
     } catch (err) {
       if (typeof Utils !== 'undefined' && Utils.showToast) {
-        Utils.showToast(`Sync failed: ${err.message}`, 'danger');
+        Utils.showToast(`Sync warning: ${err.message}`, 'danger');
       }
     }
   },
 
+  // ─── Real-Time Single Record Push (Hooked to db.put & db.add) ───
+  pushRecordToCloud(storeName, record) {
+    if (!this._client || !record || this._isSyncing) return;
+    const table = STORE_TABLE_MAP[storeName] || STORE_TABLE_MAP[STORES[storeName]];
+    if (!table) return;
+
+    const queueKey = `${table}:${record.id || 'new'}`;
+    if (this._pushQueue.has(queueKey)) {
+      clearTimeout(this._pushQueue.get(queueKey).timer);
+    }
+
+    const timer = setTimeout(async () => {
+      this._pushQueue.delete(queueKey);
+      try {
+        const sanitized = this._sanitizeRecord(table, record);
+        if (!sanitized) return;
+        const { error } = await this._client.from(table).upsert([sanitized]);
+        if (error) {
+          console.warn(`[CloudSync] Error pushing record to ${table}:`, error.message);
+        } else {
+          // Success dot pulse
+          this._flashSyncIndicator();
+        }
+      } catch (err) {
+        console.warn(`[CloudSync] Exception pushing to ${table}:`, err);
+      }
+    }, 250); // 250ms debounce for rapid edits
+
+    this._pushQueue.set(queueKey, { storeName, record, timer });
+  },
+
+  // ─── Real-Time Batch Push (Hooked to db.putMany) ───
+  async pushManyToCloud(storeName, records) {
+    if (!this._client || !records || records.length === 0 || this._isSyncing) return;
+    const table = STORE_TABLE_MAP[storeName] || STORE_TABLE_MAP[STORES[storeName]];
+    if (!table) return;
+
+    try {
+      const sanitized = this._sanitizeBatch(table, records);
+      if (!sanitized || sanitized.length === 0) return;
+
+      // Chunk in groups of 100 for reliable transport
+      for (let i = 0; i < sanitized.length; i += 100) {
+        const chunk = sanitized.slice(i, i + 100);
+        const { error } = await this._client.from(table).upsert(chunk);
+        if (error) console.warn(`[CloudSync] Error batch pushing to ${table}:`, error.message);
+      }
+      this._flashSyncIndicator();
+    } catch (err) {
+      console.warn(`[CloudSync] Exception batch pushing to ${table}:`, err);
+    }
+  },
+
+  // ─── Real-Time Cloud Deletion ───
   async deleteFromCloud(storeName, id) {
-    if (!this._client) return false;
-    const storeTableMap = {
-      [STORES.entities]: 'entities',
-      [STORES.departments]: 'departments',
-      [STORES.chartOfAccounts]: 'chart_of_accounts',
-      [STORES.budgetYears]: 'budget_years',
-      [STORES.entityDeptConfig]: 'entity_dept_configs',
-      [STORES.payrollPersonnel]: 'payroll_personnel',
-      [STORES.payrollEHA]: 'payroll_eha',
-      [STORES.payrollFixedAsset]: 'payroll_fixed_assets',
-      [STORES.nonPayrollCost]: 'non_payroll_costs',
-      [STORES.employeesMaster]: 'employees_master',
-      [STORES.impTotEvents]: 'imp_tot_events',
-      [STORES.roles]: 'roles',
-      [STORES.users]: 'users'
-    };
-    const table = storeTableMap[storeName];
+    if (!this._client || !id) return false;
+    const table = STORE_TABLE_MAP[storeName] || STORE_TABLE_MAP[STORES[storeName]];
     if (!table) return false;
 
     try {
-      const result = await this._client.from(table).delete().eq('id', id);
-      if (result.error) {
-        console.warn(`Cloud delete error on ${table} for id="${id}":`, result.error.message);
+      const { error } = await this._client.from(table).delete().eq('id', id);
+      if (error) {
+        console.warn(`[CloudSync] Error deleting id="${id}" from ${table}:`, error.message);
         return false;
       }
+      this._flashSyncIndicator();
       return true;
     } catch (err) {
-      console.warn(`Cloud delete exception on ${table} for id="${id}":`, err);
+      console.warn(`[CloudSync] Exception deleting from ${table}:`, err);
       return false;
     }
   },
 
   async deleteEntityFromCloud(entityId) {
-    if (!this._client) return false;
-
-    const tables = {
-      entities: 'entities',
-      entityDeptConfig: 'entity_dept_configs'
-    };
-
+    if (!this._client || !entityId) return false;
     try {
-      const { error: entityError } = await this._client.from(tables.entities).delete().eq('id', entityId);
-      if (entityError) {
-        console.warn(`Cloud delete error on entities for id="${entityId}":`, entityError.message);
-      }
-
-      const { error: configError } = await this._client.from(tables.entityDeptConfig).delete().eq('entity_id', entityId);
-      if (configError) {
-        console.warn(`Cloud delete error on entity_dept_configs for entity_id="${entityId}":`, configError.message);
-      }
-
+      await this._client.from('entities').delete().eq('id', entityId);
+      await this._client.from('entity_dept_configs').delete().eq('entity_id', entityId);
+      await this._client.from('payroll_personnel').delete().eq('entity_id', entityId);
+      await this._client.from('payroll_eha').delete().eq('entity_id', entityId);
+      await this._client.from('payroll_fixed_assets').delete().eq('entity_id', entityId);
+      await this._client.from('non_payroll_costs').delete().eq('entity_id', entityId);
       return true;
     } catch (err) {
-      console.warn(`Cloud delete exception for entity "${entityId}":`, err);
+      console.warn(`[CloudSync] Exception deleting entity ${entityId}:`, err);
       return false;
     }
   },
@@ -214,6 +328,10 @@ const CloudSyncModule = {
   disconnect() {
     this._client = null;
     this._status = 'local';
+    if (this._realtimeSubscription) {
+      try { this._realtimeSubscription.unsubscribe(); } catch(e) {}
+      this._realtimeSubscription = null;
+    }
     this.updateNavbarBadge();
   },
 
@@ -223,7 +341,7 @@ const CloudSyncModule = {
         return { success: false, message: 'Cloud client SDK is loading. Please try again in a moment.' };
       }
       const testClient = window.supabase.createClient(url, anonKey);
-      const { data, error } = await testClient.from('budget_years').select('count', { count: 'exact', head: true });
+      const { data, error } = await testClient.from('budget_years').select('id').limit(1);
       if (error && !error.message.includes('relation') && !error.message.includes('does not exist')) {
         return { success: false, message: error.message };
       }
@@ -233,73 +351,91 @@ const CloudSyncModule = {
     }
   },
 
-  // ─── Real-Time Subscriptions ───
+  // ─── Real-Time WebSocket Subscriptions ───
   subscribeRealtime() {
     if (!this._client || typeof this._client.channel !== 'function') return;
+    if (this._realtimeSubscription) return;
 
     try {
-      const channel = this._client.channel('public:all');
-      channel
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'budget_lock_status' }, async (payload) => {
-          console.log('Realtime budget lock change:', payload);
-          if (typeof Auth !== 'undefined' && Auth.invalidateLockCache) {
+      const channel = this._client.channel('noora_cloud_sync_realtime');
+
+      // Listen to changes across all tables
+      const tablesToListen = [
+        'budget_years', 'entities', 'departments', 'entity_dept_configs',
+        'payroll_personnel', 'payroll_eha', 'payroll_fixed_assets',
+        'non_payroll_costs', 'employees_master', 'imp_tot_events', 'budget_lock_status'
+      ];
+
+      tablesToListen.forEach(table => {
+        channel.on('postgres_changes', { event: '*', schema: 'public', table }, async (payload) => {
+          console.log(`[Realtime] Remote change detected on table "${table}":`, payload.eventType);
+
+          // Find matching local store
+          const storeName = Object.keys(STORE_TABLE_MAP).find(k => STORE_TABLE_MAP[k] === table);
+          if (storeName && typeof db !== 'undefined' && STORES[storeName]) {
+            const actualStore = STORES[storeName];
+            if (payload.eventType === 'DELETE' && payload.old && payload.old.id) {
+              await db.delete(actualStore, payload.old.id);
+            } else if ((payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') && payload.new) {
+              const camel = CloudSyncModule._toCamelCase(payload.new);
+              camel._fromCloud = true;
+              await db.put(actualStore, camel);
+            }
+          }
+
+          if (table === 'budget_lock_status' && typeof Auth !== 'undefined' && Auth.invalidateLockCache) {
             Auth.invalidateLockCache();
           }
+
+          // Debounced re-render of active view
           if (typeof App !== 'undefined' && App.renderActiveModule) {
             App.renderActiveModule();
           }
-        })
-        .subscribe();
+        });
+      });
+
+      this._realtimeSubscription = channel.subscribe();
     } catch (e) {
       console.warn('Realtime subscription not active:', e);
     }
   },
 
-  // ─── Cloud Sync Operations ───
-  async uploadAllToCloud(progressCb = () => {}) {
-    if (!this._client) throw new Error('Cloud client is not connected');
+  // ─── Full Store Upload & Download ───
+  async uploadAllToCloud(progressCb = () => {}, silent = false) {
+    if (!this._client) return { skipped: true };
     if (this._isSyncing) return { skipped: true };
 
     this._isSyncing = true;
-    this._status = 'syncing';
-    this.updateNavbarBadge();
-
-    const storeTableMap = {
-      [STORES.entities]: 'entities',
-      [STORES.departments]: 'departments',
-      [STORES.chartOfAccounts]: 'chart_of_accounts',
-      [STORES.budgetYears]: 'budget_years',
-      [STORES.entityDeptConfig]: 'entity_dept_configs',
-      [STORES.payrollPersonnel]: 'payroll_personnel',
-      [STORES.payrollEHA]: 'payroll_eha',
-      [STORES.payrollFixedAsset]: 'payroll_fixed_assets',
-      [STORES.nonPayrollCost]: 'non_payroll_costs',
-      [STORES.employeesMaster]: 'employees_master',
-      [STORES.impTotEvents]: 'imp_tot_events',
-      [STORES.roles]: 'roles',
-      [STORES.users]: 'users'
-    };
+    if (!silent) {
+      this._status = 'syncing';
+      this.updateNavbarBadge();
+    }
 
     try {
-      const stores = Object.keys(storeTableMap);
+      const stores = Object.keys(STORE_TABLE_MAP);
       for (let i = 0; i < stores.length; i++) {
-        const store = stores[i];
-        const table = storeTableMap[store];
+        const storeKey = stores[i];
+        const storeName = STORES[storeKey] || storeKey;
+        const table = STORE_TABLE_MAP[storeKey];
         progressCb(`Uploading ${table} (${i + 1}/${stores.length})...`);
-        const records = await db.getAll(store);
+        
+        const records = await db.getAll(storeName);
         if (records && records.length > 0) {
-          const formatted = records.map(r => this._toSnakeCase(r));
-          const { error } = await this._client.from(table).upsert(formatted);
-          if (error) console.warn(`Error uploading table ${table}:`, error.message);
+          const sanitized = this._sanitizeBatch(table, records);
+          if (sanitized && sanitized.length > 0) {
+            for (let j = 0; j < sanitized.length; j += 100) {
+              const chunk = sanitized.slice(j, j + 100);
+              const { error } = await this._client.from(table).upsert(chunk);
+              if (error) console.warn(`[CloudSync] Error uploading table ${table}:`, error.message);
+            }
+          }
         }
       }
 
       this._config.lastSyncTimestamp = new Date().toISOString();
-      try {
-        localStorage.setItem('noora_cloud_sync_config', JSON.stringify(this._config));
-      } catch (e) {}
+      try { localStorage.setItem('noora_cloud_sync_config', JSON.stringify(this._config)); } catch (e) {}
       this._status = 'connected';
-      progressCb('Upload to cloud completed successfully!');
+      progressCb('Upload completed successfully!');
       return { success: true };
     } catch (err) {
       this._status = 'error';
@@ -311,51 +447,38 @@ const CloudSyncModule = {
     }
   },
 
-  async downloadAllFromCloud(progressCb = () => {}) {
-    if (!this._client) throw new Error('Cloud client is not connected');
+  async downloadAllFromCloud(progressCb = () => {}, silent = false) {
+    if (!this._client) return { skipped: true };
     if (this._isSyncing) return { skipped: true };
 
     this._isSyncing = true;
-    this._status = 'syncing';
-    this.updateNavbarBadge();
-
-    const storeTableMap = {
-      [STORES.entities]: 'entities',
-      [STORES.departments]: 'departments',
-      [STORES.chartOfAccounts]: 'chart_of_accounts',
-      [STORES.budgetYears]: 'budget_years',
-      [STORES.entityDeptConfig]: 'entity_dept_configs',
-      [STORES.payrollPersonnel]: 'payroll_personnel',
-      [STORES.payrollEHA]: 'payroll_eha',
-      [STORES.payrollFixedAsset]: 'payroll_fixed_assets',
-      [STORES.nonPayrollCost]: 'non_payroll_costs',
-      [STORES.employeesMaster]: 'employees_master',
-      [STORES.impTotEvents]: 'imp_tot_events',
-      [STORES.roles]: 'roles',
-      [STORES.users]: 'users'
-    };
+    if (!silent) {
+      this._status = 'syncing';
+      this.updateNavbarBadge();
+    }
 
     try {
-      const stores = Object.keys(storeTableMap);
+      const stores = Object.keys(STORE_TABLE_MAP);
       for (let i = 0; i < stores.length; i++) {
-        const store = stores[i];
-        const table = storeTableMap[store];
+        const storeKey = stores[i];
+        const storeName = STORES[storeKey] || storeKey;
+        const table = STORE_TABLE_MAP[storeKey];
         progressCb(`Downloading ${table} (${i + 1}/${stores.length})...`);
+
         const { data, error } = await this._client.from(table).select('*');
         if (!error && data && data.length > 0) {
-          const camelCased = data.map(r => this._toCamelCase(r));
-          for (const item of camelCased) {
-            await db.put(store, item);
+          for (const raw of data) {
+            const camel = this._toCamelCase(raw);
+            camel._fromCloud = true; // prevent bounce-back push
+            await db.put(storeName, camel);
           }
         }
       }
 
       this._config.lastSyncTimestamp = new Date().toISOString();
-      try {
-        localStorage.setItem('noora_cloud_sync_config', JSON.stringify(this._config));
-      } catch (e) {}
+      try { localStorage.setItem('noora_cloud_sync_config', JSON.stringify(this._config)); } catch (e) {}
       this._status = 'connected';
-      progressCb('Download from cloud completed successfully!');
+      progressCb('Download completed successfully!');
       return { success: true };
     } catch (err) {
       this._status = 'error';
@@ -365,6 +488,61 @@ const CloudSyncModule = {
       this._isSyncing = false;
       this.updateNavbarBadge();
     }
+  },
+
+  // ─── Schema Sanitizers & Key Normalizers ───
+  _sanitizeRecord(table, record) {
+    if (!record || typeof record !== 'object') return null;
+    const allowed = TABLE_COLUMNS[table];
+    const snake = this._toSnakeCase(record);
+    const sanitized = {};
+
+    if (allowed) {
+      for (const col of allowed) {
+        if (snake[col] !== undefined && snake[col] !== null) {
+          sanitized[col] = snake[col];
+        }
+      }
+    } else {
+      Object.assign(sanitized, snake);
+    }
+
+    // Ensure valid id
+    if (sanitized.id === undefined || sanitized.id === null || sanitized.id === '') {
+      if (record.id !== undefined && record.id !== null && record.id !== '') {
+        sanitized.id = record.id;
+      }
+    }
+
+    return sanitized;
+  },
+
+  _sanitizeBatch(table, records) {
+    if (!records || !Array.isArray(records)) return [];
+    const allowed = TABLE_COLUMNS[table] || [];
+
+    return records.map((record, index) => {
+      const snake = this._toSnakeCase(record);
+      const sanitized = {};
+      
+      if (allowed.length > 0) {
+        for (const col of allowed) {
+          sanitized[col] = (snake[col] !== undefined && snake[col] !== null) ? snake[col] : null;
+        }
+      } else {
+        Object.assign(sanitized, snake);
+      }
+
+      if (sanitized.id === null || sanitized.id === undefined || sanitized.id === '') {
+        if (record.id) {
+          sanitized.id = record.id;
+        } else if (['chart_of_accounts', 'entity_dept_configs', 'payroll_personnel', 'payroll_eha', 'payroll_fixed_assets', 'non_payroll_costs', 'employees_master', 'imp_tot_events', 'budget_lock_status'].includes(table)) {
+          sanitized.id = index + 1;
+        }
+      }
+
+      return sanitized;
+    });
   },
 
   // ─── Case Conversion Utilities ───
@@ -372,6 +550,7 @@ const CloudSyncModule = {
     if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
     const res = {};
     for (const [k, v] of Object.entries(obj)) {
+      if (k.startsWith('_')) continue; // Skip internal flags like _fromCloud
       const snakeKey = k.replace(/([A-Z])/g, '_$1').toLowerCase();
       res[snakeKey] = v;
     }
@@ -386,6 +565,14 @@ const CloudSyncModule = {
       res[camelKey] = v;
     }
     return res;
+  },
+
+  _flashSyncIndicator() {
+    const dot = document.querySelector('.cloud-blip-dot');
+    if (dot) {
+      dot.classList.add('syncing');
+      setTimeout(() => dot.classList.remove('syncing'), 800);
+    }
   },
 
   // ─── Navbar Status Pill Component ───
@@ -414,10 +601,10 @@ const CloudSyncModule = {
       tooltip = 'Cloud Database: Connecting...';
     } else if (this._status === 'connected') {
       dotClass = 'connected';
-      tooltip = 'Cloud Database: Connected & Synced (Supabase)';
+      tooltip = `Cloud Database: Connected & Live Synced (Supabase)`;
     } else if (this._status === 'syncing') {
       dotClass = 'syncing';
-      tooltip = 'Cloud Database: Synchronizing...';
+      tooltip = 'Cloud Database: Synchronizing with team...';
     } else if (this._status === 'error') {
       dotClass = 'error';
       tooltip = `Cloud Database: Offline (${this._lastError || 'Disconnected'})`;
