@@ -1,5 +1,6 @@
 // ============================================================
-// NOORA HEALTH BUDGET APP ÃƒÂ¢Ã‚â‚¬Ã‚â€ Budget Entry Module
+// ============================================================
+// NOORA HEALTH BUDGET APP — Budget Entry Module
 // Multi-tab grid entry for Payroll (Personnel, EHA, Fixed Assets)
 // and Non-Payroll costs with 5-dimensional tagging
 // ============================================================
