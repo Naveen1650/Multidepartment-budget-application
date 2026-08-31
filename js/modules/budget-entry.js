@@ -741,7 +741,7 @@ const BudgetEntryModule = {
       <tr class="total-row">
         <td class="sticky-col-status font-bold">TOTAL:</td>
         <td class="sticky-col-emp font-bold">${records.length} Employees</td>
-        <td colspan="9"></td>
+        <td colspan="10"></td>
         <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatNumber(totalSalaryCost)}</td>
         ${SEED_DATA.months.map((m, idx) => `
           <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
