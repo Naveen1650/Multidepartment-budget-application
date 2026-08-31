@@ -826,7 +826,24 @@ class BudgetDB {
       const all = await this.getAll(STORES.entityDeptConfig);
       const sYear = String(yearId);
       const sEntity = String(entityId);
-      return all.filter(c => (String(c.yearId) === sYear || String(c.year_id) === sYear) && (String(c.entityId) === sEntity || String(c.entity_id) === sEntity));
+      const matched = all.filter(c => (String(c.yearId) === sYear || String(c.year_id) === sYear) && (String(c.entityId) === sEntity || String(c.entity_id) === sEntity));
+      
+      // Deduplicate by deptId: if any record is explicitly deactivated (isActive: false / is_active: false), inactive wins!
+      const map = new Map();
+      matched.forEach(c => {
+        const dId = c.deptId || c.dept_id;
+        if (dId) {
+          const isAct = (c.isActive !== false && c.is_active !== false);
+          if (map.has(dId)) {
+            const existing = map.get(dId);
+            const combinedIsAct = existing.isActive && isAct;
+            map.set(dId, { ...existing, ...c, deptId: dId, isActive: combinedIsAct, is_active: combinedIsAct });
+          } else {
+            map.set(dId, { ...c, deptId: dId, isActive: isAct, is_active: isAct });
+          }
+        }
+      });
+      return Array.from(map.values());
     } catch (e) {
       console.warn('Error in getEntityDeptConfigForYear:', e);
       return [];

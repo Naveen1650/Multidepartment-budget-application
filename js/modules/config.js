@@ -1195,7 +1195,18 @@ const ConfigModule = {
     const configs = await db.getAll(STORES.entityDeptConfig);
 
     const configMap = {};
-    configs.forEach(c => { configMap[`${c.yearId}_${c.entityId}_${c.deptId}`] = c.isActive; });
+    configs.forEach(c => {
+      const yId = String(c.yearId || c.year_id);
+      const entId = String(c.entityId || c.entity_id);
+      const dId = String(c.deptId || c.dept_id);
+      const isAct = c.isActive !== false && c.is_active !== false;
+      const key = `${yId}_${entId}_${dId}`;
+      if (configMap[key] !== undefined) {
+        configMap[key] = configMap[key] && isAct;
+      } else {
+        configMap[key] = isAct;
+      }
+    });
 
     let activeEntity = entities[0]?.id || '';
 
