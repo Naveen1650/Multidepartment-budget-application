@@ -18,15 +18,17 @@ const ReportsModule = {
   },
 
   async render(container) {
-    const years = await db.getAll(STORES.budgetYears);
-    const entities = await db.getAll(STORES.entities);
-    const departments = Utils.sortDepartments(await db.getAll(STORES.departments));
+    const years = (await db.getAll(STORES.budgetYears)) || [];
+    const entities = (await db.getAll(STORES.entities)) || [];
+    const departments = Utils.sortDepartments((await db.getAll(STORES.departments)) || []);
 
-    const yearId = this._selectedYear || App.selectedYear || years[0]?.id || '2026';
+    const yearId = this._selectedYear || (typeof App !== 'undefined' ? App.selectedYear : null) || years[0]?.id || '2026';
     const activeYearObj = years.find(y => String(y.id) === String(yearId) || String(y.year) === String(yearId)) || years[0] || { id: '2026', year: 2026 };
     activeYearObj.conversionRates = Utils.getConversionRates(activeYearObj);
     this._selectedYear = activeYearObj.id;
-    App.selectedYear = activeYearObj.id;
+    if (typeof App !== 'undefined') {
+      App.selectedYear = activeYearObj.id;
+    }
 
     // Sync global selector if present in DOM
     const globalYearSelect = Utils.$('#globalYearSelect');
@@ -203,9 +205,9 @@ const ReportsModule = {
     const lines = coa.map(account => {
       let linkedSource = '';
       let sourceIcon = '📑';
-      const accGlClean = cleanStr(account.glDescription);
-      const accLedgerClean = cleanStr(account.ledgerCode);
-      const accParentClean = cleanStr(account.parentAccount);
+      const accGlClean = Utils.cleanStr(account.glDescription);
+      const accLedgerClean = Utils.cleanStr(account.ledgerCode);
+      const accParentClean = Utils.cleanStr(account.parentAccount);
 
       let rollup = { monthlyLocal: Array(12).fill(0), monthlyUSD: Array(12).fill(0), totalLocal: 0, totalUSD: 0 };
 
@@ -244,9 +246,9 @@ const ReportsModule = {
         sourceIcon = cMeta.icon;
 
         const matchingOther = allNonPayroll.filter((o, idx) => {
-          const oLedger = cleanStr(o.ledgerCode);
-          const oGl = cleanStr(o.glDescription);
-          const oParent = cleanStr(o.parentAccount);
+          const oLedger = Utils.cleanStr(o.ledgerCode);
+          const oGl = Utils.cleanStr(o.glDescription);
+          const oParent = Utils.cleanStr(o.parentAccount);
 
           const isMatch = (oLedger && accLedgerClean && oLedger === accLedgerClean) ||
                           (oGl && accGlClean && (oGl === accGlClean || oGl.includes(accGlClean) || accGlClean.includes(oGl))) ||
@@ -959,8 +961,8 @@ const ReportsModule = {
   async renderDeptSummaryReport(container, yearId, entities, departments) {
     let selectedEntityId = ReportsModule.selectedEntityId || App.selectedEntity || entities[0]?.id || '';
     let selectedDeptId = ReportsModule.selectedDeptId || App.selectedDept || departments[0]?.id || '';
-    const years = await db.getAll(STORES.budgetYears);
-    const activeYearObj = years.find(y => y.id === yearId) || { year: 2026 };
+    const years = (await db.getAll(STORES.budgetYears)) || [];
+    const activeYearObj = years.find(y => String(y.id) === String(yearId) || String(y.year) === String(yearId)) || years[0] || { id: '2026', year: 2026 };
     activeYearObj.conversionRates = Utils.getConversionRates(activeYearObj);
     const budgetYear = activeYearObj.year || 2026;
 
@@ -1036,9 +1038,9 @@ const ReportsModule = {
         let basis = '';
         let remarks = savedRemarksMap[account.ledgerCode] || savedRemarksMap[account.glDescription] || '';
 
-        const accGlClean = cleanStr(account.glDescription);
-        const accLedgerClean = cleanStr(account.ledgerCode);
-        const accParentClean = cleanStr(account.parentAccount);
+        const accGlClean = Utils.cleanStr(account.glDescription);
+        const accLedgerClean = Utils.cleanStr(account.ledgerCode);
+        const accParentClean = Utils.cleanStr(account.parentAccount);
 
         // 1. Salaries and Wages
         if (accGlClean.includes('salariesandwages') || accLedgerClean.startsWith('911') || accParentClean.includes('salariesandwages')) {
@@ -1091,9 +1093,9 @@ const ReportsModule = {
           sourceIcon = cMeta.icon;
 
           const matchingOther = otherCostRows.filter((o, idx) => {
-            const oLedger = cleanStr(o.ledgerCode);
-            const oGl = cleanStr(o.glDescription);
-            const oParent = cleanStr(o.parentAccount);
+            const oLedger = Utils.cleanStr(o.ledgerCode);
+            const oGl = Utils.cleanStr(o.glDescription);
+            const oParent = Utils.cleanStr(o.parentAccount);
 
             const isMatch = (oLedger && accLedgerClean && oLedger === accLedgerClean) ||
                             (oGl && accGlClean && (oGl === accGlClean || oGl.includes(accGlClean) || accGlClean.includes(oGl))) ||
@@ -1159,7 +1161,7 @@ const ReportsModule = {
             other: { label: 'Other Operating Costs', icon: '📑' }
           };
           const cMeta = catLabels[catKey] || catLabels.other;
-          const priorCost = priorMap[cleanStr(o.ledgerCode)] || priorMap[cleanStr(o.glDescription)] || 0;
+          const priorCost = priorMap[Utils.cleanStr(o.ledgerCode)] || priorMap[Utils.cleanStr(o.glDescription)] || 0;
 
           lines.push({
             subGroup: o.subGroup || 'Direct Cost',

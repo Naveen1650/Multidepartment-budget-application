@@ -2503,9 +2503,9 @@ const ExcelIOModule = {
       }
 
       let linkedSource = '';
-      const accGlClean = cleanStr(account.glDescription);
-      const accLedgerClean = cleanStr(account.ledgerCode);
-      const accParentClean = cleanStr(account.parentAccount);
+      const accGlClean = Utils.cleanStr(account.glDescription);
+      const accLedgerClean = Utils.cleanStr(account.ledgerCode);
+      const accParentClean = Utils.cleanStr(account.parentAccount);
 
       let rollup = { monthlyLocal: Array(12).fill(0), monthlyUSD: Array(12).fill(0), totalLocal: 0, totalUSD: 0 };
 
@@ -2527,9 +2527,9 @@ const ExcelIOModule = {
       } else {
         linkedSource = 'Other Costs';
         const matchingOther = allNonPayroll.filter((o, idx) => {
-          const oLedger = cleanStr(o.ledgerCode);
-          const oGl = cleanStr(o.glDescription);
-          const oParent = cleanStr(o.parentAccount);
+          const oLedger = Utils.cleanStr(o.ledgerCode);
+          const oGl = Utils.cleanStr(o.glDescription);
+          const oParent = Utils.cleanStr(o.parentAccount);
 
           const isMatch = (oLedger && accLedgerClean && oLedger === accLedgerClean) ||
                           (oGl && accGlClean && (oGl === accGlClean || oGl.includes(accGlClean) || accGlClean.includes(oGl))) ||
@@ -2873,8 +2873,8 @@ const ExcelIOModule = {
 
         let rollup = { monthlyValues: Array(12).fill(0), totalCY: 0 };
         let linkedSource = '';
-        const accGlClean = cleanStr(account.glDescription);
-        const accLedgerClean = cleanStr(account.ledgerCode);
+        const accGlClean = Utils.cleanStr(account.glDescription);
+        const accLedgerClean = Utils.cleanStr(account.ledgerCode);
 
         if (accGlClean.includes('salariesandwages') || accLedgerClean.startsWith('911')) {
           linkedSource = 'Payroll — Salaries & Wages';
@@ -2893,7 +2893,7 @@ const ExcelIOModule = {
           rollup = sumMonths(fixedAssetRows);
         } else {
           linkedSource = 'Other Costs';
-          const matchingOther = otherCostRows.filter(o => cleanStr(o.ledgerCode) === accLedgerClean || cleanStr(o.glDescription) === accGlClean);
+          const matchingOther = otherCostRows.filter(o => Utils.cleanStr(o.ledgerCode) === accLedgerClean || Utils.cleanStr(o.glDescription) === accGlClean);
           rollup = sumMonths(matchingOther);
         }
 
@@ -2976,8 +2976,8 @@ const ExcelIOModule = {
           const priorCosts = await db.getPriorPeriodCosts(yearId, e.id, d.id);
           const priorMap = {};
           priorCosts.forEach(p => {
-            if (p.ledgerCode) priorMap[cleanStr(p.ledgerCode)] = p.priorCost || 0;
-            if (p.glDescription) priorMap[cleanStr(p.glDescription)] = p.priorCost || 0;
+            if (p.ledgerCode) priorMap[Utils.cleanStr(p.ledgerCode)] = p.priorCost || 0;
+            if (p.glDescription) priorMap[Utils.cleanStr(p.glDescription)] = p.priorCost || 0;
           });
 
           const sumMonths = (dataRows) => {
@@ -3018,9 +3018,9 @@ const ExcelIOModule = {
             let basis = savedBasisMap[account.ledgerCode] || savedBasisMap[account.glDescription] || '';
             let remarks = savedRemarksMap[account.ledgerCode] || savedRemarksMap[account.glDescription] || '';
 
-            const accGlClean = cleanStr(account.glDescription);
-            const accLedgerClean = cleanStr(account.ledgerCode);
-            const accParentClean = cleanStr(account.parentAccount);
+            const accGlClean = Utils.cleanStr(account.glDescription);
+            const accLedgerClean = Utils.cleanStr(account.ledgerCode);
+            const accParentClean = Utils.cleanStr(account.parentAccount);
 
             if (accGlClean.includes('salariesandwages') || accLedgerClean.startsWith('911') || accParentClean.includes('salariesandwages')) {
               linkedSource = 'Payroll — Salaries & Wages';
@@ -3039,7 +3039,7 @@ const ExcelIOModule = {
               rollup = sumMonths(fixedAssetRows);
             } else {
               linkedSource = 'Other Costs';
-              const matchingOther = otherCostRows.filter(o => cleanStr(o.ledgerCode) === accLedgerClean || cleanStr(o.glDescription) === accGlClean);
+              const matchingOther = otherCostRows.filter(o => Utils.cleanStr(o.ledgerCode) === accLedgerClean || Utils.cleanStr(o.glDescription) === accGlClean);
               rollup = sumMonths(matchingOther);
             }
 

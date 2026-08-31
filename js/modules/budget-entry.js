@@ -19,9 +19,9 @@ const BudgetEntryModule = {
   _actualsMonth: 'Oct',
 
   async render(container) {
-    const years = await db.getAll(STORES.budgetYears);
-    const allEntities = await db.getAll(STORES.entities);
-    const allDepartments = await db.getAll(STORES.departments);
+    const years = (await db.getAll(STORES.budgetYears)) || [];
+    const allEntities = (await db.getAll(STORES.entities)) || [];
+    const allDepartments = (await db.getAll(STORES.departments)) || [];
 
     if (allEntities.length === 0) {
       container.innerHTML = `<div class="empty-state"><h3>No Entities Available</h3></div>`;
@@ -4178,9 +4178,9 @@ const BudgetEntryModule = {
         sourceIcon = cMeta.icon;
 
         const matchingOther = otherCostRows.filter((o, idx) => {
-          const oLedger = cleanStr(o.ledgerCode);
-          const oGl = cleanStr(o.glDescription);
-          const oParent = cleanStr(o.parentAccount);
+          const oLedger = Utils.cleanStr(o.ledgerCode);
+          const oGl = Utils.cleanStr(o.glDescription);
+          const oParent = Utils.cleanStr(o.parentAccount);
 
           const isMatch = (oLedger && accLedgerClean && oLedger === accLedgerClean) ||
                           (oGl && accGlClean && (oGl === accGlClean || oGl.includes(accGlClean) || accGlClean.includes(oGl))) ||
@@ -4255,12 +4255,12 @@ const BudgetEntryModule = {
     const priorCosts = await db.getPriorPeriodCosts(yearId, entity.id, dept.id);
     const priorMap = {};
     priorCosts.forEach(p => {
-      if (p.ledgerCode) priorMap[cleanStr(p.ledgerCode)] = p.priorCost || 0;
-      if (p.glDescription) priorMap[cleanStr(p.glDescription)] = p.priorCost || 0;
+      if (p.ledgerCode) priorMap[Utils.cleanStr(p.ledgerCode)] = p.priorCost || 0;
+      if (p.glDescription) priorMap[Utils.cleanStr(p.glDescription)] = p.priorCost || 0;
     });
 
     lines.forEach(r => {
-      r.priorCost = priorMap[cleanStr(r.ledgerCode)] || priorMap[cleanStr(r.glDescription)] || 0;
+      r.priorCost = priorMap[Utils.cleanStr(r.ledgerCode)] || priorMap[Utils.cleanStr(r.glDescription)] || 0;
     });
 
     const remarksSummary = await db.getDeptRemarksSummary(yearId, entity.id, dept.id);
