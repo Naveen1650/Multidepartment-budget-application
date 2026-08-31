@@ -512,20 +512,29 @@ class BudgetDB {
       }
     }
 
-    // Always ensure budgetYears has at least one year (critical for dashboard)
+    // Always ensure budgetYears has valid years with exchange rates (critical for dashboard & reports)
     if (this.db.objectStoreNames.contains(STORES.budgetYears)) {
-      const yearCount = await this.count(STORES.budgetYears);
-      if (yearCount === 0) {
+      const defaultRates = { INR: 83.5, BDT: 117.0, IDR: 16200, NPR: 133.5, USD: 1.0 };
+      const allYears = await this.getAll(STORES.budgetYears);
+      if (allYears.length === 0) {
         const defaultYear = {
           id: '2026',
           year: 2026,
           label: 'CY-2026',
           status: 'active',
-          conversionRates: { INR: 83.5, BDT: 117.0, IDR: 16200, NPR: 133.5, USD: 1.0 },
+          conversionRates: defaultRates,
           createdAt: new Date().toISOString()
         };
         try { await this.put(STORES.budgetYears, defaultYear); } catch (e) {}
         console.log('[DB] Seeded default CY-2026 budget year.');
+      } else {
+        // Repair any existing budget year missing conversionRates
+        for (const y of allYears) {
+          if (!y.conversionRates || Object.keys(y.conversionRates).length === 0) {
+            y.conversionRates = defaultRates;
+            try { await this.put(STORES.budgetYears, y); } catch (e) {}
+          }
+        }
       }
     }
 

@@ -72,26 +72,45 @@ const DashboardModule = {
       console.warn('Could not parse stored country order', e);
     }
 
-    // ── BULK FETCH: 4 DB calls total (instead of entities × depts × 4) ──
-    let allPayroll = [], allEha = [], allFixedAssets = [], allNonPayroll = [];
+    // ── BULK FETCH: 5 DB calls total (instead of entities × depts × 5) ──
+    let allPayroll = [], allEha = [], allFixedAssets = [], allNonPayroll = [], allImpTot = [];
     try {
-      [allPayroll, allEha, allFixedAssets, allNonPayroll] = await Promise.all([
+      [allPayroll, allEha, allFixedAssets, allNonPayroll, allImpTot] = await Promise.all([
         db.getAll(STORES.payrollPersonnel),
         db.getAll(STORES.payrollEHA),
         db.getAll(STORES.payrollFixedAsset),
-        db.getAll(STORES.nonPayrollCost)
+        db.getAll(STORES.nonPayrollCost),
+        db.getAll(STORES.impTotEvents)
       ]);
     } catch (e) {
       console.warn('[Dashboard] Bulk fetch error:', e);
     }
 
+    // Default conversion rates fallback
+    const defaultConversionRates = { INR: 83.5, BDT: 117.0, IDR: 16200, NPR: 133.5, USD: 1.0 };
+    const conversionRates = (activeYearObj && activeYearObj.conversionRates && Object.keys(activeYearObj.conversionRates).length > 0)
+      ? activeYearObj.conversionRates
+      : defaultConversionRates;
+
+    // Helper: calculate total for a budget record
+    const getItemCost = (item) => {
+      if (!item) return 0;
+      const cy = Utils.parseNumber(item.totalCY !== undefined ? item.totalCY : item.totalCy);
+      if (cy > 0) return cy;
+      const mValues = item.monthlyValues || item.monthly_values;
+      if (mValues && typeof Utils !== 'undefined' && Utils.sumMonthlyValues) {
+        return Utils.sumMonthlyValues(mValues);
+      }
+      return 0;
+    };
+
     // Helper: filter records for yearId + entityId + deptId
     const filterData = (arr, eId, dId) =>
-      arr.filter(r => String(r.yearId) === String(yearId) && r.entityId === eId && r.deptId === dId);
+      arr.filter(r => (String(r.yearId) === String(yearId) || String(r.year_id) === String(yearId)) && r.entityId === eId && r.deptId === dId);
 
     // Calculate budget metrics per entity — pure synchronous after bulk fetch
     const entityMetrics = orderedEntities.map(e => {
-      const rate = activeYearObj?.conversionRates?.[e.currency] || 1.0;
+      const rate = conversionRates[e.currency] || 1.0;
       let totalLocal = 0;
       let totalLineCount = 0;
       let budgetedDeptsCount = 0;
@@ -101,14 +120,16 @@ const DashboardModule = {
         const eha         = filterData(allEha,         e.id, d.id);
         const fixedAssets = filterData(allFixedAssets, e.id, d.id);
         const nonPayroll  = filterData(allNonPayroll,  e.id, d.id);
+        const impTot      = filterData(allImpTot,      e.id, d.id);
 
         let deptCost = 0;
-        payroll.forEach(p     => { deptCost += Utils.parseNumber(p.totalCY); });
-        eha.forEach(p         => { deptCost += Utils.parseNumber(p.totalCY); });
-        fixedAssets.forEach(f => { deptCost += Utils.parseNumber(f.totalCY); });
-        nonPayroll.forEach(p  => { deptCost += Utils.parseNumber(p.totalCY); });
+        payroll.forEach(p     => { deptCost += getItemCost(p); });
+        eha.forEach(p         => { deptCost += getItemCost(p); });
+        fixedAssets.forEach(f => { deptCost += getItemCost(f); });
+        nonPayroll.forEach(p  => { deptCost += getItemCost(p); });
+        impTot.forEach(p      => { deptCost += getItemCost(p); });
 
-        const lineCount = payroll.length + eha.length + fixedAssets.length + nonPayroll.length;
+        const lineCount = payroll.length + eha.length + fixedAssets.length + nonPayroll.length + impTot.length;
         if (deptCost > 0 || lineCount > 0) budgetedDeptsCount++;
 
         totalLocal     += deptCost;

@@ -462,14 +462,17 @@ const Utils = {
 
   // ─── Department Name with Prefix ───
 
-  getDeptName(dept, prefix) {
+  getDeptName(dept, prefix = '') {
     if (!dept) return '';
+    const num = dept.number ? `${dept.number}. ` : '';
+    if (!dept.codeTemplate) {
+      return `${num}${dept.name || dept.id || ''}`;
+    }
     if (dept.scope === 'gl' || dept.scope === 'dp-gp' || dept.scope === 'general') {
-      const num = dept.number ? `${dept.number}. ` : '';
       return `${num}${dept.codeTemplate}`;
     }
-    const code = dept.codeTemplate.replace('{CC}', prefix);
-    const num = dept.number ? `${dept.number}. ` : '';
+    const p = prefix || '';
+    const code = dept.codeTemplate.replace('{CC}', p);
     return `${num}${code}`;
   },
 
@@ -480,7 +483,8 @@ const Utils = {
     if (dept.codeTemplate) {
       return dept.codeTemplate.replace('{CC}', p);
     }
-    if (dept.id) return dept.id.toUpperCase();
+    if (dept.name) return dept.name;
+    if (dept.id) return String(dept.id).toUpperCase();
     return String(dept);
   },
 

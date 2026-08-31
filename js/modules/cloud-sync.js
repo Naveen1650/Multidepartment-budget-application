@@ -559,6 +559,8 @@ const CloudSyncModule = {
       sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
     } else if (table === 'non_payroll_costs') {
       sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
+    } else if (table === 'imp_tot_events') {
+      sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
     } else if (table === 'entity_dept_configs') {
       sanitized.is_active = sanitized.is_active !== false;
     } else if (table === 'budget_lock_status') {
@@ -569,6 +571,15 @@ const CloudSyncModule = {
     } else if (table === 'users') {
       sanitized.email = sanitized.email || 'user@noorahealth.org';
       sanitized.name = sanitized.name || 'User';
+    }
+
+    // Ensure total_cy is computed if missing
+    if (sanitized.total_cy === undefined || sanitized.total_cy === null) {
+      if (record.totalCY !== undefined && record.totalCY !== null) {
+        sanitized.total_cy = Number(record.totalCY) || 0;
+      } else if (sanitized.monthly_values && typeof Utils !== 'undefined' && Utils.sumMonthlyValues) {
+        sanitized.total_cy = Utils.sumMonthlyValues(sanitized.monthly_values);
+      }
     }
 
     if (SERIAL_TABLES.includes(table)) {
@@ -612,6 +623,8 @@ const CloudSyncModule = {
         sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
       } else if (table === 'non_payroll_costs') {
         sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
+      } else if (table === 'imp_tot_events') {
+        sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
       } else if (table === 'entity_dept_configs') {
         sanitized.is_active = sanitized.is_active !== false;
       } else if (table === 'budget_lock_status') {
@@ -622,6 +635,15 @@ const CloudSyncModule = {
       } else if (table === 'users') {
         sanitized.email = sanitized.email || 'user@noorahealth.org';
         sanitized.name = sanitized.name || 'User';
+      }
+
+      // Ensure total_cy is computed if missing
+      if (sanitized.total_cy === undefined || sanitized.total_cy === null) {
+        if (record.totalCY !== undefined && record.totalCY !== null) {
+          sanitized.total_cy = Number(record.totalCY) || 0;
+        } else if (sanitized.monthly_values && typeof Utils !== 'undefined' && Utils.sumMonthlyValues) {
+          sanitized.total_cy = Utils.sumMonthlyValues(sanitized.monthly_values);
+        }
       }
 
       if (isSerial) {
@@ -637,21 +659,53 @@ const CloudSyncModule = {
   // ─── Case Conversion Utilities ───
   _toSnakeCase(obj) {
     if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+    const specialToSnake = {
+      totalCY: 'total_cy',
+      totalCy: 'total_cy',
+      monthlyCTC: 'monthly_ctc',
+      monthlyCtc: 'monthly_ctc',
+      currentMonthlyCTC: 'current_monthly_ctc',
+      currentMonthlyCtc: 'current_monthly_ctc',
+      newMonthlyCTC: 'new_monthly_ctc',
+      newMonthlyCtc: 'new_monthly_ctc'
+    };
     const res = {};
     for (const [k, v] of Object.entries(obj)) {
       if (k.startsWith('_')) continue;
-      const snakeKey = k.replace(/([A-Z])/g, '_$1').toLowerCase();
-      res[snakeKey] = v;
+      if (specialToSnake[k]) {
+        res[specialToSnake[k]] = v;
+      } else {
+        const snakeKey = k.replace(/([A-Z])/g, '_$1').toLowerCase();
+        res[snakeKey] = v;
+      }
     }
     return res;
   },
 
   _toCamelCase(obj) {
     if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+    const specialToCamel = {
+      total_cy: 'totalCY',
+      monthly_ctc: 'monthlyCTC',
+      current_monthly_ctc: 'currentMonthlyCTC',
+      new_monthly_ctc: 'newMonthlyCTC'
+    };
     const res = {};
     for (const [k, v] of Object.entries(obj)) {
-      const camelKey = k.replace(/_([a-z0-9])/g, (_, g) => g.toUpperCase());
-      res[camelKey] = v;
+      if (specialToCamel[k]) {
+        res[specialToCamel[k]] = v;
+      } else {
+        const camelKey = k.replace(/_([a-z0-9])/g, (_, g) => g.toUpperCase());
+        res[camelKey] = v;
+      }
+    }
+    // Fallback: ensure totalCY is populated if totalCy or monthlyValues exists
+    if (res.totalCY === undefined || res.totalCY === null) {
+      if (res.totalCy !== undefined && res.totalCy !== null) {
+        res.totalCY = res.totalCy;
+      } else if (res.monthlyValues && typeof Utils !== 'undefined' && Utils.sumMonthlyValues) {
+        res.totalCY = Utils.sumMonthlyValues(res.monthlyValues);
+      }
     }
     return res;
   },
