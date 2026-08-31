@@ -213,8 +213,9 @@ const CloudSyncModule = {
       this._status = 'connected';
       this.updateNavbarBadge();
 
-      if (typeof App !== 'undefined' && App.renderCurrentPage) {
-        App.renderCurrentPage();
+      if (typeof App !== 'undefined') {
+        if (App.populateGlobalSelectors) await App.populateGlobalSelectors();
+        if (App.renderCurrentPage) await App.renderCurrentPage();
       }
     } catch (err) {
       console.warn('Initial cloud sync notice:', err.message);

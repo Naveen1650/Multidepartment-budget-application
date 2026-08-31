@@ -120,7 +120,17 @@ const App = {
       this.selectedYear = String(currentYear);
     } else {
       if (!this.selectedYear) {
-        this.selectedYear = years[0].id;
+        let savedYear = null;
+        try { savedYear = localStorage.getItem('noora_selected_budget_year'); } catch (e) {}
+        if (savedYear && years.some(y => String(y.id) === String(savedYear))) {
+          this.selectedYear = savedYear;
+        } else {
+          // Default to the latest active budget year with data (e.g. 2027)
+          const activeYear = years.find(y => String(y.id) === '2027' || String(y.year) === '2027') ||
+                             years.find(y => y.status === 'active' || y.isActive) ||
+                             years[0];
+          this.selectedYear = activeYear.id;
+        }
       }
       yearSelect.innerHTML = years.map(y => {
         const statusIcons = { 'draft': '📝', 'active': '🟢', 'under-review': '🟡', 'finance-approved': '🔵', 'finalized-locked': '🔒', 'closed': '📁' };
@@ -135,6 +145,7 @@ const App = {
 
     yearSelect.onchange = async () => {
       this.selectedYear = yearSelect.value;
+      try { localStorage.setItem('noora_selected_budget_year', yearSelect.value); } catch (e) {}
       if (typeof ReportsModule !== 'undefined') ReportsModule._selectedYear = yearSelect.value;
       if (typeof BudgetEntryModule !== 'undefined') BudgetEntryModule._yearId = yearSelect.value;
       // Refresh lock status for newly selected year
