@@ -335,14 +335,23 @@ const BudgetEntryModule = {
     if (this.activeTab === 'personnel') {
       if (this.activePersonnelSubTab === 'other-staff-expenses') {
         actionsContainer.innerHTML = `
+          <button class="btn btn-primary btn-sm font-bold flex items-center gap-xs btn-save-sync" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);" onclick="BudgetEntryModule.saveAndSyncCurrentTab()" title="Explicitly save and instantly sync all changes in this tab with your team">
+            <span>💾</span> Save & Sync
+          </button>
           <button class="btn btn-primary btn-sm font-bold" onclick="BudgetEntryModule.addRow()">+ Add Staff Expense Row</button>
         `;
       } else if (this.activePersonnelSubTab === 'gratuity-bonus') {
         actionsContainer.innerHTML = `
+          <button class="btn btn-primary btn-sm font-bold flex items-center gap-xs btn-save-sync" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);" onclick="BudgetEntryModule.saveAndSyncCurrentTab()" title="Explicitly save and instantly sync all changes in this tab with your team">
+            <span>💾</span> Save & Sync
+          </button>
           <button class="btn btn-primary btn-sm font-bold" onclick="BudgetEntryModule.addRow()">+ Add Gratuity/Bonus Row</button>
         `;
       } else {
         actionsContainer.innerHTML = `
+          <button class="btn btn-primary btn-sm font-bold flex items-center gap-xs btn-save-sync" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);" onclick="BudgetEntryModule.saveAndSyncCurrentTab()" title="Explicitly save and instantly sync all changes in this tab with your team">
+            <span>💾</span> Save & Sync
+          </button>
           <button class="btn btn-primary btn-sm font-bold flex items-center gap-xs" onclick="BudgetEntryModule.autoPopulateDeptEmployees()" title="Auto-fill active employees from Employee Master into this department's Salaries & Wages budget">
             <span>👥</span> Auto-Populate from Employee Master
           </button>
@@ -354,21 +363,32 @@ const BudgetEntryModule = {
       }
     } else if (this.activeTab === 'eha') {
       actionsContainer.innerHTML = `
+        <button class="btn btn-primary btn-sm font-bold flex items-center gap-xs btn-save-sync" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);" onclick="BudgetEntryModule.saveAndSyncCurrentTab()" title="Explicitly save and instantly sync all changes in this tab with your team">
+          <span>💾</span> Save & Sync
+        </button>
         <button class="btn btn-primary btn-sm font-bold" onclick="BudgetEntryModule.addRow()">+ Add Consultant Row</button>
       `;
     } else if (this.activeTab === 'fixed-assets') {
       actionsContainer.innerHTML = `
+        <button class="btn btn-primary btn-sm font-bold flex items-center gap-xs btn-save-sync" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);" onclick="BudgetEntryModule.saveAndSyncCurrentTab()" title="Explicitly save and instantly sync all changes in this tab with your team">
+          <span>💾</span> Save & Sync
+        </button>
         <button class="btn btn-primary btn-sm font-bold" onclick="BudgetEntryModule.addRow()">+ Add Asset Row</button>
       `;
     } else if (this.activeTab === 'other-costs') {
       if (this.activeOtherCostSubTab === 'tot' || this.activeOtherCostSubTab === 'imp-tot') {
         actionsContainer.innerHTML = `
-          <button class="btn btn-primary btn-sm font-bold" onclick="ImpTotModule.saveAnnualMatrix()">💾 Save Annual Matrix</button>
+          <button class="btn btn-primary btn-sm font-bold flex items-center gap-xs btn-save-sync" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);" onclick="ImpTotModule.saveAnnualMatrix()">
+            <span>💾</span> Save Annual Matrix
+          </button>
           <button class="btn btn-secondary btn-sm font-bold" onclick="ImpTotModule.setViewMode(ImpTotModule.activeViewMode === 'matrix' ? 'registry' : 'matrix')">${typeof ImpTotModule !== 'undefined' && ImpTotModule.activeViewMode === 'matrix' ? '📋 Event Registry' : '📊 Annual Matrix'}</button>
           <button class="btn btn-secondary btn-sm" onclick="App.navigateTo('config-imp-rates')">⚙️ Benchmark Rates</button>
         `;
       } else {
         actionsContainer.innerHTML = `
+          <button class="btn btn-primary btn-sm font-bold flex items-center gap-xs btn-save-sync" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);" onclick="BudgetEntryModule.saveAndSyncCurrentTab()" title="Explicitly save and instantly sync all changes in this tab with your team">
+            <span>💾</span> Save & Sync
+          </button>
           <button class="btn btn-primary btn-sm font-bold" onclick="BudgetEntryModule.addRow()">+ Add Expense Line</button>
           <button class="btn btn-secondary btn-sm" onclick="ExcelIOModule.showNonPayrollUploadModal(BudgetEntryModule.currentEntityId, BudgetEntryModule.currentDeptId)">📤 Bulk Upload Other Costs</button>
           <button class="btn btn-secondary btn-sm" onclick="ExcelIOModule.downloadNonPayrollTemplate()">📥 Other Costs Template</button>
@@ -376,16 +396,91 @@ const BudgetEntryModule = {
       }
     } else if (this.activeTab === 'imp-tot') {
       actionsContainer.innerHTML = `
-        <button class="btn btn-primary btn-sm font-bold" onclick="ImpTotModule.saveAnnualMatrix()">💾 Save Annual Matrix</button>
+        <button class="btn btn-primary btn-sm font-bold flex items-center gap-xs btn-save-sync" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);" onclick="ImpTotModule.saveAnnualMatrix()">
+          <span>💾</span> Save Annual Matrix
+        </button>
         <button class="btn btn-secondary btn-sm font-bold" onclick="ImpTotModule.setViewMode(ImpTotModule.activeViewMode === 'matrix' ? 'registry' : 'matrix')">${typeof ImpTotModule !== 'undefined' && ImpTotModule.activeViewMode === 'matrix' ? '📋 Event Registry' : '📊 Annual Matrix'}</button>
         <button class="btn btn-secondary btn-sm" onclick="App.navigateTo('config-imp-rates')">⚙️ Benchmark Rates</button>
       `;
     } else if (this.activeTab === 'total-costs') {
       actionsContainer.innerHTML = `
         <div class="flex items-center gap-sm">
+          <button class="btn btn-primary btn-sm font-bold flex items-center gap-xs btn-save-sync" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);" onclick="BudgetEntryModule.saveAndSyncCurrentTab()" title="Force save & sync entire department data to cloud">
+            <span>💾</span> Sync Department Data
+          </button>
           <span class="badge badge-emerald" style="font-size: 12px; padding: 6px 12px;">📊 Master Department Summary — Auto-linked to input tabs</span>
         </div>
       `;
+    }
+  },
+
+  async saveAndSyncCurrentTab() {
+    const yearId = this._yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026');
+    const entityId = this.currentEntityId || this._entity?.id;
+    const deptId = this.currentDeptId || this._dept?.id;
+
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entityId)) {
+      Utils.showToast(`🔒 Cannot save: Budget year is locked (${Auth.getYearStatusLabel(yearId, entityId)})`, 'warning');
+      return;
+    }
+
+    const saveBtns = document.querySelectorAll('.btn-save-sync');
+    saveBtns.forEach(btn => {
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳</span> Syncing...';
+    });
+
+    try {
+      // 1. Identify store for active tab
+      const storeMap = {
+        'personnel': STORES.payrollPersonnel,
+        'eha': STORES.payrollEHA,
+        'fixed-assets': STORES.payrollFixedAsset,
+        'other-costs': STORES.nonPayrollCost,
+        'total-costs': STORES.totalCostSheet
+      };
+      const storeName = storeMap[this.activeTab];
+
+      // 2. Fetch and push local records for this entity + dept + year to cloud
+      if (storeName && entityId && deptId) {
+        const records = await db.getBudgetData(storeName, yearId, entityId, deptId);
+        if (records && records.length > 0 && typeof CloudSyncModule !== 'undefined' && CloudSyncModule.pushManyToCloud) {
+          await CloudSyncModule.pushManyToCloud(storeName, records);
+        }
+      }
+
+      // 3. Trigger full upload of any pending queue
+      if (typeof CloudSyncModule !== 'undefined') {
+        if (CloudSyncModule.uploadAllToCloud) {
+          await CloudSyncModule.uploadAllToCloud(() => {}, true);
+        }
+        if (CloudSyncModule.updateNavbarBadge) {
+          CloudSyncModule.updateNavbarBadge();
+        }
+      }
+
+      // 4. Re-render active grid smoothly
+      if (this._entity && this._dept) {
+        await this.renderGrid(this._entity, this._dept, this._budgetYear, this._actualsMonth);
+      }
+
+      const tabNames = {
+        'personnel': 'Salaries & Personnel',
+        'eha': 'EHA Consultants',
+        'fixed-assets': 'Fixed Assets',
+        'other-costs': 'Other Operating Costs',
+        'total-costs': 'Master Department Summary'
+      };
+      const label = tabNames[this.activeTab] || 'Budget details';
+      Utils.showToast(`💾 ${label} successfully saved & synced to all team members!`, 'success');
+    } catch (err) {
+      console.error('Error in saveAndSyncCurrentTab:', err);
+      Utils.showToast(`Saved locally. Cloud: ${err.message}`, 'warning');
+    } finally {
+      saveBtns.forEach(btn => {
+        btn.disabled = false;
+        btn.innerHTML = '<span>💾</span> Save & Sync';
+      });
     }
   },
 
