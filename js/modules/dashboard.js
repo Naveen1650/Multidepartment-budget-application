@@ -39,6 +39,21 @@ const DashboardModule = {
     const yearId = App.selectedYear || '2026';
     const yearLabel = activeYearObj ? `CY-${activeYearObj.year}` : 'CY-2026';
 
+    // No budget year configured yet — show setup prompt
+    if (years.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state" style="padding: 60px 20px; text-align: center;">
+          <div style="font-size: 3.5rem; margin-bottom: 16px;">📅</div>
+          <h3 style="margin-bottom: 8px;">No Budget Year Configured</h3>
+          <p class="text-secondary" style="margin-bottom: 20px; max-width: 480px; margin-left: auto; margin-right: auto;">
+            The dashboard requires at least one Budget Year to be set up. Go to <strong>Configuration → Budget Year Setup</strong> to create your first budget year with exchange rates.
+          </p>
+          <button class="btn btn-primary" onclick="App.navigateTo('config-budget-year')">⚙️ Set Up Budget Year</button>
+        </div>
+      `;
+      return;
+    }
+
     // Apply stored country box arrangement if present
     let orderedEntities = [...entities];
     try {

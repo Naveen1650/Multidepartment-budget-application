@@ -512,6 +512,23 @@ class BudgetDB {
       }
     }
 
+    // Always ensure budgetYears has at least one year (critical for dashboard)
+    if (this.db.objectStoreNames.contains(STORES.budgetYears)) {
+      const yearCount = await this.count(STORES.budgetYears);
+      if (yearCount === 0) {
+        const defaultYear = {
+          id: '2026',
+          year: 2026,
+          label: 'CY-2026',
+          status: 'active',
+          conversionRates: { INR: 83.5, BDT: 117.0, IDR: 16200, NPR: 133.5, USD: 1.0 },
+          createdAt: new Date().toISOString()
+        };
+        try { await this.put(STORES.budgetYears, defaultYear); } catch (e) {}
+        console.log('[DB] Seeded default CY-2026 budget year.');
+      }
+    }
+
     // Always ensure travelRates and employeesMaster are populated if empty
     if (this.db.objectStoreNames.contains(STORES.travelRates)) {
       const travelCount = await this.count(STORES.travelRates);
