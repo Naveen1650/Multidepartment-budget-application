@@ -10,6 +10,9 @@ const BudgetEntryModule = {
   activeTab: 'total-costs', // total-costs | personnel | eha | fixed-assets | other-costs
   activePersonnelSubTab: 'salaries-wages', // 'salaries-wages' | 'other-staff-expenses' | 'gratuity-bonus'
   activeOtherCostSubTab: 'grid', // 'grid' | 'travel' | 'supplies' | 'communication' | 'office' | 'professional' | 'other'
+  otherCostLedgerFilter: 'all', // 'all' | ledger code or description
+  otherCostMonthFilter: 'all',  // 'all' | '0' to '11'
+  otherCostViewMode: 'summary', // 'summary' | 'grid'
 
   // Cached context so addRow/deleteRow can re-render the grid without a full page reload
   _entity: null,
@@ -2140,6 +2143,31 @@ const BudgetEntryModule = {
       return;
     }
 
+    // Cache context for dynamic filter re-rendering without full page re-fetching
+    this._npContext = {
+      container,
+      yearId,
+      entity,
+      dept,
+      budgetYear,
+      locations,
+      donors,
+      activities,
+      conditionAreas,
+      nonPayrollCoa,
+      records,
+      displayRecords,
+      combinedTravelRecords,
+      suppliesRecords,
+      commRecords,
+      officeRecords,
+      profRecords,
+      otherRecords,
+      rate,
+      isLocked,
+      hasTotLines
+    };
+
     container.innerHTML = `
       <div class="card p-md mb-md flex items-center justify-between" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.06), rgba(6, 182, 212, 0.06)); border-color: rgba(139, 92, 246, 0.2); flex-wrap: wrap; gap: 12px;">
         <div class="flex items-center gap-lg" style="flex-wrap: wrap;">
@@ -2174,6 +2202,45 @@ const BudgetEntryModule = {
       </div>
     `;
 
+    this.attachOtherCostListeners(container);
+  },
+
+  setOtherCostFilter(ledgerFilter, monthFilter, viewMode) {
+    if (ledgerFilter !== undefined) this.otherCostLedgerFilter = ledgerFilter;
+    if (monthFilter !== undefined) this.otherCostMonthFilter = monthFilter;
+    if (viewMode !== undefined) this.otherCostViewMode = viewMode;
+
+    const ctx = this._npContext;
+    if (ctx && ctx.container) {
+      const contentEl = ctx.container.querySelector('#otherCostTabContent');
+      if (contentEl) {
+        const isAllAccountsTab = this.activeOtherCostSubTab === 'grid' || this.activeOtherCostSubTab === 'all';
+        contentEl.innerHTML = this.renderOtherCostSubTabContent(
+          this.activeOtherCostSubTab || 'grid',
+          ctx.nonPayrollCoa,
+          isAllAccountsTab ? ctx.records : ctx.displayRecords,
+          ctx.combinedTravelRecords,
+          ctx.suppliesRecords,
+          ctx.commRecords,
+          ctx.officeRecords,
+          ctx.profRecords,
+          ctx.otherRecords,
+          ctx.yearId,
+          ctx.entity,
+          ctx.dept,
+          ctx.budgetYear,
+          ctx.rate,
+          ctx.isLocked,
+          ctx.hasTotLines
+        );
+        this.attachOtherCostListeners(ctx.container);
+      }
+    }
+  },
+
+  attachOtherCostListeners(container) {
+    if (!container) return;
+
     // Attach expandable sub-row listeners for category & travel tables
     container.querySelectorAll('.btn-expand-row').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -2205,25 +2272,83 @@ const BudgetEntryModule = {
       });
     }
 
-    const openLauncher = () => {
-      this.showExpenseLauncherModal(yearId, entity, dept, locations, donors, activities, conditionAreas);
-    };
+    // Ledger filter dropdown change
+    const ledgerSelect = container.querySelector('#otherCostLedgerSelect');
+    if (ledgerSelect) {
+      ledgerSelect.addEventListener('change', (e) => {
+        this.setOtherCostFilter(e.target.value, undefined, undefined);
+      });
+    }
 
-    const openTravelWizard = () => {
-      this.showTravelPackageWizard(yearId, entity, dept, locations, donors, activities, conditionAreas);
-    };
+    // Month filter dropdown change
+    const monthSelect = container.querySelector('#otherCostMonthSelect');
+    if (monthSelect) {
+      monthSelect.addEventListener('change', (e) => {
+        this.setOtherCostFilter(undefined, e.target.value, undefined);
+      });
+    }
 
-    const btnQuickNew = container.querySelector('#btnQuickNewExpense');
-    if (btnQuickNew) btnQuickNew.addEventListener('click', openLauncher);
+    // View Mode toggles
+    const btnSummary = container.querySelector('#btnViewModeSummary');
+    if (btnSummary) {
+      btnSummary.addEventListener('click', () => {
+        this.setOtherCostFilter(undefined, undefined, 'summary');
+      });
+    }
 
-    const btnNewTravel = container.querySelector('#btnNewTravelPkg');
-    if (btnNewTravel) btnNewTravel.addEventListener('click', openTravelWizard);
+    const btnGrid = container.querySelector('#btnViewModeGrid');
+    if (btnGrid) {
+      btnGrid.addEventListener('click', () => {
+        this.setOtherCostFilter(undefined, undefined, 'grid');
+      });
+    }
 
-    const btnHeaderNewTrip = container.querySelector('#btnHeaderNewTrip');
-    if (btnHeaderNewTrip) btnHeaderNewTrip.addEventListener('click', openTravelWizard);
+    // Clickable ledger breakdown badges
+    container.querySelectorAll('[data-ledger-filter]').forEach(pill => {
+      pill.addEventListener('click', () => {
+        const val = pill.dataset.ledgerFilter;
+        this.setOtherCostFilter(val, undefined, undefined);
+      });
+    });
 
-    const btnEmptyNewTrip = container.querySelector('#btnEmptyNewTrip');
-    if (btnEmptyNewTrip) btnEmptyNewTrip.addEventListener('click', openTravelWizard);
+    // Attach delegated click listener on container for Total column header collapse/expand
+    container.querySelectorAll('[data-toggle-months]').forEach(th => {
+      th.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const table = th.closest('.data-table');
+        if (!table) return;
+        table.classList.toggle('months-collapsed');
+        const isCollapsed = table.classList.contains('months-collapsed');
+        const arrow = th.querySelector('.months-toggle-arrow');
+        if (arrow) arrow.innerHTML = isCollapsed ? '&#9654;' : '&#9664;';
+        th.title = isCollapsed ? 'Click to expand monthly columns (Jan–Dec)' : 'Click to collapse monthly columns (Jan–Dec)';
+      });
+    });
+
+    // Modal launchers
+    const ctx = this._npContext;
+    if (ctx) {
+      const openLauncher = () => {
+        this.showExpenseLauncherModal(ctx.yearId, ctx.entity, ctx.dept, ctx.locations, ctx.donors, ctx.activities, ctx.conditionAreas);
+      };
+
+      const openTravelWizard = () => {
+        this.showTravelPackageWizard(ctx.yearId, ctx.entity, ctx.dept, ctx.locations, ctx.donors, ctx.activities, ctx.conditionAreas);
+      };
+
+      const btnQuickNew = container.querySelector('#btnQuickNewExpense');
+      if (btnQuickNew) btnQuickNew.addEventListener('click', openLauncher);
+
+      const btnNewTravel = container.querySelector('#btnNewTravelPkg');
+      if (btnNewTravel) btnNewTravel.addEventListener('click', openTravelWizard);
+
+      const btnHeaderNewTrip = container.querySelector('#btnHeaderNewTrip');
+      if (btnHeaderNewTrip) btnHeaderNewTrip.addEventListener('click', openTravelWizard);
+
+      const btnEmptyNewTrip = container.querySelector('#btnEmptyNewTrip');
+      if (btnEmptyNewTrip) btnEmptyNewTrip.addEventListener('click', openTravelWizard);
+    }
   },
 
   renderOtherCostSubTabContent(subTab, nonPayrollCoa, allRecords, travelRecords, suppliesRecords, commRecords, officeRecords, profRecords, otherRecords, yearId, entity, dept, budgetYear, rate, isLocked = false, hasTotLines = false) {
@@ -2385,47 +2510,277 @@ const BudgetEntryModule = {
 
     // ─── 2. TRAVEL & LODGING PACKAGES SUBTAB ───
     if (subTab === 'travel' || subTab === 'travel-packages') {
-      const totalTravelCost = travelRecords.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
+      const activeLedgerFilter = this.otherCostLedgerFilter || 'all';
+      const activeMonthFilter = this.otherCostMonthFilter || 'all';
+      const activeViewMode = this.otherCostViewMode || 'summary';
+
+      // Standard travel ledger lines definitions
+      const standardTravelLines = [
+        { code: '93101', name: 'Hotel Accommodation', icon: '🏨', glKey: 'hotel' },
+        { code: '93102', name: 'Food Expenses', icon: '🍽️', glKey: 'food' },
+        { code: '93103', name: 'Air fare', icon: '✈️', glKey: 'airfare' },
+        { code: '93104', name: 'Cab/Auto', icon: '🚕', glKey: 'cab' },
+        { code: '93105', name: 'Bus/Train', icon: '🚆', glKey: 'bustrain' },
+        { code: '93106', name: 'Other Incidental Travel Costs', icon: '🎒', glKey: 'incidental' }
+      ];
+
+      // Build Ledger dictionary & accumulate amounts per ledger line
+      const ledgerMap = new Map();
+      standardTravelLines.forEach(l => {
+        ledgerMap.set(l.code, { code: l.code, name: l.name, icon: l.icon, total: 0, count: 0 });
+      });
+
+      travelRecords.forEach(r => {
+        const cleanCode = Utils.cleanStr(r.ledgerCode) || '';
+        const cleanGl = Utils.cleanStr(r.glDescription || r.itemName) || '';
+        let matchedCode = null;
+
+        if (cleanCode && ledgerMap.has(cleanCode)) {
+          matchedCode = cleanCode;
+        } else {
+          for (const [code, item] of ledgerMap.entries()) {
+            if (cleanGl.includes(Utils.cleanStr(item.name)) || (r.travelItemKey && r.travelItemKey === item.glKey)) {
+              matchedCode = code;
+              break;
+            }
+          }
+        }
+
+        if (!matchedCode && cleanCode) {
+          matchedCode = cleanCode;
+          if (!ledgerMap.has(matchedCode)) {
+            ledgerMap.set(matchedCode, { code: matchedCode, name: r.glDescription || r.itemName || 'Travel Cost', icon: '✈️', total: 0, count: 0 });
+          }
+        }
+
+        const cost = Utils.parseNumber(r.totalCY) || 0;
+        if (matchedCode && ledgerMap.has(matchedCode)) {
+          const entry = ledgerMap.get(matchedCode);
+          entry.total += cost;
+          entry.count += 1;
+        }
+      });
+
+      // Filter travel records according to activeLedgerFilter & activeMonthFilter
+      const filteredTravelRecords = travelRecords.filter(r => {
+        // 1. Ledger Filter
+        if (activeLedgerFilter !== 'all') {
+          const cleanCode = Utils.cleanStr(r.ledgerCode);
+          const cleanGl = Utils.cleanStr(r.glDescription || r.itemName);
+          const filterClean = Utils.cleanStr(activeLedgerFilter);
+          const matchesCode = cleanCode === filterClean;
+          const matchesGl = cleanGl.includes(filterClean);
+          const matchesKey = r.travelItemKey === activeLedgerFilter;
+          if (!matchesCode && !matchesGl && !matchesKey) return false;
+        }
+
+        // 2. Month Filter
+        if (activeMonthFilter !== 'all') {
+          const mIdx = parseInt(activeMonthFilter);
+          const mVal = Utils.parseNumber(r.monthlyValues?.[mIdx]) || 0;
+          if (mVal <= 0) return false;
+        }
+
+        return true;
+      });
+
+      const totalTravelCost = filteredTravelRecords.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
+      const totalUnfilteredCost = travelRecords.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
+
+      // Monthly sums for filtered travel records
+      const colMonthlySums = Array(12).fill(0);
+      filteredTravelRecords.forEach(r => {
+        if (r.monthlyValues) {
+          Object.entries(r.monthlyValues).forEach(([mIdx, val]) => {
+            colMonthlySums[parseInt(mIdx)] += (Utils.parseNumber(val) || 0);
+          });
+        }
+      });
+
       return `
         <div class="card mb-lg">
-          <div class="card-header flex justify-between items-center" style="flex-wrap: wrap; gap: 10px;">
+          <!-- Filter & View Controls Header -->
+          <div class="card-header flex justify-between items-center" style="flex-wrap: wrap; gap: 12px;">
             <div>
-              <div class="card-title">Employee Travel & Lodging Packages (${travelRecords.length})</div>
-              <div class="card-subtitle">Showing single-line summaries &bull; Click <strong>▶</strong> to expand 12-month budget & location benchmark breakdown</div>
+              <div class="card-title flex items-center gap-xs">
+                <span>✈️ Employee Travel & Lodging Packages</span>
+                <span class="badge badge-primary font-bold" style="font-size: 11px;">${filteredTravelRecords.length} of ${travelRecords.length} Items</span>
+                ${activeLedgerFilter !== 'all' || activeMonthFilter !== 'all' ? `<span class="badge badge-warning font-bold" style="font-size: 10px;">Filtered</span>` : ''}
+              </div>
+              <div class="card-subtitle">Filter by General Ledger line, month schedule, or toggle 12-Month Table Grid view</div>
             </div>
-            <div class="flex items-center gap-sm">
+
+            <!-- Toolbar Filters -->
+            <div class="flex items-center gap-sm flex-wrap">
+              <!-- Ledger / GL Account Filter -->
+              <div class="flex items-center gap-xs" style="background: var(--bg-surface); padding: 4px 8px; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+                <label class="form-label" style="margin: 0; font-size: 11px; font-weight: 600; white-space: nowrap;">GL Line:</label>
+                <select class="form-select form-select-sm" id="otherCostLedgerSelect" style="width: auto; min-width: 170px; font-size: 12px; font-weight: 600;">
+                  <option value="all" ${activeLedgerFilter === 'all' ? 'selected' : ''}>📑 All Ledger Lines (${travelRecords.length})</option>
+                  ${Array.from(ledgerMap.values()).map(l => `
+                    <option value="${l.code}" ${activeLedgerFilter === l.code || activeLedgerFilter === l.name ? 'selected' : ''}>
+                      ${l.icon} ${l.name} (${l.code}) — ${Utils.formatCurrency(l.total, entity.currency)}
+                    </option>
+                  `).join('')}
+                </select>
+              </div>
+
+              <!-- Month Filter -->
+              <div class="flex items-center gap-xs" style="background: var(--bg-surface); padding: 4px 8px; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+                <label class="form-label" style="margin: 0; font-size: 11px; font-weight: 600; white-space: nowrap;">Month:</label>
+                <select class="form-select form-select-sm" id="otherCostMonthSelect" style="width: auto; min-width: 140px; font-size: 12px; font-weight: 600;">
+                  <option value="all" ${activeMonthFilter === 'all' ? 'selected' : ''}>📅 Full Year (Jan–Dec)</option>
+                  ${SEED_DATA.months.map((m, idx) => `
+                    <option value="${idx}" ${activeMonthFilter === String(idx) ? 'selected' : ''}>
+                      ${m}-${budgetYear} (${Utils.formatCurrency(colMonthlySums[idx] || 0, entity.currency)})
+                    </option>
+                  `).join('')}
+                </select>
+              </div>
+
+              <!-- View Mode Segmented Control -->
+              <div class="flex items-center" style="background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 2px;">
+                <button type="button" class="btn btn-xs ${activeViewMode === 'summary' ? 'btn-primary font-bold' : 'btn-ghost'}" id="btnViewModeSummary" style="font-size: 11px; padding: 4px 10px; border-radius: var(--radius-sm);" title="Single line overview with expand drawers">
+                  📋 Summary
+                </button>
+                <button type="button" class="btn btn-xs ${activeViewMode === 'grid' ? 'btn-primary font-bold' : 'btn-ghost'}" id="btnViewModeGrid" style="font-size: 11px; padding: 4px 10px; border-radius: var(--radius-sm);" title="Full 12-month table grid view">
+                  📅 12-Month Grid
+                </button>
+              </div>
+
               ${hasTotLines ? `
-                <div class="flex items-center gap-xs" style="background: var(--bg-primary); padding: 3px 6px; border-radius: var(--radius-sm); border: 1px solid var(--border-default); margin-right: 4px;">
-                  <span class="text-secondary font-bold" style="font-size: 11px; padding: 0 4px;">ToT Costs:</span>
-                  <button type="button" class="btn btn-sm ${this.totFilterMode !== 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('with-tot')" style="font-size: 11px; padding: 2px 8px; border-radius: var(--radius-xs);">
+                <div class="flex items-center gap-xs" style="background: var(--bg-primary); padding: 3px 6px; border-radius: var(--radius-sm); border: 1px solid var(--border-default);">
+                  <span class="text-secondary font-bold" style="font-size: 11px; padding: 0 4px;">ToT:</span>
+                  <button type="button" class="btn btn-xs ${this.totFilterMode !== 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('with-tot')" style="font-size: 10px; padding: 2px 6px;">
                     🎯 With ToT
                   </button>
-                  <button type="button" class="btn btn-sm ${this.totFilterMode === 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('without-tot')" style="font-size: 11px; padding: 2px 8px; border-radius: var(--radius-xs);">
+                  <button type="button" class="btn btn-xs ${this.totFilterMode === 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('without-tot')" style="font-size: 10px; padding: 2px 6px;">
                     🚫 Without ToT
                   </button>
                 </div>
               ` : ''}
-              <button type="button" class="btn btn-secondary btn-sm" id="btnToggleAllMonths" title="Expand / Collapse all monthly schedules">▶ Expand All</button>
+
+              ${activeViewMode === 'summary' ? `
+                <button type="button" class="btn btn-secondary btn-sm" id="btnToggleAllMonths" title="Expand / Collapse all monthly schedules">▶ Expand All</button>
+              ` : ''}
+
               ${isLocked ? '' : `
-                <button class="btn btn-primary btn-sm" id="btnHeaderNewTrip">
+                <button class="btn btn-primary btn-sm" id="btnHeaderNewTrip" style="background: linear-gradient(135deg, #0891b2, #4f46e5);">
                   + Add Trip Package
                 </button>
               `}
             </div>
           </div>
 
-          ${travelRecords.length === 0 ? `
+          <!-- Interactive Ledger Breakdown Quick Pills -->
+          <div class="flex items-center gap-xs flex-wrap p-sm" style="background: rgba(8, 145, 178, 0.04); border-bottom: 1px solid var(--border-subtle); padding: 8px 14px;">
+            <span class="text-tertiary font-bold" style="font-size: 11px; text-transform: uppercase; margin-right: 4px;">Ledger Breakdown:</span>
+            <button type="button" class="btn btn-xs ${activeLedgerFilter === 'all' ? 'btn-primary font-bold' : 'btn-ghost'}" data-ledger-filter="all" style="border-radius: 20px; padding: 3px 12px; font-size: 11px; border: 1px solid var(--border-default);">
+              All Travel (${travelRecords.length}): ${Utils.formatCurrency(totalUnfilteredCost, entity.currency)}
+            </button>
+            ${Array.from(ledgerMap.values()).map(l => `
+              <button type="button" class="btn btn-xs ${activeLedgerFilter === l.code || activeLedgerFilter === l.name ? 'btn-primary font-bold' : 'btn-ghost'}" data-ledger-filter="${l.code}" style="border-radius: 20px; padding: 3px 12px; font-size: 11px; border: 1px solid var(--border-default); ${l.total > 0 ? 'color: var(--text-primary);' : 'opacity: 0.65;'}">
+                ${l.icon} ${l.name}: <strong>${Utils.formatCurrency(l.total, entity.currency)}</strong>
+              </button>
+            `).join('')}
+          </div>
+
+          ${filteredTravelRecords.length === 0 ? `
             <div class="p-xl text-center text-muted">
               <div style="font-size: 2.2rem; margin-bottom: 8px;">✈️</div>
-              <h4>No Travel Packages Created Yet</h4>
-              <p class="mt-xs">Budget trips with automated benchmark rates for Hotel, Food, Cab, Airfare, and Train.</p>
-              ${isLocked ? '' : `
-                <button class="btn btn-primary mt-md" id="btnEmptyNewTrip">
-                  ✈️ Create First Travel Package
-                </button>
-              `}
+              <h4>No Travel Packages Match the Selected Filter</h4>
+              <p class="mt-xs text-secondary" style="font-size: 13px;">Try selecting "All Ledger Lines" or "Full Year", or create a new trip package.</p>
+              <div class="flex gap-sm justify-center mt-md">
+                <button class="btn btn-secondary btn-sm" onclick="BudgetEntryModule.setOtherCostFilter('all', 'all')">Reset Filters</button>
+                ${isLocked ? '' : `<button class="btn btn-primary btn-sm" id="btnEmptyNewTrip">✈️ + Create Travel Package</button>`}
+              </div>
+            </div>
+          ` : (activeViewMode === 'grid' ? `
+            <!-- ─── 12-MONTH TABLE GRID VIEW ─── -->
+            <div class="table-container">
+              <table class="data-table ${this.isMonthsCollapsed() ? 'months-collapsed' : ''}" id="travelGridTable">
+                <thead>
+                  <tr>
+                    <th style="width: 38px; text-align: center;">#</th>
+                    <th class="sticky-col-1">Employee Name</th>
+                    <th class="sticky-col-2">Trip Purpose & Destination</th>
+                    <th>GL Line & Code</th>
+                    <th class="num month-group budget-year total-toggle-th" data-toggle-months title="${this.isMonthsCollapsed() ? 'Click to expand monthly columns (Jan–Dec)' : 'Click to collapse monthly columns (Jan–Dec)'}">Total CY-${budgetYear} <span class="months-toggle-arrow">${this.isMonthsCollapsed() ? '&#9654;' : '&#9664;'}</span></th>
+                    ${SEED_DATA.months.map((m, mIdx) => `<th class="num month-group budget-year ${activeMonthFilter === String(mIdx) ? 'active-month-highlight' : ''}">${m}-${budgetYear}</th>`).join('')}
+                    <th>Location</th>
+                    <th>Activity</th>
+                    <th>Donor</th>
+                    <th>Remarks</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${filteredTravelRecords.map((pkg, idx) => {
+                    const isTot = pkg.isImpTot;
+                    const rowId = pkg.id || (pkg.impTotEventId ? `tot-${pkg.impTotEventId}` : `item-${Math.random()}`);
+                    const glDesc = pkg.glDescription || pkg.itemName || 'Travel & Lodging';
+                    const ledgerCode = pkg.ledgerCode || '93101';
+                    return `
+                      <tr class="exp-grid-row" data-row-id="${rowId}">
+                        <td style="text-align: center; color: var(--text-tertiary); font-size: 11px;">${idx + 1}</td>
+                        <td class="sticky-col-1 font-bold">
+                          👤 ${pkg.employeeName || (isTot ? 'Implementation Team' : 'Staff')}
+                        </td>
+                        <td class="sticky-col-2">
+                          <div class="flex items-center gap-xs">
+                            <strong>${pkg.travelDetails || pkg.itemName || 'Trip'}</strong>
+                            ${isTot ? `<span class="badge badge-purple font-bold" style="font-size: 10px; padding: 1px 6px;">🎯 ToT</span>` : ''}
+                          </div>
+                          <div class="text-tertiary" style="font-size: 11px;">📍 ${pkg.destinationLocation || pkg.location || ''}</div>
+                        </td>
+                        <td>
+                          <div style="font-weight: 600; font-size: 12px;">${glDesc}</div>
+                          <code style="font-size: 11px;">${ledgerCode}</code>
+                        </td>
+                        <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(pkg.totalCY || 0, entity.currency)}</td>
+                        ${SEED_DATA.months.map((m, mIdx) => {
+                          const mVal = Utils.parseNumber(pkg.monthlyValues?.[mIdx]) || 0;
+                          return `
+                            <td class="num month-col font-mono ${activeMonthFilter === String(mIdx) ? 'active-month-cell' : ''}" style="${mVal > 0 ? 'font-weight: 600; color: var(--text-primary);' : 'color: var(--text-tertiary);'}">
+                              ${mVal > 0 ? Utils.formatNumber(mVal) : '-'}
+                            </td>
+                          `;
+                        }).join('')}
+                        <td style="font-size: 11px;">${pkg.location || pkg.destinationLocation || '—'}</td>
+                        <td style="font-size: 11px;">${pkg.activity || '—'}</td>
+                        <td style="font-size: 11px;">${pkg.donor || '—'}</td>
+                        <td class="remarks-cell" style="font-size: 11px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary);" title="${Utils.escapeHtml(pkg.remarks || pkg.basisOfExpense || '')}">
+                          ${pkg.remarks || pkg.basisOfExpense || '—'}
+                        </td>
+                        <td style="white-space: nowrap;">
+                          ${isLocked ? '<span class="badge badge-subtle" style="font-size: 11px;">🔒 Read-only</span>' : (
+                            isTot ? `
+                              <button class="btn btn-ghost btn-xs font-bold" style="color: var(--accent-primary);" onclick="BudgetEntryModule.activeOtherCostSubTab = 'tot'; BudgetEntryModule.renderGrid(BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._budgetYear, BudgetEntryModule._actualsMonth);">🎯 ToT</button>
+                            ` : `
+                              <button class="btn btn-ghost btn-xs" onclick="BudgetEntryModule.editTravelPackage(${pkg.id})">✏️ Edit</button>
+                              <button class="btn btn-danger btn-xs" onclick="BudgetEntryModule.deleteTravelPackage(${pkg.id})">🗑️</button>
+                            `
+                          )}
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                  <!-- Total Row -->
+                  <tr class="total-row">
+                    <td class="sticky-col-status font-bold">TOTAL:</td>
+                    <td class="sticky-col-emp font-bold">${filteredTravelRecords.length} Items</td>
+                    <td colspan="2"></td>
+                    <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(totalTravelCost, entity.currency)}</td>
+                    ${SEED_DATA.months.map((m, idx) => `
+                      <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
+                    `).join('')}
+                    <td colspan="5"></td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           ` : `
+            <!-- ─── SUMMARY VIEW WITH EXPANDABLE DRAWERS ─── -->
             <div class="table-container">
               <table class="data-table" id="travelPackagesTable">
                 <thead>
@@ -2433,19 +2788,24 @@ const BudgetEntryModule = {
                     <th style="width: 40px; text-align: center;">Expand</th>
                     <th class="sticky-col-1">Employee Name</th>
                     <th class="sticky-col-2">Trip Purpose & Destination</th>
+                    <th>GL Line & Code</th>
                     <th>Category</th>
                     <th>Activity</th>
                     <th>Donor</th>
                     <th>Remarks / Justification</th>
+                    ${activeMonthFilter !== 'all' ? `<th class="num font-bold" style="background: rgba(8, 145, 178, 0.1); color: var(--accent-primary);">${SEED_DATA.months[parseInt(activeMonthFilter)]}-${budgetYear}</th>` : ''}
                     <th class="num font-bold">Total Budget (${entity.currency})</th>
                     <th class="num font-bold">Total USD</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  ${travelRecords.map(pkg => {
+                  ${filteredTravelRecords.map(pkg => {
                     const isTot = pkg.isImpTot;
                     const rowId = pkg.id || (pkg.impTotEventId ? `tot-${pkg.impTotEventId}` : `item-${Math.random()}`);
+                    const glDesc = pkg.glDescription || pkg.itemName || 'Travel & Lodging';
+                    const ledgerCode = pkg.ledgerCode || '93101';
+                    const singleMonthVal = activeMonthFilter !== 'all' ? (Utils.parseNumber(pkg.monthlyValues?.[parseInt(activeMonthFilter)]) || 0) : 0;
                     return `
                     <!-- Single-Line Main Row -->
                     <tr class="exp-item-main-row" data-row-id="${rowId}">
@@ -2457,10 +2817,14 @@ const BudgetEntryModule = {
                       </td>
                       <td class="sticky-col-2">
                         <div class="flex items-center gap-xs">
-                          <strong>${pkg.travelDetails || pkg.itemName || pkg.glDescription || 'Trip'}</strong>
+                          <strong>${pkg.travelDetails || pkg.itemName || 'Trip'}</strong>
                           ${isTot ? `<span class="badge badge-purple font-bold" style="font-size: 10px; padding: 1px 6px;">🎯 ToT Event</span>` : ''}
                         </div>
                         <div class="text-tertiary" style="font-size: 11px;">📍 ${pkg.destinationLocation || pkg.location || ''}</div>
+                      </td>
+                      <td>
+                        <div style="font-weight: 600; font-size: 12px;">${glDesc}</div>
+                        <code style="font-size: 11px;">${ledgerCode}</code>
                       </td>
                       <td>
                         <span class="badge ${isTot ? 'badge-purple' : (pkg.travelCategory === 'City' ? 'badge-cyan' : 'badge-subtle')}" style="font-size: 11px;">
@@ -2472,6 +2836,9 @@ const BudgetEntryModule = {
                       <td class="remarks-cell" style="font-size: 11px; width: 180px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary);" title="${Utils.escapeHtml(pkg.remarks || pkg.travelDetails || pkg.basisOfExpense || '')}">
                         ${pkg.remarks || pkg.travelDetails || pkg.basisOfExpense || '—'}
                       </td>
+                      ${activeMonthFilter !== 'all' ? `
+                        <td class="num font-bold font-mono" style="background: rgba(8, 145, 178, 0.06); color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(singleMonthVal, entity.currency)}</td>
+                      ` : ''}
                       <td class="num font-bold" style="color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(pkg.totalCY || 0, entity.currency)}</td>
                       <td class="num font-bold" style="color: var(--accent-secondary); font-size: 13px;">≈ ${Utils.formatCurrency(Utils.convertToUSD(pkg.totalCY || 0, rate), 'USD')}</td>
                       <td style="white-space: nowrap;">
@@ -2488,7 +2855,7 @@ const BudgetEntryModule = {
 
                     <!-- Expandable Monthly Schedule Sub-Row -->
                     <tr class="exp-breakdown-row" id="breakdown-travel-${rowId}" style="display: none;">
-                      <td colspan="10">
+                      <td colspan="${activeMonthFilter !== 'all' ? 12 : 11}">
                         <div style="display: flex; flex-direction: column; gap: 8px;">
                           <div class="flex justify-between items-center">
                             <div class="flex items-center gap-sm">
@@ -2528,7 +2895,10 @@ const BudgetEntryModule = {
                   <tr class="total-row">
                     <td colspan="2" class="sticky-col-1 font-bold">TOTAL TRAVEL BUDGET:</td>
                     <td class="sticky-col-2 font-bold text-right" style="padding-right: 16px;">(${entity.currency})</td>
-                    <td colspan="4"></td>
+                    <td colspan="${activeMonthFilter !== 'all' ? 5 : 4}"></td>
+                    ${activeMonthFilter !== 'all' ? `
+                      <td class="num font-bold" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(colMonthlySums[parseInt(activeMonthFilter)] || 0, entity.currency)}</td>
+                    ` : ''}
                     <td class="num font-bold" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(totalTravelCost, entity.currency)}</td>
                     <td class="num font-bold" style="color: var(--accent-secondary); font-size: 1.05rem;">≈ ${Utils.formatCurrency(Utils.convertToUSD(totalTravelCost, rate), 'USD')}</td>
                     <td></td>
@@ -2536,7 +2906,7 @@ const BudgetEntryModule = {
                 </tbody>
               </table>
             </div>
-          `}
+          `)}
         </div>
       `;
     }
@@ -2551,28 +2921,122 @@ const BudgetEntryModule = {
     }[subTab] || { title: 'Other Expenses', icon: '📑', records: otherRecords };
 
     const catRecords = catMeta.records;
-    const catTotal = catRecords.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
+    const activeLedgerFilter = this.otherCostLedgerFilter || 'all';
+    const activeMonthFilter = this.otherCostMonthFilter || 'all';
+    const activeViewMode = this.otherCostViewMode || 'summary';
+
+    // Build ledger dictionary for this category
+    const catLedgerMap = new Map();
+    catRecords.forEach(r => {
+      const code = r.ledgerCode || '93999';
+      const name = r.glDescription || r.itemName || 'Expense Line';
+      if (!catLedgerMap.has(code)) {
+        catLedgerMap.set(code, { code, name, total: 0, count: 0 });
+      }
+      const entry = catLedgerMap.get(code);
+      entry.total += (Utils.parseNumber(r.totalCY) || 0);
+      entry.count += 1;
+    });
+
+    // Filter category records
+    const filteredCatRecords = catRecords.filter(r => {
+      // 1. Ledger Filter
+      if (activeLedgerFilter !== 'all') {
+        const cleanCode = Utils.cleanStr(r.ledgerCode);
+        const cleanGl = Utils.cleanStr(r.glDescription || r.itemName);
+        const filterClean = Utils.cleanStr(activeLedgerFilter);
+        if (cleanCode !== filterClean && !cleanGl.includes(filterClean)) return false;
+      }
+
+      // 2. Month Filter
+      if (activeMonthFilter !== 'all') {
+        const mIdx = parseInt(activeMonthFilter);
+        const mVal = Utils.parseNumber(r.monthlyValues?.[mIdx]) || 0;
+        if (mVal <= 0) return false;
+      }
+
+      return true;
+    });
+
+    const catTotal = filteredCatRecords.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
+    const catUnfilteredTotal = catRecords.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
+
+    const catMonthlySums = Array(12).fill(0);
+    filteredCatRecords.forEach(r => {
+      if (r.monthlyValues) {
+        Object.entries(r.monthlyValues).forEach(([mIdx, val]) => {
+          catMonthlySums[parseInt(mIdx)] += (Utils.parseNumber(val) || 0);
+        });
+      }
+    });
 
     return `
       <div class="card mb-lg">
-        <div class="card-header flex justify-between items-center" style="flex-wrap: wrap; gap: 10px;">
+        <!-- Filter & View Controls Header -->
+        <div class="card-header flex justify-between items-center" style="flex-wrap: wrap; gap: 12px;">
           <div>
-            <div class="card-title">${catMeta.icon} ${catMeta.title} (${catRecords.length} Items)</div>
-            <div class="card-subtitle">Showing single-line summaries &bull; Click <strong>▶</strong> on any line to expand 12-month schedule & calculation basis</div>
+            <div class="card-title flex items-center gap-xs">
+              <span>${catMeta.icon} ${catMeta.title}</span>
+              <span class="badge badge-primary font-bold" style="font-size: 11px;">${filteredCatRecords.length} of ${catRecords.length} Items</span>
+              ${activeLedgerFilter !== 'all' || activeMonthFilter !== 'all' ? `<span class="badge badge-warning font-bold" style="font-size: 10px;">Filtered</span>` : ''}
+            </div>
+            <div class="card-subtitle">Filter by General Ledger line, month schedule, or toggle 12-Month Table Grid view</div>
           </div>
-          <div class="flex items-center gap-sm">
+
+          <!-- Toolbar Filters -->
+          <div class="flex items-center gap-sm flex-wrap">
+            <!-- Ledger / GL Account Filter -->
+            <div class="flex items-center gap-xs" style="background: var(--bg-surface); padding: 4px 8px; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+              <label class="form-label" style="margin: 0; font-size: 11px; font-weight: 600; white-space: nowrap;">GL Line:</label>
+              <select class="form-select form-select-sm" id="otherCostLedgerSelect" style="width: auto; min-width: 170px; font-size: 12px; font-weight: 600;">
+                <option value="all" ${activeLedgerFilter === 'all' ? 'selected' : ''}>📑 All Accounts (${catRecords.length})</option>
+                ${Array.from(catLedgerMap.values()).map(l => `
+                  <option value="${l.code}" ${activeLedgerFilter === l.code || activeLedgerFilter === l.name ? 'selected' : ''}>
+                    ${l.name} (${l.code}) — ${Utils.formatCurrency(l.total, entity.currency)}
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+
+            <!-- Month Filter -->
+            <div class="flex items-center gap-xs" style="background: var(--bg-surface); padding: 4px 8px; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+              <label class="form-label" style="margin: 0; font-size: 11px; font-weight: 600; white-space: nowrap;">Month:</label>
+              <select class="form-select form-select-sm" id="otherCostMonthSelect" style="width: auto; min-width: 140px; font-size: 12px; font-weight: 600;">
+                <option value="all" ${activeMonthFilter === 'all' ? 'selected' : ''}>📅 Full Year (Jan–Dec)</option>
+                ${SEED_DATA.months.map((m, idx) => `
+                  <option value="${idx}" ${activeMonthFilter === String(idx) ? 'selected' : ''}>
+                    ${m}-${budgetYear} (${Utils.formatCurrency(catMonthlySums[idx] || 0, entity.currency)})
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+
+            <!-- View Mode Segmented Control -->
+            <div class="flex items-center" style="background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 2px;">
+              <button type="button" class="btn btn-xs ${activeViewMode === 'summary' ? 'btn-primary font-bold' : 'btn-ghost'}" id="btnViewModeSummary" style="font-size: 11px; padding: 4px 10px; border-radius: var(--radius-sm);" title="Single line overview with expand drawers">
+                📋 Summary
+              </button>
+              <button type="button" class="btn btn-xs ${activeViewMode === 'grid' ? 'btn-primary font-bold' : 'btn-ghost'}" id="btnViewModeGrid" style="font-size: 11px; padding: 4px 10px; border-radius: var(--radius-sm);" title="Full 12-month table grid view">
+                📅 12-Month Grid
+              </button>
+            </div>
+
             ${hasTotLines ? `
-              <div class="flex items-center gap-xs" style="background: var(--bg-primary); padding: 3px 6px; border-radius: var(--radius-sm); border: 1px solid var(--border-default); margin-right: 4px;">
-                <span class="text-secondary font-bold" style="font-size: 11px; padding: 0 4px;">ToT Costs:</span>
-                <button type="button" class="btn btn-sm ${this.totFilterMode !== 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('with-tot')" style="font-size: 11px; padding: 2px 8px; border-radius: var(--radius-xs);">
+              <div class="flex items-center gap-xs" style="background: var(--bg-primary); padding: 3px 6px; border-radius: var(--radius-sm); border: 1px solid var(--border-default);">
+                <span class="text-secondary font-bold" style="font-size: 11px; padding: 0 4px;">ToT:</span>
+                <button type="button" class="btn btn-xs ${this.totFilterMode !== 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('with-tot')" style="font-size: 10px; padding: 2px 6px;">
                   🎯 With ToT
                 </button>
-                <button type="button" class="btn btn-sm ${this.totFilterMode === 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('without-tot')" style="font-size: 11px; padding: 2px 8px; border-radius: var(--radius-xs);">
+                <button type="button" class="btn btn-xs ${this.totFilterMode === 'without-tot' ? 'btn-primary font-bold' : 'btn-ghost'}" onclick="BudgetEntryModule.setTotFilterMode('without-tot')" style="font-size: 10px; padding: 2px 6px;">
                   🚫 Without ToT
                 </button>
               </div>
             ` : ''}
-            <button type="button" class="btn btn-secondary btn-sm" id="btnToggleAllMonths" title="Expand / Collapse all monthly schedules">▶ Expand All</button>
+
+            ${activeViewMode === 'summary' ? `
+              <button type="button" class="btn btn-secondary btn-sm" id="btnToggleAllMonths" title="Expand / Collapse all monthly schedules">▶ Expand All</button>
+            ` : ''}
+
             ${isLocked ? '' : `
               <button class="btn btn-primary btn-sm" onclick="BudgetEntryModule.showExpenseInputWizard('${subTab}')">
                 + Add ${catMeta.title.replace('Expenses', '').replace('Costs', '').trim()} Item
@@ -2581,18 +3045,121 @@ const BudgetEntryModule = {
           </div>
         </div>
 
-        ${catRecords.length === 0 ? `
+        <!-- Interactive Ledger Breakdown Quick Pills -->
+        ${catLedgerMap.size > 0 ? `
+          <div class="flex items-center gap-xs flex-wrap p-sm" style="background: rgba(139, 92, 246, 0.04); border-bottom: 1px solid var(--border-subtle); padding: 8px 14px;">
+            <span class="text-tertiary font-bold" style="font-size: 11px; text-transform: uppercase; margin-right: 4px;">Accounts:</span>
+            <button type="button" class="btn btn-xs ${activeLedgerFilter === 'all' ? 'btn-primary font-bold' : 'btn-ghost'}" data-ledger-filter="all" style="border-radius: 20px; padding: 3px 12px; font-size: 11px; border: 1px solid var(--border-default);">
+              All (${catRecords.length}): ${Utils.formatCurrency(catUnfilteredTotal, entity.currency)}
+            </button>
+            ${Array.from(catLedgerMap.values()).map(l => `
+              <button type="button" class="btn btn-xs ${activeLedgerFilter === l.code || activeLedgerFilter === l.name ? 'btn-primary font-bold' : 'btn-ghost'}" data-ledger-filter="${l.code}" style="border-radius: 20px; padding: 3px 12px; font-size: 11px; border: 1px solid var(--border-default);">
+                ${l.name}: <strong>${Utils.formatCurrency(l.total, entity.currency)}</strong>
+              </button>
+            `).join('')}
+          </div>
+        ` : ''}
+
+        ${filteredCatRecords.length === 0 ? `
           <div class="p-xl text-center text-muted">
             <div style="font-size: 2.2rem; margin-bottom: 8px;">${catMeta.icon}</div>
-            <h4>No ${catMeta.title} Budgeted Yet</h4>
-            <p class="mt-xs">Add structured line items with employee ownership, unit rates, and amount justifications.</p>
-            ${isLocked ? '' : `
-              <button class="btn btn-primary mt-md" onclick="BudgetEntryModule.showExpenseInputWizard('${subTab}')">
-                ➕ Add First Item
-              </button>
-            `}
+            <h4>${catRecords.length === 0 ? `No ${catMeta.title} Budgeted Yet` : 'No Items Match the Selected Filter'}</h4>
+            <p class="mt-xs text-secondary" style="font-size: 13px;">Add structured line items with employee ownership, unit rates, and amount justifications.</p>
+            <div class="flex gap-sm justify-center mt-md">
+              ${catRecords.length > 0 ? `<button class="btn btn-secondary btn-sm" onclick="BudgetEntryModule.setOtherCostFilter('all', 'all')">Reset Filters</button>` : ''}
+              ${isLocked ? '' : `
+                <button class="btn btn-primary btn-sm" onclick="BudgetEntryModule.showExpenseInputWizard('${subTab}')">
+                  ➕ Add First Item
+                </button>
+              `}
+            </div>
+          </div>
+        ` : (activeViewMode === 'grid' ? `
+          <!-- ─── 12-MONTH TABLE GRID VIEW ─── -->
+          <div class="table-container">
+            <table class="data-table ${this.isMonthsCollapsed() ? 'months-collapsed' : ''}" id="categoryGridTable">
+              <thead>
+                <tr>
+                  <th style="width: 38px; text-align: center;">#</th>
+                  <th class="sticky-col-1">Employee Name</th>
+                  <th class="sticky-col-2">Item / Purpose</th>
+                  <th>GL Line & Code</th>
+                  <th class="num month-group budget-year total-toggle-th" data-toggle-months title="${this.isMonthsCollapsed() ? 'Click to expand monthly columns (Jan–Dec)' : 'Click to collapse monthly columns (Jan–Dec)'}">Total CY-${budgetYear} <span class="months-toggle-arrow">${this.isMonthsCollapsed() ? '&#9654;' : '&#9664;'}</span></th>
+                  ${SEED_DATA.months.map((m, mIdx) => `<th class="num month-group budget-year ${activeMonthFilter === String(mIdx) ? 'active-month-highlight' : ''}">${m}-${budgetYear}</th>`).join('')}
+                  <th>Location</th>
+                  <th>Activity</th>
+                  <th>Donor</th>
+                  <th>Condition Area</th>
+                  <th>Remarks</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredCatRecords.map((r, idx) => {
+                  const isTot = r.isImpTot;
+                  const rowId = r.id || (r.impTotEventId ? `tot-${r.impTotEventId}` : `item-${Math.random()}`);
+                  return `
+                    <tr class="exp-grid-row" data-row-id="${rowId}">
+                      <td style="text-align: center; color: var(--text-tertiary); font-size: 11px;">${idx + 1}</td>
+                      <td class="sticky-col-1 font-bold">
+                        👤 ${r.employeeName || (isTot ? 'Implementation Team' : 'Staff')}
+                      </td>
+                      <td class="sticky-col-2">
+                        <div class="flex items-center gap-xs">
+                          <strong>${r.itemName || r.glDescription || 'Item'}</strong>
+                          ${isTot ? `<span class="badge badge-purple font-bold" style="font-size: 10px; padding: 1px 6px;">🎯 ToT</span>` : ''}
+                        </div>
+                        ${r.subGroup ? `<div class="text-tertiary" style="font-size: 10px;">${r.subGroup}</div>` : ''}
+                      </td>
+                      <td>
+                        <div style="font-weight: 600; font-size: 12px;">${r.glDescription || ''}</div>
+                        <code style="font-size: 11px;">${r.ledgerCode || ''}</code>
+                      </td>
+                      <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(r.totalCY || 0, entity.currency)}</td>
+                      ${SEED_DATA.months.map((m, mIdx) => {
+                        const mVal = Utils.parseNumber(r.monthlyValues?.[mIdx]) || 0;
+                        return `
+                          <td class="num month-col font-mono ${activeMonthFilter === String(mIdx) ? 'active-month-cell' : ''}" style="${mVal > 0 ? 'font-weight: 600; color: var(--text-primary);' : 'color: var(--text-tertiary);'}">
+                            ${mVal > 0 ? Utils.formatNumber(mVal) : '-'}
+                          </td>
+                        `;
+                      }).join('')}
+                      <td style="font-size: 11px;">${r.location || '—'}</td>
+                      <td style="font-size: 11px;">${r.activity || '—'}</td>
+                      <td style="font-size: 11px;">${r.donor || '—'}</td>
+                      <td style="font-size: 11px;">${r.conditionArea || '—'}</td>
+                      <td class="remarks-cell" style="font-size: 11px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary);" title="${Utils.escapeHtml(r.remarks || '')}">
+                        ${r.remarks || '—'}
+                      </td>
+                      <td style="white-space: nowrap;">
+                        ${isLocked ? '<span class="badge badge-subtle" style="font-size: 11px;">🔒 Read-only</span>' : (
+                          isTot ? `
+                            <button class="btn btn-ghost btn-xs font-bold" style="color: var(--accent-primary);" onclick="BudgetEntryModule.activeOtherCostSubTab = 'tot'; BudgetEntryModule.renderGrid(BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._budgetYear, BudgetEntryModule._actualsMonth);">🎯 ToT</button>
+                          ` : `
+                            <button class="btn btn-ghost btn-xs" onclick="BudgetEntryModule.editExpenseItem(${r.id})">✏️ Edit</button>
+                            <button class="btn btn-danger btn-xs" onclick="BudgetEntryModule.deleteExpenseItem(${r.id})">🗑️</button>
+                          `
+                        )}
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+                <!-- Total Row -->
+                <tr class="total-row">
+                  <td class="sticky-col-status font-bold">TOTAL:</td>
+                  <td class="sticky-col-emp font-bold">${filteredCatRecords.length} Items</td>
+                  <td colspan="2"></td>
+                  <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(catTotal, entity.currency)}</td>
+                  ${SEED_DATA.months.map((m, idx) => `
+                    <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(catMonthlySums[idx] || 0)}</td>
+                  `).join('')}
+                  <td colspan="6"></td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         ` : `
+          <!-- ─── SUMMARY VIEW WITH EXPANDABLE DRAWERS ─── -->
           <div class="table-container">
             <table class="data-table" id="categoryExpensesTable">
               <thead>
@@ -2606,15 +3173,17 @@ const BudgetEntryModule = {
                   <th>Donor</th>
                   <th>Condition Area</th>
                   <th style="width: 180px; max-width: 180px; min-width: 130px;">Remarks (Justification)</th>
+                  ${activeMonthFilter !== 'all' ? `<th class="num font-bold" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-primary);">${SEED_DATA.months[parseInt(activeMonthFilter)]}-${budgetYear}</th>` : ''}
                   <th class="num font-bold">Total Budget (${entity.currency})</th>
                   <th class="num font-bold">Total USD</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                ${catRecords.map(r => {
+                ${filteredCatRecords.map(r => {
                   const isTot = r.isImpTot;
                   const rowId = r.id || (r.impTotEventId ? `tot-${r.impTotEventId}` : `item-${Math.random()}`);
+                  const singleMonthVal = activeMonthFilter !== 'all' ? (Utils.parseNumber(r.monthlyValues?.[parseInt(activeMonthFilter)]) || 0) : 0;
                   return `
                   <!-- Single-Line Main Row -->
                   <tr class="exp-item-main-row" data-row-id="${rowId}">
@@ -2642,6 +3211,9 @@ const BudgetEntryModule = {
                     <td class="remarks-cell" style="font-size: 11px; width: 180px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary);" title="${Utils.escapeHtml(r.remarks || '')}">
                       ${r.remarks || '—'}
                     </td>
+                    ${activeMonthFilter !== 'all' ? `
+                      <td class="num font-bold font-mono" style="background: rgba(139, 92, 246, 0.06); color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(singleMonthVal, entity.currency)}</td>
+                    ` : ''}
                     <td class="num font-bold" style="color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(r.totalCY || 0, entity.currency)}</td>
                     <td class="num font-bold" style="color: var(--accent-secondary); font-size: 13px;">≈ ${Utils.formatCurrency(Utils.convertToUSD(r.totalCY || 0, rate), 'USD')}</td>
                     <td style="white-space: nowrap;">
@@ -2658,7 +3230,7 @@ const BudgetEntryModule = {
 
                   <!-- Expandable 12-Month Breakdown Sub-Row -->
                   <tr class="exp-breakdown-row" id="breakdown-${rowId}" style="display: none;">
-                    <td colspan="12">
+                    <td colspan="${activeMonthFilter !== 'all' ? 13 : 12}">
                       <div style="display: flex; flex-direction: column; gap: 8px;">
                         <div class="flex justify-between items-center">
                           <div class="flex items-center gap-sm">
@@ -2711,7 +3283,10 @@ const BudgetEntryModule = {
                 <tr class="total-row">
                   <td colspan="2" class="sticky-col-1 font-bold">TOTAL ${catMeta.title.toUpperCase()}:</td>
                   <td class="sticky-col-2 font-bold text-right" style="padding-right: 16px;">(${entity.currency})</td>
-                  <td colspan="6"></td>
+                  <td colspan="${activeMonthFilter !== 'all' ? 7 : 6}"></td>
+                  ${activeMonthFilter !== 'all' ? `
+                    <td class="num font-bold" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(catMonthlySums[parseInt(activeMonthFilter)] || 0, entity.currency)}</td>
+                  ` : ''}
                   <td class="num font-bold" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(catTotal, entity.currency)}</td>
                   <td class="num font-bold" style="color: var(--accent-secondary); font-size: 1.05rem;">≈ ${Utils.formatCurrency(Utils.convertToUSD(catTotal, rate), 'USD')}</td>
                   <td></td>
@@ -2719,7 +3294,7 @@ const BudgetEntryModule = {
               </tbody>
             </table>
           </div>
-        `}
+        `)}
       </div>
     `;
   },

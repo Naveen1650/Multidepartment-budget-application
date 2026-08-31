@@ -2688,6 +2688,20 @@ tr.exp-breakdown-row td {
   animation: pulseHighlight 2.5s infinite ease-in-out;
 }
 
+/* ─── Month-Wise & Ledger-Wise Filters for Other Costs ─── */
+.active-month-highlight {
+  background: rgba(8, 145, 178, 0.15) !important;
+  color: var(--accent-primary) !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid var(--accent-primary) !important;
+}
 
+.active-month-cell {
+  background: rgba(8, 145, 178, 0.08) !important;
+  font-weight: 700 !important;
+  color: var(--accent-primary) !important;
+}
 
-
+.exp-grid-row:hover {
+  background: rgba(8, 145, 178, 0.04);
+}
