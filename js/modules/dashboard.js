@@ -7,6 +7,22 @@ const DashboardModule = {
   _isDragging: false,
 
   async render(container) {
+    try {
+      await this._renderInner(container);
+    } catch (err) {
+      console.error('[Dashboard] Render error:', err);
+      container.innerHTML = `
+        <div class="empty-state" style="padding: 60px 20px;">
+          <div class="empty-icon" style="font-size: 3rem; margin-bottom: 12px;">⚠️</div>
+          <h3 style="margin-bottom: 8px;">Dashboard Error</h3>
+          <p class="text-secondary" style="margin-bottom: 16px;">${err.message || 'An unexpected error occurred loading the dashboard.'}</p>
+          <button class="btn btn-primary" onclick="App.renderCurrentPage()">↺ Retry</button>
+        </div>
+      `;
+    }
+  },
+
+  async _renderInner(container) {
     const years = await db.getAll(STORES.budgetYears);
     const entities = await db.getAll(STORES.entities);
     const departments = Utils.sortDepartments(await db.getAll(STORES.departments));
@@ -41,29 +57,46 @@ const DashboardModule = {
       console.warn('Could not parse stored country order', e);
     }
 
-    // Calculate budget metrics per entity from Total Dept Costs of all departments
-    const entityMetrics = await Promise.all(orderedEntities.map(async e => {
+    // ── BULK FETCH: 4 DB calls total (instead of entities × depts × 4) ──
+    let allPayroll = [], allEha = [], allFixedAssets = [], allNonPayroll = [];
+    try {
+      [allPayroll, allEha, allFixedAssets, allNonPayroll] = await Promise.all([
+        db.getAll(STORES.payrollPersonnel),
+        db.getAll(STORES.payrollEHA),
+        db.getAll(STORES.payrollFixedAsset),
+        db.getAll(STORES.nonPayrollCost)
+      ]);
+    } catch (e) {
+      console.warn('[Dashboard] Bulk fetch error:', e);
+    }
+
+    // Helper: filter records for yearId + entityId + deptId
+    const filterData = (arr, eId, dId) =>
+      arr.filter(r => String(r.yearId) === String(yearId) && r.entityId === eId && r.deptId === dId);
+
+    // Calculate budget metrics per entity — pure synchronous after bulk fetch
+    const entityMetrics = orderedEntities.map(e => {
       const rate = activeYearObj?.conversionRates?.[e.currency] || 1.0;
       let totalLocal = 0;
       let totalLineCount = 0;
       let budgetedDeptsCount = 0;
 
-      const deptBreakdowns = await Promise.all(departments.map(async d => {
-        const payroll = await db.getBudgetData(STORES.payrollPersonnel, yearId, e.id, d.id);
-        const eha = await db.getBudgetData(STORES.payrollEHA, yearId, e.id, d.id);
-        const fixedAssets = await db.getBudgetData(STORES.payrollFixedAsset, yearId, e.id, d.id);
-        const nonPayroll = await db.getBudgetData(STORES.nonPayrollCost, yearId, e.id, d.id);
+      const deptBreakdowns = departments.map(d => {
+        const payroll     = filterData(allPayroll,     e.id, d.id);
+        const eha         = filterData(allEha,         e.id, d.id);
+        const fixedAssets = filterData(allFixedAssets, e.id, d.id);
+        const nonPayroll  = filterData(allNonPayroll,  e.id, d.id);
 
         let deptCost = 0;
-        payroll.forEach(p => { deptCost += Utils.parseNumber(p.totalCY); });
-        eha.forEach(p => { deptCost += Utils.parseNumber(p.totalCY); });
+        payroll.forEach(p     => { deptCost += Utils.parseNumber(p.totalCY); });
+        eha.forEach(p         => { deptCost += Utils.parseNumber(p.totalCY); });
         fixedAssets.forEach(f => { deptCost += Utils.parseNumber(f.totalCY); });
-        nonPayroll.forEach(p => { deptCost += Utils.parseNumber(p.totalCY); });
+        nonPayroll.forEach(p  => { deptCost += Utils.parseNumber(p.totalCY); });
 
         const lineCount = payroll.length + eha.length + fixedAssets.length + nonPayroll.length;
         if (deptCost > 0 || lineCount > 0) budgetedDeptsCount++;
 
-        totalLocal += deptCost;
+        totalLocal     += deptCost;
         totalLineCount += lineCount;
 
         return {
@@ -73,7 +106,7 @@ const DashboardModule = {
           deptCostUSD: Utils.convertToUSD(deptCost, rate),
           lineCount
         };
-      }));
+      });
 
       const totalUSD = Utils.convertToUSD(totalLocal, rate);
 
@@ -86,13 +119,13 @@ const DashboardModule = {
         entriesCount: totalLineCount,
         deptBreakdowns
       };
-    }));
+    });
 
-    const globalTotalUSD = entityMetrics.reduce((sum, m) => sum + m.totalUSD, 0);
+    const globalTotalUSD       = entityMetrics.reduce((sum, m) => sum + m.totalUSD, 0);
     const totalLineItemsGlobal = entityMetrics.reduce((sum, m) => sum + m.entriesCount, 0);
-    const indiaMetrics = entityMetrics.filter(m => m.entity.country === 'India');
-    const indiaTotalINR = indiaMetrics.reduce((sum, m) => sum + m.totalLocal, 0);
-    const indiaTotalUSD = indiaMetrics.reduce((sum, m) => sum + m.totalUSD, 0);
+    const indiaMetrics   = entityMetrics.filter(m => m.entity.country === 'India');
+    const indiaTotalINR  = indiaMetrics.reduce((sum, m) => sum + m.totalLocal, 0);
+    const indiaTotalUSD  = indiaMetrics.reduce((sum, m) => sum + m.totalUSD, 0);
 
     const hasCustomOrder = !!localStorage.getItem('noora_dashboard_country_order');
 

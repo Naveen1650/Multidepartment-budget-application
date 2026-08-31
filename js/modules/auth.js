@@ -775,6 +775,12 @@ const Auth = {
     return result;
   },
 
+  // ─── Invalidate the lock status cache (called after realtime cloud updates) ───
+  invalidateLockCache() {
+    this._lockStatusCache = {};
+    this.refreshAllLockStatuses().catch(e => console.warn('[Auth] invalidateLockCache refresh error:', e));
+  },
+
   enforceCategoryUI(container, context) {
     if (!container) return;
     context = context || {};

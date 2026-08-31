@@ -602,6 +602,11 @@ const App = {
     if (this.currentPage === 'budget-entry' && typeof BudgetEntryModule !== 'undefined') {
       await BudgetEntryModule.renderCurrentTab();
     }
+  },
+
+  // ─── Alias for renderCurrentPage (used by cloud-sync and other modules) ───
+  async renderActiveModule() {
+    return this.renderCurrentPage();
   }
 };
 

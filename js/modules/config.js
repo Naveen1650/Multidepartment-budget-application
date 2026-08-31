@@ -7358,9 +7358,6 @@ const ConfigModule = {
     if (pageContent) this.renderRoles(pageContent);
   },
 
-  async renderLinePermissions(container) {
-    return this.renderRoles(container);
-  },
 
 
   async showRoleForm(roleId = null) {
