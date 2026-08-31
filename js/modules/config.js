@@ -605,9 +605,9 @@ const ConfigModule = {
   },
 
   async renderBudgetYear(container) {
-    const budgetYears = await db.getAll(STORES.budgetYears);
-    const entities = await db.getAll(STORES.entities);
-    const departments = await db.getAll(STORES.departments);
+    const budgetYears = (await db.getAll(STORES.budgetYears)) || [];
+    const entities = (await db.getAll(STORES.entities)) || [];
+    const departments = (await db.getAll(STORES.departments)) || [];
 
     container.innerHTML = `
       <div class="page-header">
