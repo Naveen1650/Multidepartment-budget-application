@@ -814,13 +814,14 @@ const Utils = {
     DEFAULT_WIDTHS: {
       stickyStatus: 100,
       stickyEmp: 180,
-      stickyCol1: 200,
-      stickyCol2: 340,
-      monthCol: 82,
-      totalCol: 115,
-      remarksCol: 160,
-      basisCol: 150,
-      tagCol: 130
+      stickyIdx: 36,
+      stickyCol1: 125,
+      stickyCol2: 165,
+      monthCol: 78,
+      totalCol: 110,
+      remarksCol: 140,
+      basisCol: 130,
+      tagCol: 110
     },
 
     getWidths() {
@@ -865,10 +866,20 @@ const Utils = {
       }
 
       const empLeft = parseInt(w.stickyStatus, 10) || 100;
-      const col2Left = parseInt(w.stickyCol1, 10) || 200;
+      const idxW = parseInt(w.stickyIdx, 10) || 36;
+      const col1W = parseInt(w.stickyCol1, 10) || 125;
+      const col2LeftWithIdx = idxW + col1W;
+      const col2LeftNoIdx = col1W;
 
       styleEl.innerHTML = `
         /* Dynamic Column Width Customizer Overrides */
+        .data-table th.sticky-col-idx,
+        .data-table td.sticky-col-idx {
+          width: ${idxW}px !important;
+          min-width: ${idxW}px !important;
+          max-width: ${idxW}px !important;
+          left: 0px !important;
+        }
         .data-table th.sticky-col-status,
         .data-table td.sticky-col-status {
           width: ${w.stickyStatus}px !important;
@@ -890,17 +901,27 @@ const Utils = {
           width: ${w.stickyCol1}px !important;
           min-width: ${w.stickyCol1}px !important;
           max-width: ${w.stickyCol1}px !important;
+          left: ${idxW}px !important;
+        }
+        .data-table:not(.has-sticky-idx) th.sticky-col,
+        .data-table:not(.has-sticky-idx) td.sticky-col,
+        .data-table:not(.has-sticky-idx) th.sticky-col-1,
+        .data-table:not(.has-sticky-idx) td.sticky-col-1 {
           left: 0px !important;
         }
         .data-table th.sticky-col-2,
         .data-table td.sticky-col-2 {
           width: ${w.stickyCol2}px !important;
           min-width: ${w.stickyCol2}px !important;
-          max-width: ${Math.max(w.stickyCol2 + 60, 440)}px !important;
-          left: ${col2Left}px !important;
+          max-width: ${Math.max(w.stickyCol2 + 40, 220)}px !important;
+          left: ${col2LeftWithIdx}px !important;
           white-space: normal !important;
           word-break: normal !important;
-          line-height: 1.35 !important;
+          line-height: 1.3 !important;
+        }
+        .data-table:not(.has-sticky-idx) th.sticky-col-2,
+        .data-table:not(.has-sticky-idx) td.sticky-col-2 {
+          left: ${col2LeftNoIdx}px !important;
         }
         .data-table th.month-group,
         .data-table td.month-col,

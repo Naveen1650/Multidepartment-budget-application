@@ -2702,10 +2702,10 @@ const BudgetEntryModule = {
           ` : (activeViewMode === 'grid' ? `
             <!-- ─── 12-MONTH TABLE GRID VIEW ─── -->
             <div class="table-container">
-              <table class="data-table ${this.isMonthsCollapsed() ? 'months-collapsed' : ''}" id="travelGridTable">
+              <table class="data-table has-sticky-idx ${this.isMonthsCollapsed() ? 'months-collapsed' : ''}" id="travelGridTable">
                 <thead>
                   <tr>
-                    <th style="width: 38px; text-align: center;">#</th>
+                    <th class="sticky-col-idx">#</th>
                     <th class="sticky-col-1">Employee Name</th>
                     <th class="sticky-col-2">Trip Purpose & Destination</th>
                     <th>GL Line & Code</th>
@@ -2726,7 +2726,7 @@ const BudgetEntryModule = {
                     const ledgerCode = pkg.ledgerCode || '93101';
                     return `
                       <tr class="exp-grid-row" data-row-id="${rowId}">
-                        <td style="text-align: center; color: var(--text-tertiary); font-size: 11px;">${idx + 1}</td>
+                        <td class="sticky-col-idx" style="text-align: center; color: var(--text-tertiary); font-size: 11px;">${idx + 1}</td>
                         <td class="sticky-col-1 font-bold">
                           👤 ${pkg.employeeName || (isTot ? 'Implementation Team' : 'Staff')}
                         </td>
@@ -2771,9 +2771,10 @@ const BudgetEntryModule = {
                   }).join('')}
                   <!-- Total Row -->
                   <tr class="total-row">
-                    <td class="sticky-col-status font-bold">TOTAL:</td>
-                    <td class="sticky-col-emp font-bold">${filteredTravelRecords.length} Items</td>
-                    <td colspan="2"></td>
+                    <td class="sticky-col-idx font-bold">TOTAL:</td>
+                    <td class="sticky-col-1 font-bold">${filteredTravelRecords.length} Items</td>
+                    <td class="sticky-col-2"></td>
+                    <td></td>
                     <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(totalTravelCost, entity.currency)}</td>
                     ${SEED_DATA.months.map((m, idx) => `
                       <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx] || 0)}</td>
@@ -2786,10 +2787,10 @@ const BudgetEntryModule = {
           ` : `
             <!-- ─── SUMMARY VIEW WITH EXPANDABLE DRAWERS ─── -->
             <div class="table-container">
-              <table class="data-table" id="travelPackagesTable">
+              <table class="data-table has-sticky-idx" id="travelPackagesTable">
                 <thead>
                   <tr>
-                    <th style="width: 40px; text-align: center;">Expand</th>
+                    <th class="sticky-col-idx" style="text-align: center;">#</th>
                     <th class="sticky-col-1">Employee Name</th>
                     <th class="sticky-col-2">Trip Purpose & Destination</th>
                     <th>GL Line & Code</th>
@@ -2813,7 +2814,7 @@ const BudgetEntryModule = {
                     return `
                     <!-- Single-Line Main Row -->
                     <tr class="exp-item-main-row" data-row-id="${rowId}">
-                      <td style="text-align: center; width: 40px;">
+                      <td class="sticky-col-idx" style="text-align: center;">
                         <button type="button" class="btn-expand-row" data-target="breakdown-travel-${rowId}" title="Click to expand/collapse monthly budget">▶</button>
                       </td>
                       <td class="sticky-col-1 font-bold">
@@ -3087,10 +3088,10 @@ const BudgetEntryModule = {
         ` : (activeViewMode === 'grid' ? `
           <!-- ─── 12-MONTH TABLE GRID VIEW ─── -->
           <div class="table-container">
-            <table class="data-table ${this.isMonthsCollapsed() ? 'months-collapsed' : ''}" id="categoryGridTable">
+            <table class="data-table has-sticky-idx ${this.isMonthsCollapsed() ? 'months-collapsed' : ''}" id="categoryGridTable">
               <thead>
                 <tr>
-                  <th style="width: 38px; text-align: center;">#</th>
+                  <th class="sticky-col-idx">#</th>
                   <th class="sticky-col-1">Employee Name</th>
                   <th class="sticky-col-2">Item / Purpose</th>
                   <th>GL Line & Code</th>
@@ -3110,7 +3111,7 @@ const BudgetEntryModule = {
                   const rowId = r.id || (r.impTotEventId ? `tot-${r.impTotEventId}` : `item-${Math.random()}`);
                   return `
                     <tr class="exp-grid-row" data-row-id="${rowId}">
-                      <td style="text-align: center; color: var(--text-tertiary); font-size: 11px;">${idx + 1}</td>
+                      <td class="sticky-col-idx" style="text-align: center; color: var(--text-tertiary); font-size: 11px;">${idx + 1}</td>
                       <td class="sticky-col-1 font-bold">
                         👤 ${r.employeeName || (isTot ? 'Implementation Team' : 'Staff')}
                       </td>
@@ -3156,9 +3157,10 @@ const BudgetEntryModule = {
                 }).join('')}
                 <!-- Total Row -->
                 <tr class="total-row">
-                  <td class="sticky-col-status font-bold">TOTAL:</td>
-                  <td class="sticky-col-emp font-bold">${filteredCatRecords.length} Items</td>
-                  <td colspan="2"></td>
+                  <td class="sticky-col-idx font-bold">TOTAL:</td>
+                  <td class="sticky-col-1 font-bold">${filteredCatRecords.length} Items</td>
+                  <td class="sticky-col-2"></td>
+                  <td></td>
                   <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(catTotal, entity.currency)}</td>
                   ${SEED_DATA.months.map((m, idx) => `
                     <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(catMonthlySums[idx] || 0)}</td>
@@ -3171,10 +3173,10 @@ const BudgetEntryModule = {
         ` : `
           <!-- ─── SUMMARY VIEW WITH EXPANDABLE DRAWERS ─── -->
           <div class="table-container">
-            <table class="data-table" id="categoryExpensesTable">
+            <table class="data-table has-sticky-idx" id="categoryExpensesTable">
               <thead>
                 <tr>
-                  <th style="width: 40px; text-align: center;">Expand</th>
+                  <th class="sticky-col-idx" style="text-align: center;">#</th>
                   <th class="sticky-col-1">Employee Name</th>
                   <th class="sticky-col-2">Item / Specific Purpose</th>
                   <th>GL Line & Code</th>
@@ -3197,7 +3199,7 @@ const BudgetEntryModule = {
                   return `
                   <!-- Single-Line Main Row -->
                   <tr class="exp-item-main-row" data-row-id="${rowId}">
-                    <td style="text-align: center; width: 40px;">
+                    <td class="sticky-col-idx" style="text-align: center;">
                       <button type="button" class="btn-expand-row" data-target="breakdown-${rowId}" title="Click to view 12-month budget schedule">▶</button>
                     </td>
                     <td class="sticky-col-1 font-bold">
