@@ -2673,5 +2673,21 @@ tr.exp-breakdown-row td {
   color: var(--text-tertiary);
 }
 
+/* ─── Dynamic Unsaved Changes Save Button ─── */
+@keyframes pulseHighlight {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  50% { transform: scale(1.02); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.btn-save-sync {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-save-sync.pulse-highlight {
+  animation: pulseHighlight 2.5s infinite ease-in-out;
+}
+
+
 
 
