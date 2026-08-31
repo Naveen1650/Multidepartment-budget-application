@@ -2598,11 +2598,11 @@ const BudgetEntryModule = {
       });
 
       return `
-        <div class="card mb-lg">
-          <!-- Filter & View Controls Header -->
-          <div class="card-header flex justify-between items-center" style="flex-wrap: wrap; gap: 12px;">
+        <div class="card mb-lg" style="max-width: 100%; box-sizing: border-box;">
+          <!-- 1. Header: Title & Action Button -->
+          <div class="card-header flex justify-between items-center" style="flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
             <div>
-              <div class="card-title flex items-center gap-xs">
+              <div class="card-title flex items-center gap-xs" style="flex-wrap: wrap;">
                 <span>✈️ Employee Travel & Lodging Packages</span>
                 <span class="badge badge-primary font-bold" style="font-size: 11px;">${filteredTravelRecords.length} of ${travelRecords.length} Items</span>
                 ${activeLedgerFilter !== 'all' || activeMonthFilter !== 'all' ? `<span class="badge badge-warning font-bold" style="font-size: 10px;">Filtered</span>` : ''}
@@ -2610,44 +2610,8 @@ const BudgetEntryModule = {
               <div class="card-subtitle">Filter by General Ledger line, month schedule, or toggle 12-Month Table Grid view</div>
             </div>
 
-            <!-- Toolbar Filters -->
+            <!-- Right-side Action Buttons -->
             <div class="flex items-center gap-sm flex-wrap">
-              <!-- Ledger / GL Account Filter -->
-              <div class="flex items-center gap-xs" style="background: var(--bg-surface); padding: 4px 8px; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
-                <label class="form-label" style="margin: 0; font-size: 11px; font-weight: 600; white-space: nowrap;">GL Line:</label>
-                <select class="form-select form-select-sm" id="otherCostLedgerSelect" style="width: auto; min-width: 170px; font-size: 12px; font-weight: 600;">
-                  <option value="all" ${activeLedgerFilter === 'all' ? 'selected' : ''}>📑 All Ledger Lines (${travelRecords.length})</option>
-                  ${Array.from(ledgerMap.values()).map(l => `
-                    <option value="${l.code}" ${activeLedgerFilter === l.code || activeLedgerFilter === l.name ? 'selected' : ''}>
-                      ${l.icon} ${l.name} (${l.code}) — ${Utils.formatCurrency(l.total, entity.currency)}
-                    </option>
-                  `).join('')}
-                </select>
-              </div>
-
-              <!-- Month Filter -->
-              <div class="flex items-center gap-xs" style="background: var(--bg-surface); padding: 4px 8px; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
-                <label class="form-label" style="margin: 0; font-size: 11px; font-weight: 600; white-space: nowrap;">Month:</label>
-                <select class="form-select form-select-sm" id="otherCostMonthSelect" style="width: auto; min-width: 140px; font-size: 12px; font-weight: 600;">
-                  <option value="all" ${activeMonthFilter === 'all' ? 'selected' : ''}>📅 Full Year (Jan–Dec)</option>
-                  ${SEED_DATA.months.map((m, idx) => `
-                    <option value="${idx}" ${activeMonthFilter === String(idx) ? 'selected' : ''}>
-                      ${m}-${budgetYear} (${Utils.formatCurrency(colMonthlySums[idx] || 0, entity.currency)})
-                    </option>
-                  `).join('')}
-                </select>
-              </div>
-
-              <!-- View Mode Segmented Control -->
-              <div class="flex items-center" style="background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 2px;">
-                <button type="button" class="btn btn-xs ${activeViewMode === 'summary' ? 'btn-primary font-bold' : 'btn-ghost'}" id="btnViewModeSummary" style="font-size: 11px; padding: 4px 10px; border-radius: var(--radius-sm);" title="Single line overview with expand drawers">
-                  📋 Summary
-                </button>
-                <button type="button" class="btn btn-xs ${activeViewMode === 'grid' ? 'btn-primary font-bold' : 'btn-ghost'}" id="btnViewModeGrid" style="font-size: 11px; padding: 4px 10px; border-radius: var(--radius-sm);" title="Full 12-month table grid view">
-                  📅 12-Month Grid
-                </button>
-              </div>
-
               ${hasTotLines ? `
                 <div class="flex items-center gap-xs" style="background: var(--bg-primary); padding: 3px 6px; border-radius: var(--radius-sm); border: 1px solid var(--border-default);">
                   <span class="text-secondary font-bold" style="font-size: 11px; padding: 0 4px;">ToT:</span>
@@ -2660,10 +2624,6 @@ const BudgetEntryModule = {
                 </div>
               ` : ''}
 
-              ${activeViewMode === 'summary' ? `
-                <button type="button" class="btn btn-secondary btn-sm" id="btnToggleAllMonths" title="Expand / Collapse all monthly schedules">▶ Expand All</button>
-              ` : ''}
-
               ${isLocked ? '' : `
                 <button class="btn btn-primary btn-sm" id="btnHeaderNewTrip" style="background: linear-gradient(135deg, #0891b2, #4f46e5);">
                   + Add Trip Package
@@ -2672,17 +2632,61 @@ const BudgetEntryModule = {
             </div>
           </div>
 
-          <!-- Interactive Ledger Breakdown Quick Pills -->
-          <div class="flex items-center gap-xs flex-wrap p-sm" style="background: rgba(8, 145, 178, 0.04); border-bottom: 1px solid var(--border-subtle); padding: 8px 14px;">
-            <span class="text-tertiary font-bold" style="font-size: 11px; text-transform: uppercase; margin-right: 4px;">Ledger Breakdown:</span>
-            <button type="button" class="btn btn-xs ${activeLedgerFilter === 'all' ? 'btn-primary font-bold' : 'btn-ghost'}" data-ledger-filter="all" style="border-radius: 20px; padding: 3px 12px; font-size: 11px; border: 1px solid var(--border-default);">
-              All Travel (${travelRecords.length}): ${Utils.formatCurrency(totalUnfilteredCost, entity.currency)}
+          <!-- 2. Responsive Filters Toolbar Row -->
+          <div class="flex items-center justify-between gap-sm flex-wrap mb-sm" style="background: var(--bg-tertiary); border-radius: var(--radius-md); padding: 6px 10px; border: 1px solid var(--border-subtle); max-width: 100%;">
+            <div class="flex items-center gap-sm flex-wrap" style="flex: 1; min-width: 0;">
+              <!-- Ledger / GL Account Filter -->
+              <div class="flex items-center gap-xs" style="background: var(--bg-surface); padding: 3px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-default);">
+                <label class="form-label" style="margin: 0; font-size: 11px; font-weight: 600; white-space: nowrap;">GL Line:</label>
+                <select class="form-select form-select-sm" id="otherCostLedgerSelect" style="width: auto; max-width: 220px; font-size: 12px; font-weight: 600; padding: 3px 26px 3px 8px;">
+                  <option value="all" ${activeLedgerFilter === 'all' ? 'selected' : ''}>📑 All Ledger Lines (${travelRecords.length})</option>
+                  ${Array.from(ledgerMap.values()).map(l => `
+                    <option value="${l.code}" ${activeLedgerFilter === l.code || activeLedgerFilter === l.name ? 'selected' : ''}>
+                      ${l.icon} ${l.name} (${l.code}) — ${Utils.formatCurrency(l.total, entity.currency)}
+                    </option>
+                  `).join('')}
+                </select>
+              </div>
+
+              <!-- Month Filter -->
+              <div class="flex items-center gap-xs" style="background: var(--bg-surface); padding: 3px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-default);">
+                <label class="form-label" style="margin: 0; font-size: 11px; font-weight: 600; white-space: nowrap;">Month:</label>
+                <select class="form-select form-select-sm" id="otherCostMonthSelect" style="width: auto; max-width: 180px; font-size: 12px; font-weight: 600; padding: 3px 26px 3px 8px;">
+                  <option value="all" ${activeMonthFilter === 'all' ? 'selected' : ''}>📅 Full Year (Jan–Dec)</option>
+                  ${SEED_DATA.months.map((m, idx) => `
+                    <option value="${idx}" ${activeMonthFilter === String(idx) ? 'selected' : ''}>
+                      ${m}-${budgetYear} (${Utils.formatCurrency(colMonthlySums[idx] || 0, entity.currency)})
+                    </option>
+                  `).join('')}
+                </select>
+              </div>
+            </div>
+
+            <!-- View Mode Segmented Control & Expand Button -->
+            <div class="flex items-center gap-xs flex-wrap">
+              <div class="flex items-center" style="background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: 2px;">
+                <button type="button" class="btn btn-xs ${activeViewMode === 'summary' ? 'btn-primary font-bold' : 'btn-ghost'}" id="btnViewModeSummary" style="font-size: 11px; padding: 3px 8px; border-radius: var(--radius-xs);" title="Single line overview with expand drawers">
+                  📋 Summary
+                </button>
+                <button type="button" class="btn btn-xs ${activeViewMode === 'grid' ? 'btn-primary font-bold' : 'btn-ghost'}" id="btnViewModeGrid" style="font-size: 11px; padding: 3px 8px; border-radius: var(--radius-xs);" title="Full 12-month table grid view">
+                  📅 12-Month Grid
+                </button>
+              </div>
+              ${activeViewMode === 'summary' ? `
+                <button type="button" class="btn btn-secondary btn-xs" id="btnToggleAllMonths" style="font-size: 11px; padding: 4px 8px;" title="Expand / Collapse all monthly schedules">▶ Expand All</button>
+              ` : ''}
+            </div>
+          </div>
+
             </button>
-            ${Array.from(ledgerMap.values()).map(l => `
-              <button type="button" class="btn btn-xs ${activeLedgerFilter === l.code || activeLedgerFilter === l.name ? 'btn-primary font-bold' : 'btn-ghost'}" data-ledger-filter="${l.code}" style="border-radius: 20px; padding: 3px 12px; font-size: 11px; border: 1px solid var(--border-default); ${l.total > 0 ? 'color: var(--text-primary);' : 'opacity: 0.65;'}">
-                ${l.icon} ${l.name}: <strong>${Utils.formatCurrency(l.total, entity.currency)}</strong>
-              </button>
-            `).join('')}
+            ${Array.from(ledgerMap.values()).map(l => {
+              const shortName = l.name.replace('Accommodation', '').replace('Expenses', '').replace('Other Incidental', 'Incidental').replace('travel costs', '').trim();
+              return `
+                <button type="button" class="btn btn-xs ${activeLedgerFilter === l.code || activeLedgerFilter === l.name ? 'btn-primary font-bold' : 'btn-ghost'}" data-ledger-filter="${l.code}" title="${l.name} (${l.code}): ${Utils.formatCurrency(l.total, entity.currency)}" style="border-radius: 20px; padding: 2px 10px; font-size: 11px; border: 1px solid var(--border-default); ${l.total > 0 ? 'color: var(--text-primary);' : 'opacity: 0.65;'}">
+                  ${l.icon} ${shortName}: <strong>${Utils.formatCurrency(l.total, entity.currency)}</strong>
+                </button>
+              `;
+            }).join('')}
           </div>
 
           ${filteredTravelRecords.length === 0 ? `
@@ -2971,11 +2975,11 @@ const BudgetEntryModule = {
     });
 
     return `
-      <div class="card mb-lg">
-        <!-- Filter & View Controls Header -->
-        <div class="card-header flex justify-between items-center" style="flex-wrap: wrap; gap: 12px;">
+      <div class="card mb-lg" style="max-width: 100%; box-sizing: border-box;">
+        <!-- 1. Header: Title & Action Button -->
+        <div class="card-header flex justify-between items-center" style="flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
           <div>
-            <div class="card-title flex items-center gap-xs">
+            <div class="card-title flex items-center gap-xs" style="flex-wrap: wrap;">
               <span>${catMeta.icon} ${catMeta.title}</span>
               <span class="badge badge-primary font-bold" style="font-size: 11px;">${filteredCatRecords.length} of ${catRecords.length} Items</span>
               ${activeLedgerFilter !== 'all' || activeMonthFilter !== 'all' ? `<span class="badge badge-warning font-bold" style="font-size: 10px;">Filtered</span>` : ''}
@@ -2983,44 +2987,8 @@ const BudgetEntryModule = {
             <div class="card-subtitle">Filter by General Ledger line, month schedule, or toggle 12-Month Table Grid view</div>
           </div>
 
-          <!-- Toolbar Filters -->
+          <!-- Right-side Action Buttons -->
           <div class="flex items-center gap-sm flex-wrap">
-            <!-- Ledger / GL Account Filter -->
-            <div class="flex items-center gap-xs" style="background: var(--bg-surface); padding: 4px 8px; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
-              <label class="form-label" style="margin: 0; font-size: 11px; font-weight: 600; white-space: nowrap;">GL Line:</label>
-              <select class="form-select form-select-sm" id="otherCostLedgerSelect" style="width: auto; min-width: 170px; font-size: 12px; font-weight: 600;">
-                <option value="all" ${activeLedgerFilter === 'all' ? 'selected' : ''}>📑 All Accounts (${catRecords.length})</option>
-                ${Array.from(catLedgerMap.values()).map(l => `
-                  <option value="${l.code}" ${activeLedgerFilter === l.code || activeLedgerFilter === l.name ? 'selected' : ''}>
-                    ${l.name} (${l.code}) — ${Utils.formatCurrency(l.total, entity.currency)}
-                  </option>
-                `).join('')}
-              </select>
-            </div>
-
-            <!-- Month Filter -->
-            <div class="flex items-center gap-xs" style="background: var(--bg-surface); padding: 4px 8px; border-radius: var(--radius-md); border: 1px solid var(--border-default);">
-              <label class="form-label" style="margin: 0; font-size: 11px; font-weight: 600; white-space: nowrap;">Month:</label>
-              <select class="form-select form-select-sm" id="otherCostMonthSelect" style="width: auto; min-width: 140px; font-size: 12px; font-weight: 600;">
-                <option value="all" ${activeMonthFilter === 'all' ? 'selected' : ''}>📅 Full Year (Jan–Dec)</option>
-                ${SEED_DATA.months.map((m, idx) => `
-                  <option value="${idx}" ${activeMonthFilter === String(idx) ? 'selected' : ''}>
-                    ${m}-${budgetYear} (${Utils.formatCurrency(catMonthlySums[idx] || 0, entity.currency)})
-                  </option>
-                `).join('')}
-              </select>
-            </div>
-
-            <!-- View Mode Segmented Control -->
-            <div class="flex items-center" style="background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 2px;">
-              <button type="button" class="btn btn-xs ${activeViewMode === 'summary' ? 'btn-primary font-bold' : 'btn-ghost'}" id="btnViewModeSummary" style="font-size: 11px; padding: 4px 10px; border-radius: var(--radius-sm);" title="Single line overview with expand drawers">
-                📋 Summary
-              </button>
-              <button type="button" class="btn btn-xs ${activeViewMode === 'grid' ? 'btn-primary font-bold' : 'btn-ghost'}" id="btnViewModeGrid" style="font-size: 11px; padding: 4px 10px; border-radius: var(--radius-sm);" title="Full 12-month table grid view">
-                📅 12-Month Grid
-              </button>
-            </div>
-
             ${hasTotLines ? `
               <div class="flex items-center gap-xs" style="background: var(--bg-primary); padding: 3px 6px; border-radius: var(--radius-sm); border: 1px solid var(--border-default);">
                 <span class="text-secondary font-bold" style="font-size: 11px; padding: 0 4px;">ToT:</span>
@@ -3033,10 +3001,6 @@ const BudgetEntryModule = {
               </div>
             ` : ''}
 
-            ${activeViewMode === 'summary' ? `
-              <button type="button" class="btn btn-secondary btn-sm" id="btnToggleAllMonths" title="Expand / Collapse all monthly schedules">▶ Expand All</button>
-            ` : ''}
-
             ${isLocked ? '' : `
               <button class="btn btn-primary btn-sm" onclick="BudgetEntryModule.showExpenseInputWizard('${subTab}')">
                 + Add ${catMeta.title.replace('Expenses', '').replace('Costs', '').trim()} Item
@@ -3045,15 +3009,61 @@ const BudgetEntryModule = {
           </div>
         </div>
 
-        <!-- Interactive Ledger Breakdown Quick Pills -->
+        <!-- 2. Responsive Filters Toolbar Row -->
+        <div class="flex items-center justify-between gap-sm flex-wrap mb-sm" style="background: var(--bg-tertiary); border-radius: var(--radius-md); padding: 6px 10px; border: 1px solid var(--border-subtle); max-width: 100%;">
+          <div class="flex items-center gap-sm flex-wrap" style="flex: 1; min-width: 0;">
+            <!-- Ledger / GL Account Filter -->
+            <div class="flex items-center gap-xs" style="background: var(--bg-surface); padding: 3px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-default);">
+              <label class="form-label" style="margin: 0; font-size: 11px; font-weight: 600; white-space: nowrap;">GL Line:</label>
+              <select class="form-select form-select-sm" id="otherCostLedgerSelect" style="width: auto; max-width: 220px; font-size: 12px; font-weight: 600; padding: 3px 26px 3px 8px;">
+                <option value="all" ${activeLedgerFilter === 'all' ? 'selected' : ''}>📑 All Accounts (${catRecords.length})</option>
+                ${Array.from(catLedgerMap.values()).map(l => `
+                  <option value="${l.code}" ${activeLedgerFilter === l.code || activeLedgerFilter === l.name ? 'selected' : ''}>
+                    ${l.name} (${l.code}) — ${Utils.formatCurrency(l.total, entity.currency)}
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+
+            <!-- Month Filter -->
+            <div class="flex items-center gap-xs" style="background: var(--bg-surface); padding: 3px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-default);">
+              <label class="form-label" style="margin: 0; font-size: 11px; font-weight: 600; white-space: nowrap;">Month:</label>
+              <select class="form-select form-select-sm" id="otherCostMonthSelect" style="width: auto; max-width: 180px; font-size: 12px; font-weight: 600; padding: 3px 26px 3px 8px;">
+                <option value="all" ${activeMonthFilter === 'all' ? 'selected' : ''}>📅 Full Year (Jan–Dec)</option>
+                ${SEED_DATA.months.map((m, idx) => `
+                  <option value="${idx}" ${activeMonthFilter === String(idx) ? 'selected' : ''}>
+                    ${m}-${budgetYear} (${Utils.formatCurrency(catMonthlySums[idx] || 0, entity.currency)})
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+          </div>
+
+          <!-- View Mode Segmented Control & Expand Button -->
+          <div class="flex items-center gap-xs flex-wrap">
+            <div class="flex items-center" style="background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: 2px;">
+              <button type="button" class="btn btn-xs ${activeViewMode === 'summary' ? 'btn-primary font-bold' : 'btn-ghost'}" id="btnViewModeSummary" style="font-size: 11px; padding: 3px 8px; border-radius: var(--radius-xs);" title="Single line overview with expand drawers">
+                📋 Summary
+              </button>
+              <button type="button" class="btn btn-xs ${activeViewMode === 'grid' ? 'btn-primary font-bold' : 'btn-ghost'}" id="btnViewModeGrid" style="font-size: 11px; padding: 3px 8px; border-radius: var(--radius-xs);" title="Full 12-month table grid view">
+                📅 12-Month Grid
+              </button>
+            </div>
+            ${activeViewMode === 'summary' ? `
+              <button type="button" class="btn btn-secondary btn-xs" id="btnToggleAllMonths" style="font-size: 11px; padding: 4px 8px;" title="Expand / Collapse all monthly schedules">▶ Expand All</button>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- 3. Interactive Ledger Breakdown Quick Pills -->
         ${catLedgerMap.size > 0 ? `
-          <div class="flex items-center gap-xs flex-wrap p-sm" style="background: rgba(139, 92, 246, 0.04); border-bottom: 1px solid var(--border-subtle); padding: 8px 14px;">
-            <span class="text-tertiary font-bold" style="font-size: 11px; text-transform: uppercase; margin-right: 4px;">Accounts:</span>
-            <button type="button" class="btn btn-xs ${activeLedgerFilter === 'all' ? 'btn-primary font-bold' : 'btn-ghost'}" data-ledger-filter="all" style="border-radius: 20px; padding: 3px 12px; font-size: 11px; border: 1px solid var(--border-default);">
+          <div class="flex items-center gap-xs flex-wrap p-xs mb-sm" style="background: rgba(139, 92, 246, 0.04); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 6px 10px; max-width: 100%; overflow-x: auto;">
+            <span class="text-tertiary font-bold" style="font-size: 10px; text-transform: uppercase; margin-right: 2px; white-space: nowrap;">Accounts:</span>
+            <button type="button" class="btn btn-xs ${activeLedgerFilter === 'all' ? 'btn-primary font-bold' : 'btn-ghost'}" data-ledger-filter="all" style="border-radius: 20px; padding: 2px 10px; font-size: 11px; border: 1px solid var(--border-default);">
               All (${catRecords.length}): ${Utils.formatCurrency(catUnfilteredTotal, entity.currency)}
             </button>
             ${Array.from(catLedgerMap.values()).map(l => `
-              <button type="button" class="btn btn-xs ${activeLedgerFilter === l.code || activeLedgerFilter === l.name ? 'btn-primary font-bold' : 'btn-ghost'}" data-ledger-filter="${l.code}" style="border-radius: 20px; padding: 3px 12px; font-size: 11px; border: 1px solid var(--border-default);">
+              <button type="button" class="btn btn-xs ${activeLedgerFilter === l.code || activeLedgerFilter === l.name ? 'btn-primary font-bold' : 'btn-ghost'}" data-ledger-filter="${l.code}" title="${l.name} (${l.code}): ${Utils.formatCurrency(l.total, entity.currency)}" style="border-radius: 20px; padding: 2px 10px; font-size: 11px; border: 1px solid var(--border-default); ${l.total > 0 ? 'color: var(--text-primary);' : 'opacity: 0.65;'}">
                 ${l.name}: <strong>${Utils.formatCurrency(l.total, entity.currency)}</strong>
               </button>
             `).join('')}
