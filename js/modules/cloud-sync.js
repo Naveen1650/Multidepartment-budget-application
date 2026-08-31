@@ -185,6 +185,7 @@ const CloudSyncModule = {
       this._lastError = null;
       this.updateNavbarBadge();
       this.subscribeRealtime();
+      this.startPeriodicPolling();
 
       // Perform initial bidirectional auto-sync on connection
       if (this._config.autoSync && !this._initialSyncDone) {
@@ -349,6 +350,10 @@ const CloudSyncModule = {
   disconnect() {
     this._client = null;
     this._status = 'local';
+    if (this._pollingInterval) {
+      clearInterval(this._pollingInterval);
+      this._pollingInterval = null;
+    }
     if (this._realtimeSubscription) {
       try { this._realtimeSubscription.unsubscribe(); } catch(e) {}
       this._realtimeSubscription = null;
@@ -383,7 +388,8 @@ const CloudSyncModule = {
       const tablesToListen = [
         'budget_years', 'entities', 'departments', 'entity_dept_configs',
         'payroll_personnel', 'payroll_eha', 'payroll_fixed_assets',
-        'non_payroll_costs', 'employees_master', 'imp_tot_events', 'budget_lock_status'
+        'non_payroll_costs', 'employees_master', 'imp_tot_events', 'budget_lock_status',
+        'roles', 'users'
       ];
 
       tablesToListen.forEach(table => {
@@ -409,16 +415,51 @@ const CloudSyncModule = {
             Auth.invalidateLockCache();
           }
 
-          if (typeof App !== 'undefined' && App.renderActiveModule) {
-            App.renderActiveModule();
+          // Trigger instant live UI update on the receiving user's screen
+          if (typeof App !== 'undefined') {
+            if (table === 'budget_years' || table === 'entities' || table === 'departments') {
+              if (App.populateGlobalSelectors) await App.populateGlobalSelectors();
+            }
+            if (CloudSyncModule._uiRefreshTimer) clearTimeout(CloudSyncModule._uiRefreshTimer);
+            CloudSyncModule._uiRefreshTimer = setTimeout(async () => {
+              if (App.currentPage === 'budget-entry' && typeof BudgetEntryModule !== 'undefined' && BudgetEntryModule._entity && BudgetEntryModule._dept) {
+                // If on budget-entry grid, refresh active grid seamlessly
+                await BudgetEntryModule.renderGrid(BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._budgetYear, BudgetEntryModule._actualsMonth);
+              } else if (App.renderCurrentPage) {
+                await App.renderCurrentPage();
+              }
+            }, 80);
           }
         });
       });
 
-      this._realtimeSubscription = channel.subscribe();
+      this._realtimeSubscription = channel.subscribe((status) => {
+        console.log('[Realtime] Subscription status:', status);
+      });
     } catch (e) {
       console.warn('Realtime subscription not active:', e);
     }
+  },
+
+  // ─── Periodic Background Polling Fallback ───
+  startPeriodicPolling() {
+    if (this._pollingInterval) clearInterval(this._pollingInterval);
+    this._pollingInterval = setInterval(async () => {
+      if (typeof document !== 'undefined' && document.hidden) return; // Skip if tab in background
+      if (this._isSyncing) return;
+      if (this._config.enabled && this._config.autoSync && this._client) {
+        try {
+          await this.downloadAllFromCloud(() => {}, true);
+          if (typeof App !== 'undefined') {
+            if (App.currentPage === 'budget-entry' && typeof BudgetEntryModule !== 'undefined' && BudgetEntryModule._entity && BudgetEntryModule._dept) {
+              await BudgetEntryModule.renderGrid(BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._budgetYear, BudgetEntryModule._actualsMonth);
+            } else if (App.renderCurrentPage) {
+              await App.renderCurrentPage();
+            }
+          }
+        } catch (e) {}
+      }
+    }, 15000);
   },
 
   // ─── Full Store Upload & Download ───
