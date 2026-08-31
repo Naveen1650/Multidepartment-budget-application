@@ -968,8 +968,11 @@ const ReportsModule = {
       const coa = await db.getAll(STORES.chartOfAccounts);
 
       const entityConfigs = await db.getEntityDeptConfigForYear(yearId, entity.id);
-      const activeDeptIds = new Set(entityConfigs.filter(c => c.isActive).map(c => c.deptId));
-      const entityDepts = departments.filter(d => activeDeptIds.size === 0 || activeDeptIds.has(d.id));
+      let entityDepts = departments;
+      if (entityConfigs && entityConfigs.length > 0) {
+        const activeDeptIds = new Set(entityConfigs.filter(c => c.isActive !== false && c.is_active !== false).map(c => c.deptId || c.dept_id));
+        entityDepts = departments.filter(d => activeDeptIds.has(d.id));
+      }
       if (entityDepts.length > 0 && !entityDepts.find(d => d.id === selectedDeptId)) {
         selectedDeptId = entityDepts[0].id;
       }

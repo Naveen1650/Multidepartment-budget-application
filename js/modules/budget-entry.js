@@ -1,5 +1,4 @@
 // ============================================================
-// ============================================================
 // NOORA HEALTH BUDGET APP — Budget Entry Module
 // Multi-tab grid entry for Payroll (Personnel, EHA, Fixed Assets)
 // and Non-Payroll costs with 5-dimensional tagging
@@ -55,13 +54,15 @@ const BudgetEntryModule = {
     }
     const selectedEntity = entities.find(e => e.id === this.currentEntityId) || entities[0];
 
-    // Filter active departments for entity
+    // Filter active departments for entity in this budget year
     const yearId = (typeof App !== 'undefined' && App.selectedYear) ? App.selectedYear : (years[0]?.id || '2026');
     const configs = await db.getEntityDeptConfigForYear(yearId, this.currentEntityId);
-    const activeDeptIds = new Set(configs.filter(c => c.isActive).map(c => c.deptId));
-
     const sortedDepartments = Utils.sortDepartments(allDepartments);
-    const entityDepts = sortedDepartments.filter(d => activeDeptIds.size === 0 || activeDeptIds.has(d.id));
+    let entityDepts = sortedDepartments;
+    if (configs && configs.length > 0) {
+      const activeDeptIds = new Set(configs.filter(c => c.isActive !== false && c.is_active !== false).map(c => c.deptId || c.dept_id));
+      entityDepts = sortedDepartments.filter(d => activeDeptIds.has(d.id));
+    }
 
     // Filter accessible departments for active user for this entity
     const activeDepts = typeof Auth !== 'undefined' ? Auth.filterAccessibleDepts(entityDepts, this.currentEntityId) : entityDepts;
@@ -70,16 +71,16 @@ const BudgetEntryModule = {
       container.innerHTML = `
         <div class="card p-xl text-center" style="max-width: 620px; margin: 40px auto; border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-card);">
           <div style="font-size: 2.8rem; margin-bottom: 12px;">🔒</div>
-          <h3 style="margin: 0 0 8px; color: var(--text-primary);">No Department Access</h3>
+          <h3 style="margin: 0 0 8px; color: var(--text-primary);">No Active Department Access</h3>
           <p class="text-secondary" style="margin: 0 0 16px; font-size: 13px; line-height: 1.5;">
-            Your active role (<strong>${Auth.getCurrentUser()?.roleName || 'User'}</strong>) does not have access to any departments in <strong>${selectedEntity.shortName}</strong>.
+            No active departments are configured or accessible in <strong>${selectedEntity.shortName}</strong> for CY-${yearId}.
           </p>
         </div>
       `;
       return;
     }
 
-    // Determine currentDeptId (must be within accessible depts)
+    // Determine currentDeptId (must be within accessible active depts)
     if (!this.currentDeptId || !activeDepts.some(d => d.id === this.currentDeptId)) {
       this.currentDeptId = activeDepts[0].id;
     }

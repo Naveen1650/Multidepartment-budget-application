@@ -1239,9 +1239,42 @@ const ConfigModule = {
       });
     });
 
-    content.addEventListener('change', (e) => {
+    content.addEventListener('change', async (e) => {
       if (e.target.matches('input[type="checkbox"]')) {
-        configMap[e.target.dataset.key] = e.target.checked;
+        const key = e.target.dataset.key;
+        if (!e.target.checked) {
+          // User is unticking a department. Check if data exists!
+          const [yId, entId, dId] = key.split('_');
+          const [payroll, eha, fa, nonPayroll, tot] = await Promise.all([
+            db.getBudgetData(STORES.payrollPersonnel, yId, entId, dId),
+            db.getBudgetData(STORES.payrollEHA, yId, entId, dId),
+            db.getBudgetData(STORES.payrollFixedAsset, yId, entId, dId),
+            db.getBudgetData(STORES.nonPayrollCost, yId, entId, dId),
+            db.getBudgetData(STORES.impTotEvents, yId, entId, dId)
+          ]);
+          const allLines = [...(payroll || []), ...(eha || []), ...(fa || []), ...(nonPayroll || []), ...(tot || [])];
+          if (allLines.length > 0) {
+            let totalAmount = 0;
+            allLines.forEach(r => {
+              totalAmount += Utils.parseNumber(r.totalCY || r.total_cy || 0);
+            });
+            const entObj = entities.find(ent => ent.id === entId);
+            const deptObj = departments.find(d => d.id === dId);
+            const deptName = Utils.getDeptName(deptObj, entObj?.deptPrefix);
+            const formattedTotal = Utils.formatCurrency(totalAmount, entObj?.currency || 'USD');
+
+            const confirmed = await Utils.confirm(
+              `⚠️ Department Contains Existing Budget Data!\n\n"${deptName}" already has ${allLines.length} budget line item${allLines.length > 1 ? 's' : ''} (${formattedTotal}) entered in CY-${year.year}.\n\nUnticking this department will deactivate and hide it from the Budget Entry sheet and reports for ${entObj?.shortName || entId}.\n\nAre you sure you want to deactivate this department?`
+            );
+
+            if (!confirmed) {
+              e.target.checked = true;
+              configMap[key] = true;
+              return;
+            }
+          }
+        }
+        configMap[key] = e.target.checked;
       }
     });
 
@@ -1252,18 +1285,28 @@ const ConfigModule = {
         footer.appendChild(Utils.createElement('button', {
           className: 'btn btn-primary', textContent: 'Save Activation Settings',
           onClick: async () => {
+            const allConfigsToSave = [];
             for (const [key, isActive] of Object.entries(configMap)) {
               const [yId, entId, dId] = key.split('_');
-              await db.put(STORES.entityDeptConfig, {
+              allConfigsToSave.push({
                 id: key,
-                yearId: yId,
+                yearId: String(yId),
                 entityId: entId,
                 deptId: dId,
-                isActive
+                isActive: !!isActive
               });
             }
-            Utils.showToast('Department activations updated!', 'success');
+            for (const cfg of allConfigsToSave) {
+              await db.put(STORES.entityDeptConfig, cfg);
+            }
+            if (typeof CloudSyncModule !== 'undefined' && CloudSyncModule.pushManyToCloud) {
+              await CloudSyncModule.pushManyToCloud(STORES.entityDeptConfig, allConfigsToSave);
+            }
+            Utils.showToast('Department activations updated and synced with team!', 'success');
             close();
+            if (typeof App !== 'undefined' && App.renderCurrentPage) {
+              await App.renderCurrentPage();
+            }
           }
         }));
       }

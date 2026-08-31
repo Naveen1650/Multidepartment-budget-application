@@ -820,7 +820,17 @@ class BudgetDB {
   }
 
   async getEntityDeptConfigForYear(yearId, entityId) {
-    return this.getByIndex(STORES.entityDeptConfig, 'yearEntity', [yearId, entityId]);
+    await this.ready;
+    if (!this.db || !this.db.objectStoreNames.contains(STORES.entityDeptConfig)) return [];
+    try {
+      const all = await this.getAll(STORES.entityDeptConfig);
+      const sYear = String(yearId);
+      const sEntity = String(entityId);
+      return all.filter(c => (String(c.yearId) === sYear || String(c.year_id) === sYear) && (String(c.entityId) === sEntity || String(c.entity_id) === sEntity));
+    } catch (e) {
+      console.warn('Error in getEntityDeptConfigForYear:', e);
+      return [];
+    }
   }
 
   async getBudgetData(storeName, yearId, entityId, deptId) {

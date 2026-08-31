@@ -1801,8 +1801,11 @@ const ExcelIOModule = {
 
     for (const e of entities) {
       const entityConfigs = await db.getEntityDeptConfigForYear(yearId, e.id);
-      const activeDeptIds = new Set(entityConfigs.filter(c => c.isActive).map(c => c.deptId));
-      const entityDepts = departments.filter(d => activeDeptIds.size === 0 || activeDeptIds.has(d.id));
+      let entityDepts = departments;
+      if (entityConfigs && entityConfigs.length > 0) {
+        const activeDeptIds = new Set(entityConfigs.filter(c => c.isActive !== false && c.is_active !== false).map(c => c.deptId || c.dept_id));
+        entityDepts = departments.filter(d => activeDeptIds.has(d.id));
+      }
 
       for (const d of entityDepts) {
         coa.forEach(account => {
@@ -2951,8 +2954,11 @@ const ExcelIOModule = {
       for (const e of entities) {
         const rate = activeYearObj.conversionRates?.[e.currency] || 1.0;
         const entityConfigs = await db.getEntityDeptConfigForYear(yearId, e.id);
-        const activeDeptIds = new Set(entityConfigs.filter(c => c.isActive).map(c => c.deptId));
-        const entityDepts = departments.filter(d => activeDeptIds.size === 0 || activeDeptIds.has(d.id));
+        let entityDepts = departments;
+        if (entityConfigs && entityConfigs.length > 0) {
+          const activeDeptIds = new Set(entityConfigs.filter(c => c.isActive !== false && c.is_active !== false).map(c => c.deptId || c.dept_id));
+          entityDepts = departments.filter(d => activeDeptIds.has(d.id));
+        }
 
         for (const d of entityDepts) {
           const payroll = (canViewSalaries || canViewOtherStaff || canViewGratuity) ? await db.getBudgetData(STORES.payrollPersonnel, yearId, e.id, d.id) : [];
