@@ -23,7 +23,8 @@ const ReportsModule = {
     const departments = Utils.sortDepartments(await db.getAll(STORES.departments));
 
     const yearId = this._selectedYear || App.selectedYear || years[0]?.id || '2026';
-    const activeYearObj = years.find(y => String(y.id) === String(yearId) || String(y.year) === String(yearId)) || years[0] || { id: '2026', year: 2026, conversionRates: { USD: 1, INR: 83.5, BDT: 117, IDR: 16200, NPR: 133.5 } };
+    const activeYearObj = years.find(y => String(y.id) === String(yearId) || String(y.year) === String(yearId)) || years[0] || { id: '2026', year: 2026 };
+    activeYearObj.conversionRates = Utils.getConversionRates(activeYearObj);
     this._selectedYear = activeYearObj.id;
     App.selectedYear = activeYearObj.id;
 
@@ -149,7 +150,6 @@ const ReportsModule = {
   // ─── Reusable Helper: Build Consolidated Line Items across entities & departments ───
   async buildConsolidatedLineItems(entityList, yearId, conversionRates) {
     const coa = await db.getAll(STORES.chartOfAccounts);
-    const cleanStr = (s) => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 
     const allSalaries = [];
     const allOtherStaff = [];
@@ -712,7 +712,8 @@ const ReportsModule = {
   async renderEntitySummaryReport(container, yearId, entities) {
     let selectedEntityId = ReportsModule.selectedEntityId || App.selectedEntity || entities[0]?.id || '';
     const years = await db.getAll(STORES.budgetYears);
-    const activeYearObj = years.find(y => y.id === yearId) || { year: 2026, conversionRates: { USD: 1, INR: 83.5, BDT: 117, IDR: 16200, NPR: 133.5 } };
+    const activeYearObj = years.find(y => y.id === yearId) || { year: 2026 };
+    activeYearObj.conversionRates = Utils.getConversionRates(activeYearObj);
 
     const updateView = async () => {
       const entity = entities.find(e => e.id === selectedEntityId) || entities[0];
@@ -959,7 +960,8 @@ const ReportsModule = {
     let selectedEntityId = ReportsModule.selectedEntityId || App.selectedEntity || entities[0]?.id || '';
     let selectedDeptId = ReportsModule.selectedDeptId || App.selectedDept || departments[0]?.id || '';
     const years = await db.getAll(STORES.budgetYears);
-    const activeYearObj = years.find(y => y.id === yearId) || { year: 2026, conversionRates: { USD: 1, INR: 83.5, BDT: 117, IDR: 16200, NPR: 133.5 } };
+    const activeYearObj = years.find(y => y.id === yearId) || { year: 2026 };
+    activeYearObj.conversionRates = Utils.getConversionRates(activeYearObj);
     const budgetYear = activeYearObj.year || 2026;
 
     const updateView = async () => {
@@ -1016,7 +1018,6 @@ const ReportsModule = {
         return { monthlyValues: months, totalCY: total };
       };
 
-      const cleanStr = (s) => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
       const matchedOtherCostIndices = new Set();
 
       // Fetch prior period costs for this entity and department
@@ -1024,8 +1025,8 @@ const ReportsModule = {
       const priorYear = activeYearObj.priorYear || (budgetYear - 1);
       const priorMap = {};
       priorCosts.forEach(p => {
-        if (p.ledgerCode) priorMap[cleanStr(p.ledgerCode)] = p.priorCost || 0;
-        if (p.glDescription) priorMap[cleanStr(p.glDescription)] = p.priorCost || 0;
+        if (p.ledgerCode) priorMap[Utils.cleanStr(p.ledgerCode)] = p.priorCost || 0;
+        if (p.glDescription) priorMap[Utils.cleanStr(p.glDescription)] = p.priorCost || 0;
       });
 
       const lines = coa.map(account => {
@@ -1364,7 +1365,8 @@ const ReportsModule = {
     this.dimensionParentAccount = this.dimensionParentAccount || 'all'; // all | parentAccountName
     this.dimensionSearchQuery = this.dimensionSearchQuery || '';
 
-    const activeYearObj = yearObj || { year: 2026, conversionRates: { USD: 1, INR: 83.5, BDT: 117, IDR: 16200, NPR: 133.5 } };
+    const activeYearObj = yearObj || { year: 2026 };
+    activeYearObj.conversionRates = Utils.getConversionRates(activeYearObj);
     const budgetYear = activeYearObj.year || 2026;
 
     const dimMeta = {

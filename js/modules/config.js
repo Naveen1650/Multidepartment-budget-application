@@ -2434,10 +2434,8 @@ const ConfigModule = {
       let searchQuery = '';
 
       // Exchange rates
-      const currentYearObj = years.find(y => y.id === App.selectedYear) || years[0] || {
-        conversionRates: { USD: 1.0, INR: 83.5, BDT: 117.0, IDR: 16200, NPR: 133.5 }
-      };
-      const rates = currentYearObj.conversionRates || { USD: 1.0, INR: 83.5, BDT: 117.0, IDR: 16200, NPR: 133.5 };
+      const currentYearObj = years.find(y => y.id === App.selectedYear) || years[0] || { year: 2026 };
+      const rates = Utils.getConversionRates(currentYearObj);
 
       const getRateForEntity = (ent) => {
         if (!ent || !ent.currency || ent.currency === 'USD') return 1.0;
@@ -2793,10 +2791,8 @@ const ConfigModule = {
     allEmployees = allEmployees.filter(e => !e.entityId || accessibleEntityIds.has(e.entityId));
     const managerNames = Array.from(new Set(allEmployees.map(e => e.name).filter(Boolean)));
 
-    const currentYearObj = years.find(y => y.id === App.selectedYear) || years[0] || {
-      conversionRates: { USD: 1.0, INR: 83.5, BDT: 117.0, IDR: 16200, NPR: 133.5 }
-    };
-    const rates = currentYearObj.conversionRates || { USD: 1.0, INR: 83.5, BDT: 117.0, IDR: 16200, NPR: 133.5 };
+    const currentYearObj = years.find(y => y.id === App.selectedYear) || years[0] || { year: 2026 };
+    const rates = Utils.getConversionRates(currentYearObj);
 
     const defaultEntity = entities.find(e => e.id === existing?.entityId) || entities[0];
     const aCTC = existing?.annualCTC || 0;
@@ -3109,10 +3105,8 @@ const ConfigModule = {
 
     const departments = await db.getAll(STORES.departments);
     const years = await db.getAll(STORES.budgetYears);
-    const currentYearObj = years.find(y => y.id === App.selectedYear) || years[0] || {
-      conversionRates: { USD: 1.0, INR: 83.5, BDT: 117.0, IDR: 16200, NPR: 133.5 }
-    };
-    const rates = currentYearObj.conversionRates || { USD: 1.0, INR: 83.5, BDT: 117.0, IDR: 16200, NPR: 133.5 };
+    const currentYearObj = years.find(y => y.id === App.selectedYear) || years[0] || { year: 2026 };
+    const rates = Utils.getConversionRates(currentYearObj);
 
     const headers = [
       'Employee Code', 'Name of Employee', 'Band', 'Date of Joining', 'Legal Entity',

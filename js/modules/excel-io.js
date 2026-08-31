@@ -181,7 +181,8 @@ const ExcelIOModule = {
     const activeYearObj = years.find(y => String(y.id) === String(yearId) || String(y.year) === String(yearId)) ||
                           years.find(y => String(y.id) === String(App?.selectedYear) || String(y.year) === String(App?.selectedYear)) ||
                           years[0] ||
-                          { id: String(yearId), year: parseInt(yearId) || 2026, conversionRates: { USD: 1, INR: 83.5, BDT: 117, IDR: 16200, NPR: 133.5 } };
+                          { id: String(yearId), year: parseInt(yearId) || 2026 };
+    activeYearObj.conversionRates = Utils.getConversionRates(activeYearObj);
 
     return activeYearObj;
   },
@@ -600,7 +601,8 @@ const ExcelIOModule = {
 
         const targetEntity = entities.find(e => e.id === targetEntityId) || entities[0];
         const years = await db.getAll(STORES.budgetYears);
-        const activeYearObj = years.find(y => y.id === yearId) || { conversionRates: { USD: 1, INR: 83.5, BDT: 117, IDR: 16200, NPR: 133.5 } };
+        const activeYearObj = years.find(y => y.id === yearId) || { year: 2026 };
+        activeYearObj.conversionRates = Utils.getConversionRates(activeYearObj);
         const rate = activeYearObj.conversionRates?.[targetEntity?.currency] || 1.0;
 
         const totalSalaryCost = records.reduce((sum, r) => sum + r.totalCY, 0);
@@ -931,7 +933,8 @@ const ExcelIOModule = {
 
         const targetEntity = entities.find(e => e.id === targetEntityId) || entities[0];
         const years = await db.getAll(STORES.budgetYears);
-        const activeYearObj = years.find(y => y.id === yearId) || { conversionRates: { USD: 1, INR: 83.5, BDT: 117, IDR: 16200, NPR: 133.5 } };
+        const activeYearObj = years.find(y => y.id === yearId) || { year: 2026 };
+        activeYearObj.conversionRates = Utils.getConversionRates(activeYearObj);
         const rate = activeYearObj.conversionRates?.[targetEntity?.currency] || 1.0;
 
         const totalCost = records.reduce((sum, r) => sum + r.totalCY, 0);
@@ -1250,7 +1253,8 @@ const ExcelIOModule = {
 
         const targetEntity = entities.find(e => e.id === targetEntityId) || entities[0];
         const years = await db.getAll(STORES.budgetYears);
-        const activeYearObj = years.find(y => y.id === yearId) || { conversionRates: { USD: 1, INR: 83.5, BDT: 117, IDR: 16200, NPR: 133.5 } };
+        const activeYearObj = years.find(y => y.id === yearId) || { year: 2026 };
+        activeYearObj.conversionRates = Utils.getConversionRates(activeYearObj);
         const rate = activeYearObj.conversionRates?.[targetEntity?.currency] || 1.0;
 
         const totalCost = records.reduce((sum, r) => sum + r.totalCY, 0);
@@ -1608,7 +1612,8 @@ const ExcelIOModule = {
 
         const targetEntity = entities.find(e => e.id === targetEntityId) || entities[0];
         const years = await db.getAll(STORES.budgetYears);
-        const activeYearObj = years.find(y => y.id === yearId) || { conversionRates: { USD: 1, INR: 83.5, BDT: 117, IDR: 16200, NPR: 133.5 } };
+        const activeYearObj = years.find(y => y.id === yearId) || { year: 2026 };
+        activeYearObj.conversionRates = Utils.getConversionRates(activeYearObj);
         const rate = activeYearObj.conversionRates?.[targetEntity?.currency] || 1.0;
 
         const totalCost = records.reduce((sum, r) => sum + r.totalCY, 0);
@@ -1949,16 +1954,15 @@ const ExcelIOModule = {
 
         const entities = await db.getAll(STORES.entities);
         const departments = await db.getAll(STORES.departments);
-        const cleanStr = (s) => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 
         const findEntity = (val) => {
-          const cv = cleanStr(val);
-          return entities.find(ent => cleanStr(ent.id) === cv || cleanStr(ent.shortName) === cv || cleanStr(ent.name) === cv || cleanStr(ent.deptPrefix) === cv) || entities[0];
+          const cv = Utils.cleanStr(val);
+          return entities.find(ent => Utils.cleanStr(ent.id) === cv || Utils.cleanStr(ent.shortName) === cv || Utils.cleanStr(ent.name) === cv || Utils.cleanStr(ent.deptPrefix) === cv) || entities[0];
         };
 
         const findDept = (val, entity) => {
-          const cv = cleanStr(val);
-          return departments.find(d => cleanStr(d.id) === cv || cleanStr(d.codeTemplate) === cv || cleanStr(d.name) === cv || cleanStr(Utils.getDeptName(d, entity?.deptPrefix)) === cv || cleanStr(d.codeTemplate.replace('{CC}', entity?.deptPrefix || '')) === cv) || departments[0];
+          const cv = Utils.cleanStr(val);
+          return departments.find(d => Utils.cleanStr(d.id) === cv || Utils.cleanStr(d.codeTemplate) === cv || Utils.cleanStr(d.name) === cv || Utils.cleanStr(Utils.getDeptName(d, entity?.deptPrefix)) === cv || Utils.cleanStr(d.codeTemplate.replace('{CC}', entity?.deptPrefix || '')) === cv) || departments[0];
         };
 
         const records = [];
@@ -2264,7 +2268,8 @@ const ExcelIOModule = {
 
         const targetEntity = entities.find(e => e.id === targetEntityId) || entities[0];
         const years = await db.getAll(STORES.budgetYears);
-        const activeYearObj = years.find(y => y.id === yearId) || { conversionRates: { USD: 1, INR: 83.5, BDT: 117, IDR: 16200, NPR: 133.5 } };
+        const activeYearObj = years.find(y => y.id === yearId) || { year: 2026 };
+        activeYearObj.conversionRates = Utils.getConversionRates(activeYearObj);
         const rate = activeYearObj.conversionRates?.[targetEntity?.currency] || 1.0;
 
         const totalCost = records.reduce((sum, r) => sum + r.totalCY, 0);
@@ -2416,7 +2421,6 @@ const ExcelIOModule = {
 
   async getReportClubbedLines(entityList, yearId, conversionRates) {
     const coa = await db.getAll(STORES.chartOfAccounts);
-    const cleanStr = (s) => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 
     const canViewSalaries = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'salaries' });
     const canViewOtherStaff = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'other-staff' });
@@ -2855,12 +2859,10 @@ const ExcelIOModule = {
         return { monthlyValues: months, totalCY: total };
       };
 
-      const cleanStr = (s) => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-
       const priorMap = {};
       priorCosts.forEach(p => {
-        if (p.ledgerCode) priorMap[cleanStr(p.ledgerCode)] = p.priorCost || 0;
-        if (p.glDescription) priorMap[cleanStr(p.glDescription)] = p.priorCost || 0;
+        if (p.ledgerCode) priorMap[Utils.cleanStr(p.ledgerCode)] = p.priorCost || 0;
+        if (p.glDescription) priorMap[Utils.cleanStr(p.glDescription)] = p.priorCost || 0;
       });
 
       coa.forEach(account => {
@@ -2935,7 +2937,6 @@ const ExcelIOModule = {
     // Helper to generate Master Entity & Department-wise Line Items in a Single Sheet
     const addMasterEntityAndDeptLineItemsSheet = async () => {
       const coa = await db.getAll(STORES.chartOfAccounts);
-      const cleanStr = (s) => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
       const priorYear = activeYearObj.priorYear || (budgetYear - 1);
 
       const rows = [

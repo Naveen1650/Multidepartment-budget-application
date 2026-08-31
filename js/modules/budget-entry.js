@@ -86,9 +86,9 @@ const BudgetEntryModule = {
     }
     const selectedDept = activeDepts.find(d => d.id === this.currentDeptId) || activeDepts[0];
 
-    const yearObj = years.find(y => y.id === yearId) || { year: 2026, actualsThroughMonth: 'Oct', conversionRates: { USD: 1, INR: 83.5, BDT: 117, IDR: 16200, NPR: 133.5 } };
-    const budgetYear = yearObj.year;
-    this._conversionRates = yearObj.conversionRates || { USD: 1, INR: 83.5, BDT: 117, IDR: 16200, NPR: 133.5 };
+    const yearObj = years.find(y => y.id === yearId) || { year: 2026, actualsThroughMonth: 'Oct' };
+    const budgetYear = yearObj.year || 2026;
+    this._conversionRates = Utils.getConversionRates(yearObj);
 
     // ─── View Permission Evaluation per Category ───
     const canViewTotal = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'total-dept-cost', entityId: this.currentEntityId, deptId: this.currentDeptId });
@@ -585,13 +585,12 @@ const BudgetEntryModule = {
 
     // Load master employees and match department
     const allMasterEmployees = await db.getEmployeesMaster();
-    const normDept = (s) => String(s || '').toLowerCase().replace(/^in-|^us-|^bd-|^indo-|^np-/, '').replace(/[^a-z0-9]/g, '');
-    const targetDeptCode = normDept(dept.id || dept.codeTemplate || dept.name);
+    const targetDeptCode = Utils.normDept(dept);
 
     const deptEmployees = allMasterEmployees.filter(e => {
       if (e.status === 'Inactive') return false;
       if (e.entityId && entity.id && e.entityId.toLowerCase() !== entity.id.toLowerCase()) return false;
-      const empDept = normDept(e.deptId || e.department);
+      const empDept = Utils.normDept(e.deptId || e.department);
       return empDept === targetDeptCode || (empDept && targetDeptCode && (empDept.includes(targetDeptCode) || targetDeptCode.includes(empDept)));
     });
 
@@ -2099,8 +2098,6 @@ const BudgetEntryModule = {
       });
     });
 
-    const cleanStr = (s) => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-
     this.totFilterMode = this.totFilterMode || 'with-tot';
     const isImpDept = typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(dept);
 
@@ -2230,21 +2227,19 @@ const BudgetEntryModule = {
   },
 
   renderOtherCostSubTabContent(subTab, nonPayrollCoa, allRecords, travelRecords, suppliesRecords, commRecords, officeRecords, profRecords, otherRecords, yearId, entity, dept, budgetYear, rate, isLocked = false, hasTotLines = false) {
-    const cleanStr = (s) => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-
     // ─── 1. ALL ACCOUNTS OVERVIEW (Always Shows All COA Lines, Read-only Rollup) ───
     if (subTab === 'grid' || subTab === 'all') {
       const matchedRecordIds = new Set();
 
       const coaRows = nonPayrollCoa.map(account => {
-        const accGlClean = cleanStr(account.glDescription);
-        const accLedgerClean = cleanStr(account.ledgerCode);
-        const accParentClean = cleanStr(account.parentAccount);
+        const accGlClean = Utils.cleanStr(account.glDescription);
+        const accLedgerClean = Utils.cleanStr(account.ledgerCode);
+        const accParentClean = Utils.cleanStr(account.parentAccount);
 
         const matchingItems = allRecords.filter((r) => {
-          const rLedger = cleanStr(r.ledgerCode);
-          const rGl = cleanStr(r.glDescription);
-          const rParent = cleanStr(r.parentAccount);
+          const rLedger = Utils.cleanStr(r.ledgerCode);
+          const rGl = Utils.cleanStr(r.glDescription);
+          const rParent = Utils.cleanStr(r.parentAccount);
 
           const isMatch = (rLedger && accLedgerClean && rLedger === accLedgerClean) ||
                           (rGl && accGlClean && (rGl === accGlClean || rGl.includes(accGlClean) || accGlClean.includes(rGl))) ||
@@ -4119,7 +4114,6 @@ const BudgetEntryModule = {
       return { monthlyValues: months, totalCY: total };
     };
 
-    const cleanStr = (s) => String(s || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
     const matchedOtherCostIndices = new Set();
 
     const lines = coa.map(account => {
@@ -4129,9 +4123,9 @@ const BudgetEntryModule = {
       let rollup = { monthlyValues: Array(12).fill(0), totalCY: 0 };
       let remarks = savedRemarksMap[account.ledgerCode] || savedRemarksMap[account.glDescription] || '';
 
-      const accGlClean = cleanStr(account.glDescription);
-      const accLedgerClean = cleanStr(account.ledgerCode);
-      const accParentClean = cleanStr(account.parentAccount);
+      const accGlClean = Utils.cleanStr(account.glDescription);
+      const accLedgerClean = Utils.cleanStr(account.ledgerCode);
+      const accParentClean = Utils.cleanStr(account.parentAccount);
 
       // 1. Salaries and Wages
       if (accGlClean.includes('salariesandwages') || accLedgerClean.startsWith('911') || accParentClean.includes('salariesandwages')) {
@@ -5085,8 +5079,7 @@ const BudgetEntryModule = {
       return;
     }
 
-    const normDept = (s) => String(s || '').toLowerCase().replace(/^in-|^us-|^bd-|^indo-|^np-/, '').replace(/[^a-z0-9]/g, '');
-    const targetDeptCode = normDept(dept.id || dept.codeTemplate || dept.name);
+    const targetDeptCode = Utils.normDept(dept);
 
     // Get all master employees
     const allMaster = await db.getEmployeesMaster();
@@ -5096,7 +5089,7 @@ const BudgetEntryModule = {
       if (e.status === 'Inactive') return false;
       if (e.entityId && entity.id && e.entityId.toLowerCase() !== entity.id.toLowerCase()) return false;
       
-      const empDept = normDept(e.deptId || e.department);
+      const empDept = Utils.normDept(e.deptId || e.department);
       return empDept === targetDeptCode || (empDept && targetDeptCode && (empDept.includes(targetDeptCode) || targetDeptCode.includes(empDept)));
     });
 

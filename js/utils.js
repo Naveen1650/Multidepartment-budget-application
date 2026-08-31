@@ -5,6 +5,50 @@
 
 const Utils = {
 
+  // ─── Default Rates & Currency Constants ───
+  DEFAULT_RATES: {
+    USD: 1,
+    INR: 83.5,
+    BDT: 117,
+    IDR: 16200,
+    NPR: 133.5
+  },
+
+  getConversionRates(yearObj) {
+    if (yearObj && yearObj.conversionRates && typeof yearObj.conversionRates === 'object') {
+      return { ...this.DEFAULT_RATES, ...yearObj.conversionRates };
+    }
+    return { ...this.DEFAULT_RATES };
+  },
+
+  // ─── String Normalization & Sanitization ───
+  cleanStr(str) {
+    return String(str || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  },
+
+  normDept(dept) {
+    const raw = typeof dept === 'object' && dept !== null
+      ? (dept.id || dept.codeTemplate || dept.name || '')
+      : String(dept || '');
+    return raw.toLowerCase().replace(/^in-|^us-|^bd-|^indo-|^np-/, '').replace(/[^a-z0-9]/g, '');
+  },
+
+  filterActiveDepartments(allDepartments, entityConfigs) {
+    if (!allDepartments || !Array.isArray(allDepartments)) return [];
+    const sorted = this.sortDepartments(allDepartments);
+    if (!entityConfigs || !Array.isArray(entityConfigs) || entityConfigs.length === 0) {
+      return sorted;
+    }
+    const activeDeptIds = new Set(
+      entityConfigs
+        .filter(c => c && c.isActive !== false && c.is_active !== false)
+        .map(c => c.deptId || c.dept_id)
+        .filter(Boolean)
+    );
+    if (activeDeptIds.size === 0) return sorted;
+    return sorted.filter(d => activeDeptIds.has(d.id));
+  },
+
   // ─── Currency Formatting ───
 
   formatCurrency(value, currency = 'INR', showSymbol = true) {
