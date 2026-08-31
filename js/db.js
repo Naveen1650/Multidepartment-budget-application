@@ -1832,7 +1832,8 @@ class BudgetDB {
    */
   async isYearLocked(yearId, entityId = null) {
     const ls = await this.getLockStatus(yearId, entityId);
-    return ls.status !== 'draft' && ls.status !== 'active';
+    const s = String(ls.status || 'active').trim().toLowerCase();
+    return s !== 'draft' && s !== 'active';
   }
 
   /**

@@ -569,26 +569,27 @@ const Auth = {
   getYearStatus(yearId, entityId = null) {
     const yId = String(yearId || (typeof App !== 'undefined' ? App.selectedYear : '2026'));
     const numOnly = yId.replace(/[^0-9]/g, '');
+    let raw = 'active';
 
     // 1. Check entity-scoped status first if entityId provided
     if (entityId) {
       const eKey = `${yId}_${entityId}`;
       if (this._lockStatusCache[eKey]) {
-        return this._lockStatusCache[eKey];
-      }
-      if (numOnly && this._lockStatusCache[`${numOnly}_${entityId}`]) {
-        return this._lockStatusCache[`${numOnly}_${entityId}`];
+        raw = this._lockStatusCache[eKey];
+      } else if (numOnly && this._lockStatusCache[`${numOnly}_${entityId}`]) {
+        raw = this._lockStatusCache[`${numOnly}_${entityId}`];
       }
     }
 
-    // 2. Fall back to year base status
-    if (this._lockStatusCache[yId]) {
-      return this._lockStatusCache[yId];
+    if (raw === 'active' || !raw) {
+      // 2. Fall back to year base status
+      if (this._lockStatusCache[yId]) {
+        raw = this._lockStatusCache[yId];
+      } else if (numOnly && this._lockStatusCache[numOnly]) {
+        raw = this._lockStatusCache[numOnly];
+      }
     }
-    if (numOnly && this._lockStatusCache[numOnly]) {
-      return this._lockStatusCache[numOnly];
-    }
-    return 'active';
+    return String(raw || 'active').trim().toLowerCase();
   },
 
   getYearStatusLabel(yearId, entityId = null) {
@@ -605,7 +606,7 @@ const Auth = {
   },
 
   isYearEditable(yearId, entityId = null) {
-    const status = this.getYearStatus(yearId, entityId);
+    const status = String(this.getYearStatus(yearId, entityId) || 'active').trim().toLowerCase();
     // Strict Business Rule: ONLY active or draft statuses allow any additions, cell edits, or modifications
     return status === 'draft' || status === 'active';
   },
