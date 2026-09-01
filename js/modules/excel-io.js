@@ -1794,7 +1794,7 @@ const ExcelIOModule = {
     const rawEntities = await db.getAll(STORES.entities);
     const entities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
     const departments = Utils.sortDepartments(await db.getAll(STORES.departments));
-    const coa = await db.getAll(STORES.chartOfAccounts);
+    const coa = await db.getChartOfAccounts();
 
     const headers = [
       'Entity Code', 'Entity Name', 'Department Code', 'Department Name', 'Currency',
@@ -2420,7 +2420,7 @@ const ExcelIOModule = {
   },
 
   async getReportClubbedLines(entityList, yearId, conversionRates) {
-    const coa = await db.getAll(STORES.chartOfAccounts);
+    const coa = await db.getChartOfAccounts();
 
     const canViewSalaries = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'salaries' });
     const canViewOtherStaff = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'other-staff' });
@@ -2825,7 +2825,7 @@ const ExcelIOModule = {
       const selectedDeptId = ReportsModule.selectedDeptId || App.selectedDept || departments[0]?.id || '';
       const dept = departments.find(d => d.id === selectedDeptId) || departments[0];
       const rate = activeYearObj.conversionRates?.[entity.currency] || 1.0;
-      const coa = await db.getAll(STORES.chartOfAccounts);
+      const coa = await db.getChartOfAccounts();
       const priorCosts = await db.getPriorPeriodCosts(yearId, entity.id, dept.id);
       const priorYear = activeYearObj.priorYear || (budgetYear - 1);
 
@@ -2936,7 +2936,7 @@ const ExcelIOModule = {
 
     // Helper to generate Master Entity & Department-wise Line Items in a Single Sheet
     const addMasterEntityAndDeptLineItemsSheet = async () => {
-      const coa = await db.getAll(STORES.chartOfAccounts);
+      const coa = await db.getChartOfAccounts();
       const priorYear = activeYearObj.priorYear || (budgetYear - 1);
 
       const rows = [

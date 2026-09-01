@@ -35,7 +35,7 @@ const STRING_ID_TABLES = [
 const TABLE_COLUMNS = {
   entities: ['id', 'name', 'short_name', 'country_code', 'dept_prefix', 'country', 'currency', 'flag'],
   departments: ['id', 'number', 'code_template', 'name', 'scope', 'entity_mapping'],
-  chart_of_accounts: ['id', 'parent_account', 'gl_description', 'ledger_code', 'linked_input_source'],
+  chart_of_accounts: ['id', 'parent_account', 'gl_description', 'ledger_code', 'linked_input_source', 'sub_group', 'sort_order'],
   budget_years: ['id', 'year', 'name', 'is_active', 'status', 'conversion_rates'],
   entity_dept_configs: ['id', 'year_id', 'entity_id', 'dept_id', 'is_active'],
   payroll_personnel: [
@@ -753,6 +753,22 @@ const CloudSyncModule = {
         res.totalCY = res.totalCy;
       } else if (res.monthlyValues && typeof Utils !== 'undefined' && Utils.sumMonthlyValues) {
         res.totalCY = Utils.sumMonthlyValues(res.monthlyValues);
+      }
+    }
+    // SubGroup auto-derivation for Chart of Accounts
+    if (!res.subGroup && (res.parentAccount || res.ledgerCode)) {
+      const code = String(res.ledgerCode || '').trim();
+      const parent = String(res.parentAccount || '').toLowerCase();
+      if (code.startsWith('911') || code.startsWith('912') || code.startsWith('913') || parent.includes('salaries') || parent.includes('benefit') || parent.includes('staff')) {
+        res.subGroup = 'Payroll Cost';
+      } else if (code.startsWith('921') || parent.includes('consultant') || parent.includes('resource')) {
+        res.subGroup = 'Direct Consultants';
+      } else if (code.startsWith('937') || parent.includes('professional') || parent.includes('consultancy')) {
+        res.subGroup = 'Indirect Cost';
+      } else if (code.startsWith('113') || parent.includes('asset') || parent.includes('laptop')) {
+        res.subGroup = 'Fixed Assets';
+      } else {
+        res.subGroup = 'Direct Cost';
       }
     }
     return res;

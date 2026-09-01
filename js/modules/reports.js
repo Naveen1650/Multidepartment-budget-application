@@ -151,7 +151,7 @@ const ReportsModule = {
 
   // ─── Reusable Helper: Build Consolidated Line Items across entities & departments ───
   async buildConsolidatedLineItems(entityList, yearId, conversionRates) {
-    const coa = await db.getAll(STORES.chartOfAccounts);
+    const coa = await db.getChartOfAccounts();
 
     const allSalaries = [];
     const allOtherStaff = [];
@@ -969,7 +969,7 @@ const ReportsModule = {
     const updateView = async () => {
       const entity = entities.find(e => e.id === selectedEntityId) || entities[0];
       const rate = activeYearObj.conversionRates?.[entity.currency] || 1.0;
-      const coa = await db.getAll(STORES.chartOfAccounts);
+      const coa = await db.getChartOfAccounts();
 
       const entityConfigs = await db.getEntityDeptConfigForYear(yearId, entity.id);
       let entityDepts = departments;

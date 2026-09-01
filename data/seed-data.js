@@ -191,33 +191,33 @@ const SEED_DATA = {
   // ─── Non-Payroll Chart of Accounts ───
   chartOfAccounts: [
     // Payroll-related
-    { subGroup: 'Payroll Cost', parentAccount: 'Salaries & Benefits', glDescription: 'Salaries & Wages', ledgerCode: '91101' },
-    { subGroup: 'Payroll Cost', parentAccount: 'Health and Retirement Benefits', glDescription: 'Gratuity & Bonus', ledgerCode: '91201-91207' },
-    { subGroup: 'Payroll Cost', parentAccount: 'Other Staff Expenses', glDescription: 'Staff Training, Learning & Development Exp', ledgerCode: '91302' },
-    { subGroup: 'Direct Consultants', parentAccount: 'Resource Persons', glDescription: 'Program Resource Consultant (EHA)', ledgerCode: '92101' },
+    { id: 1, sortOrder: 1, subGroup: 'Payroll Cost', parentAccount: 'Salaries & Benefits', glDescription: 'Salaries & Wages', ledgerCode: '91101' },
+    { id: 2, sortOrder: 2, subGroup: 'Payroll Cost', parentAccount: 'Health and Retirement Benefits', glDescription: 'Gratuity & Bonus', ledgerCode: '91201-91207' },
+    { id: 3, sortOrder: 3, subGroup: 'Payroll Cost', parentAccount: 'Other Staff Expenses', glDescription: 'Staff Training, Learning & Development Exp', ledgerCode: '91302' },
+    { id: 4, sortOrder: 4, subGroup: 'Direct Consultants', parentAccount: 'Resource Persons', glDescription: 'Program Resource Consultant (EHA)', ledgerCode: '92101' },
 
     // Non-Payroll — Direct Cost
-    { subGroup: 'Direct Cost', parentAccount: 'Travel & Lodging Expenses', glDescription: 'Hotel Accommodation', ledgerCode: '93101' },
-    { subGroup: 'Direct Cost', parentAccount: 'Travel & Lodging Expenses', glDescription: 'Food Expenses', ledgerCode: '93102' },
-    { subGroup: 'Direct Cost', parentAccount: 'Travel & Lodging Expenses', glDescription: 'Air fare', ledgerCode: '93103' },
-    { subGroup: 'Direct Cost', parentAccount: 'Travel & Lodging Expenses', glDescription: 'Cab/Auto', ledgerCode: '93104' },
-    { subGroup: 'Direct Cost', parentAccount: 'Travel & Lodging Expenses', glDescription: 'Bus/Train', ledgerCode: '93105' },
-    { subGroup: 'Direct Cost', parentAccount: 'Travel & Lodging Expenses', glDescription: 'Other incidental travel costs', ledgerCode: '93106' },
-    { subGroup: 'Direct Cost', parentAccount: 'Supplies & Printing Costs', glDescription: 'Other Direct Expenses', ledgerCode: '93201' },
-    { subGroup: 'Direct Cost', parentAccount: 'Supplies & Printing Costs', glDescription: 'Printing expenses', ledgerCode: '93204' },
-    { subGroup: 'Direct Cost', parentAccount: 'Communication Cost', glDescription: 'Internet Expenses', ledgerCode: '93301' },
-    { subGroup: 'Direct Cost', parentAccount: 'Communication Cost', glDescription: 'Postage & Courier Expenses', ledgerCode: '93302' },
-    { subGroup: 'Direct Cost', parentAccount: 'Communication Cost', glDescription: 'Telecommunication expenses', ledgerCode: '93303' },
-    { subGroup: 'Direct Cost', parentAccount: 'Office Expenses', glDescription: 'Software and Subscriptions', ledgerCode: '93401' },
-    { subGroup: 'Direct Cost', parentAccount: 'Office Expenses', glDescription: 'Stationery & Consumables', ledgerCode: '93404' },
-    { subGroup: 'Direct Cost', parentAccount: 'Office Expenses', glDescription: 'Office Equipment Expense', ledgerCode: '93405' },
+    { id: 5, sortOrder: 5, subGroup: 'Direct Cost', parentAccount: 'Travel & Lodging Expenses', glDescription: 'Hotel Accommodation', ledgerCode: '93101' },
+    { id: 6, sortOrder: 6, subGroup: 'Direct Cost', parentAccount: 'Travel & Lodging Expenses', glDescription: 'Food Expenses', ledgerCode: '93102' },
+    { id: 7, sortOrder: 7, subGroup: 'Direct Cost', parentAccount: 'Travel & Lodging Expenses', glDescription: 'Air fare', ledgerCode: '93103' },
+    { id: 8, sortOrder: 8, subGroup: 'Direct Cost', parentAccount: 'Travel & Lodging Expenses', glDescription: 'Cab/Auto', ledgerCode: '93104' },
+    { id: 9, sortOrder: 9, subGroup: 'Direct Cost', parentAccount: 'Travel & Lodging Expenses', glDescription: 'Bus/Train', ledgerCode: '93105' },
+    { id: 10, sortOrder: 10, subGroup: 'Direct Cost', parentAccount: 'Travel & Lodging Expenses', glDescription: 'Other incidental travel costs', ledgerCode: '93106' },
+    { id: 11, sortOrder: 11, subGroup: 'Direct Cost', parentAccount: 'Supplies & Printing Costs', glDescription: 'Other Direct Expenses', ledgerCode: '93201' },
+    { id: 12, sortOrder: 12, subGroup: 'Direct Cost', parentAccount: 'Supplies & Printing Costs', glDescription: 'Printing expenses', ledgerCode: '93204' },
+    { id: 13, sortOrder: 13, subGroup: 'Direct Cost', parentAccount: 'Communication Cost', glDescription: 'Internet Expenses', ledgerCode: '93301' },
+    { id: 14, sortOrder: 14, subGroup: 'Direct Cost', parentAccount: 'Communication Cost', glDescription: 'Postage & Courier Expenses', ledgerCode: '93302' },
+    { id: 15, sortOrder: 15, subGroup: 'Direct Cost', parentAccount: 'Communication Cost', glDescription: 'Telecommunication expenses', ledgerCode: '93303' },
+    { id: 16, sortOrder: 16, subGroup: 'Direct Cost', parentAccount: 'Office Expenses', glDescription: 'Software and Subscriptions', ledgerCode: '93401' },
+    { id: 17, sortOrder: 17, subGroup: 'Direct Cost', parentAccount: 'Office Expenses', glDescription: 'Stationery & Consumables', ledgerCode: '93404' },
+    { id: 18, sortOrder: 18, subGroup: 'Direct Cost', parentAccount: 'Office Expenses', glDescription: 'Office Equipment Expense', ledgerCode: '93405' },
 
     // Non-Payroll — Indirect Cost
-    { subGroup: 'Indirect Cost', parentAccount: 'Professional & Consultancy Charges', glDescription: 'Professional Charges', ledgerCode: '93701' },
-    { subGroup: 'Indirect Cost', parentAccount: 'Professional & Consultancy Charges', glDescription: 'Admin Consultants', ledgerCode: '93703' },
+    { id: 19, sortOrder: 19, subGroup: 'Indirect Cost', parentAccount: 'Professional & Consultancy Charges', glDescription: 'Professional Charges', ledgerCode: '93701' },
+    { id: 20, sortOrder: 20, subGroup: 'Indirect Cost', parentAccount: 'Professional & Consultancy Charges', glDescription: 'Admin Consultants', ledgerCode: '93703' },
 
     // Fixed Assets
-    { subGroup: 'Fixed Assets', parentAccount: 'Fixed Assets', glDescription: 'Laptop/ Printer', ledgerCode: '11301' }
+    { id: 21, sortOrder: 21, subGroup: 'Fixed Assets', parentAccount: 'Fixed Assets', glDescription: 'Laptop/ Printer', ledgerCode: '11301' }
   ],
 
   // ─── Payroll Sub-categories ───
@@ -3249,6 +3249,9 @@ const SEED_DATA = {
 // Make it available globally
 if (typeof window !== 'undefined') {
   window.SEED_DATA = SEED_DATA;
+}
+if (typeof module !== 'undefined') {
+  module.exports = SEED_DATA;
 }
 
 

@@ -1043,6 +1043,39 @@ a:hover { color: var(--accent-primary-hover); }
   left: 140px;
 }
 
+/* Table Row Drag Reordering */
+.coa-drag-row {
+  transition: background-color 0.15s ease;
+}
+.coa-drag-row:hover .drag-handle {
+  color: var(--accent-primary) !important;
+}
+.coa-drag-row.dragging {
+  opacity: 0.45;
+  background: var(--bg-tertiary);
+}
+.coa-drag-row.drag-over-top {
+  border-top: 3px solid var(--accent-primary) !important;
+}
+.coa-drag-row.drag-over-bottom {
+  border-bottom: 3px solid var(--accent-primary) !important;
+}
+.drag-handle {
+  cursor: grab;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+.drag-handle:active {
+  cursor: grabbing;
+}
+
 .data-table th.sticky-col-2 {
   top: 0;
   z-index: 31;

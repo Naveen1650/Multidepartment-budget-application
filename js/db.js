@@ -759,6 +759,74 @@ class BudgetDB {
     }
   }
 
+  async getChartOfAccounts() {
+    await this.ready;
+    let list = [];
+    if (this.db && this.db.objectStoreNames.contains(STORES.chartOfAccounts)) {
+      list = (await this.getAll(STORES.chartOfAccounts)) || [];
+    }
+    if (list.length === 0 && typeof SEED_DATA !== 'undefined' && SEED_DATA.chartOfAccounts) {
+      list = [...SEED_DATA.chartOfAccounts];
+    }
+    
+    // Sort array by sortOrder, displayOrder, or id
+    const cloned = [...list].sort((a, b) => {
+      const orderA = a.sortOrder !== undefined && a.sortOrder !== null ? Number(a.sortOrder) : (a.id ? Number(a.id) : 9999);
+      const orderB = b.sortOrder !== undefined && b.sortOrder !== null ? Number(b.sortOrder) : (b.id ? Number(b.id) : 9999);
+      return orderA - orderB;
+    });
+
+    const seen = new Set();
+    const sorted = [];
+
+    for (const c of cloned) {
+      let key = (typeof Utils !== 'undefined' && Utils.cleanStr) ? Utils.cleanStr(c.ledgerCode) : String(c.ledgerCode || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (key.startsWith('911')) key = '91101';
+      else if (key.startsWith('912')) key = '91201';
+      else if (key.startsWith('913')) key = '91302';
+      else if (!key) key = (typeof Utils !== 'undefined' && Utils.cleanStr) ? Utils.cleanStr(c.glDescription) : String(c.glDescription || '').toLowerCase();
+
+      if (!seen.has(key)) {
+        seen.add(key);
+        // Ensure subGroup is populated
+        if (!c.subGroup) {
+          const code = String(c.ledgerCode || '').trim();
+          const parent = String(c.parentAccount || '').toLowerCase();
+          if (code.startsWith('911') || code.startsWith('912') || code.startsWith('913') || parent.includes('salaries') || parent.includes('benefit') || parent.includes('staff')) {
+            c.subGroup = 'Payroll Cost';
+          } else if (code.startsWith('921') || parent.includes('consultant') || parent.includes('resource')) {
+            c.subGroup = 'Direct Consultants';
+          } else if (code.startsWith('937') || parent.includes('professional') || parent.includes('consultancy')) {
+            c.subGroup = 'Indirect Cost';
+          } else if (code.startsWith('113') || parent.includes('asset') || parent.includes('laptop')) {
+            c.subGroup = 'Fixed Assets';
+          } else {
+            c.subGroup = 'Direct Cost';
+          }
+        }
+        sorted.push(c);
+      }
+    }
+    return sorted;
+  }
+
+  async updateCoaOrder(orderedIds) {
+    await this.ready;
+    if (!this.db || !this.db.objectStoreNames.contains(STORES.chartOfAccounts) || !Array.isArray(orderedIds)) return;
+    
+    const all = await this.getAll(STORES.chartOfAccounts);
+    const idMap = new Map(all.map(c => [String(c.id), c]));
+    
+    for (let i = 0; i < orderedIds.length; i++) {
+      const idStr = String(orderedIds[i]);
+      const item = idMap.get(idStr);
+      if (item) {
+        item.sortOrder = i + 1;
+        await this.put(STORES.chartOfAccounts, item);
+      }
+    }
+  }
+
   async getTravelRatesForEntity(entityId) {
     try {
       await this.ready;

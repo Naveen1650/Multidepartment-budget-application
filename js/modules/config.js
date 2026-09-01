@@ -1349,7 +1349,7 @@ const ConfigModule = {
     const priorYearNum = year?.priorYear || (year ? year.year - 1 : 2025);
     const entities = await db.getAll(STORES.entities);
     const departments = Utils.sortDepartments(await db.getAll(STORES.departments));
-    const coa = await db.getAll(STORES.chartOfAccounts);
+    const coa = await db.getChartOfAccounts();
     let priorCosts = await db.getPriorPeriodCosts(yearId);
 
     const activeEntityId = defaultEntityId || entities[0]?.id || '';
@@ -1643,7 +1643,7 @@ const ConfigModule = {
     }
     const ent = await db.get(STORES.entities, entityId);
     const dept = await db.get(STORES.departments, deptId);
-    const coa = await db.getAll(STORES.chartOfAccounts);
+    const coa = await db.getChartOfAccounts();
     const existing = await db.getPriorPeriodCosts(yearId, entityId, deptId);
     const existingLedgers = new Set(existing.map(e => String(e.ledgerCode).trim().toLowerCase()));
     const existingGls = new Set(existing.map(e => String(e.glDescription).trim().toLowerCase()));
@@ -1681,7 +1681,7 @@ const ConfigModule = {
   async showAddPriorCostLineModal(yearId, defaultEntityId = null, defaultDeptId = null) {
     const entities = await db.getAll(STORES.entities);
     const departments = Utils.sortDepartments(await db.getAll(STORES.departments));
-    const coa = await db.getAll(STORES.chartOfAccounts);
+    const coa = await db.getChartOfAccounts();
 
     const initialEntId = defaultEntityId || entities[0]?.id || '';
     const initialDeptId = defaultDeptId || departments[0]?.id || '';
@@ -2037,40 +2037,64 @@ const ConfigModule = {
 
   // ─── 5. Chart of Accounts ───
   async renderChartOfAccounts(container) {
-    const coa = await db.getAll(STORES.chartOfAccounts);
+    const coa = await db.getChartOfAccounts();
+
+    const getSubGroupBadge = (subGroup) => {
+      const badges = {
+        'Payroll Cost': 'badge-primary',
+        'Direct Consultants': 'badge-purple',
+        'Direct Cost': 'badge-cyan',
+        'Indirect Cost': 'badge-warning',
+        'Fixed Assets': 'badge-emerald'
+      };
+      return badges[subGroup] || 'badge-cyan';
+    };
 
     container.innerHTML = `
-      <div class="page-header">
-        <h2>Non-Payroll Chart of Accounts</h2>
-        <p>Master account hierarchy (Sub Group → Parent Account → GL Description → Ledger Code)</p>
+      <div class="page-header flex justify-between items-center">
+        <div>
+          <h2>Non-Payroll Chart of Accounts</h2>
+          <p>Master account hierarchy &bull; <strong>Drag handle ⠿</strong> to rearrange order &bull; Reordered lines automatically reflect across Total Dept Cost and all consolidated reports</p>
+        </div>
+        <div class="flex gap-sm">
+          <button class="btn btn-ghost btn-sm" id="resetCoaOrderBtn" title="Reset to standard chart of accounts order">↺ Reset Default Order</button>
+          <button class="btn btn-primary" id="addCoaBtn">+ Add Account Line</button>
+        </div>
       </div>
 
       <div class="card mb-lg">
-        <div class="card-header">
-          <div class="card-title">GL Line Items (${coa.length})</div>
-          <button class="btn btn-primary" id="addCoaBtn">+ Add Account Line</button>
+        <div class="card-header flex justify-between items-center">
+          <div>
+            <div class="card-title">GL Line Items (${coa.length})</div>
+            <div class="card-subtitle">Drag rows using the ⠿ handle to customize the reporting and summary display order</div>
+          </div>
         </div>
 
         <div class="table-container">
-          <table class="data-table">
+          <table class="data-table" id="coaConfigTable">
             <thead>
               <tr>
-                <th>Sub Group</th>
+                <th style="width: 60px; text-align: center;">Order</th>
+                <th style="width: 150px;">Sub Group</th>
                 <th>Parent Account</th>
                 <th>GL Description</th>
                 <th>Ledger Code</th>
-                <th style="width: 80px;">Actions</th>
+                <th style="width: 120px; text-align: center;">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              ${coa.map(c => `
-                <tr>
-                  <td><span class="badge badge-cyan">${c.subGroup}</span></td>
+            <tbody id="coaTableBody">
+              ${coa.map((c, idx) => `
+                <tr class="coa-drag-row" draggable="true" data-id="${c.id}" data-index="${idx}">
+                  <td style="text-align: center; cursor: grab;" class="drag-handle-cell">
+                    <span class="drag-handle" title="Drag to reorder">⠿ ${idx + 1}</span>
+                  </td>
+                  <td><span class="badge ${getSubGroupBadge(c.subGroup)}">${c.subGroup || 'Direct Cost'}</span></td>
                   <td><strong>${c.parentAccount}</strong></td>
                   <td>${c.glDescription}</td>
                   <td><code>${c.ledgerCode}</code></td>
-                  <td>
-                    <button class="btn btn-danger btn-sm" onclick="ConfigModule.deleteDimensionItem('${STORES.chartOfAccounts}', ${c.id})">🗑️</button>
+                  <td style="text-align: center; white-space: nowrap;">
+                    <button class="btn btn-ghost btn-xs" onclick="ConfigModule.editChartOfAccountsLine(${c.id})" title="Edit Account Line">✏️ Edit</button>
+                    <button class="btn btn-danger btn-xs" onclick="ConfigModule.deleteDimensionItem('${STORES.chartOfAccounts}', ${c.id})" title="Delete Account Line">🗑️</button>
                   </td>
                 </tr>
               `).join('')}
@@ -2080,6 +2104,90 @@ const ConfigModule = {
       </div>
     `;
 
+    // ─── Drag and Drop Handlers ───
+    const tbody = container.querySelector('#coaTableBody');
+    if (tbody) {
+      let draggedRow = null;
+
+      tbody.querySelectorAll('.coa-drag-row').forEach(row => {
+        row.addEventListener('dragstart', (e) => {
+          draggedRow = row;
+          row.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', row.dataset.id);
+        });
+
+        row.addEventListener('dragend', () => {
+          row.classList.remove('dragging');
+          tbody.querySelectorAll('.coa-drag-row').forEach(r => {
+            r.classList.remove('drag-over-top', 'drag-over-bottom');
+          });
+          draggedRow = null;
+        });
+
+        row.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          if (!draggedRow || draggedRow === row) return;
+
+          const rect = row.getBoundingClientRect();
+          const relY = e.clientY - rect.top;
+          const isTop = relY < rect.height / 2;
+
+          row.classList.toggle('drag-over-top', isTop);
+          row.classList.toggle('drag-over-bottom', !isTop);
+        });
+
+        row.addEventListener('dragleave', () => {
+          row.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+
+        row.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          if (!draggedRow || draggedRow === row) return;
+
+          const rect = row.getBoundingClientRect();
+          const relY = e.clientY - rect.top;
+          const isTop = relY < rect.height / 2;
+
+          if (isTop) {
+            tbody.insertBefore(draggedRow, row);
+          } else {
+            tbody.insertBefore(draggedRow, row.nextSibling);
+          }
+
+          // Extract new order of IDs
+          const orderedIds = Array.from(tbody.querySelectorAll('.coa-drag-row')).map(r => r.dataset.id);
+          await db.updateCoaOrder(orderedIds);
+          Utils.showToast('✓ Chart of Accounts order saved & updated across all reports!', 'success');
+          await ConfigModule.renderChartOfAccounts(container);
+        });
+      });
+    }
+
+    // ─── Reset Default Order ───
+    const resetBtn = container.querySelector('#resetCoaOrderBtn');
+    if (resetBtn) {
+      resetBtn.onclick = async () => {
+        if (await Utils.confirm('Reset Chart of Accounts to standard financial reporting order?')) {
+          const defaults = SEED_DATA.chartOfAccounts || [];
+          for (let i = 0; i < defaults.length; i++) {
+            const def = defaults[i];
+            const matching = coa.find(c => String(c.ledgerCode).trim() === String(def.ledgerCode).trim());
+            if (matching) {
+              matching.sortOrder = i + 1;
+              matching.subGroup = def.subGroup;
+              matching.parentAccount = def.parentAccount;
+              await db.put(STORES.chartOfAccounts, matching);
+            }
+          }
+          Utils.showToast('✓ Reset to standard Chart of Accounts order!', 'success');
+          await ConfigModule.renderChartOfAccounts(container);
+        }
+      };
+    }
+
+    // ─── Add Account Line Modal ───
     Utils.$('#addCoaBtn').addEventListener('click', () => {
       const content = `
         <form id="coaForm">
@@ -2114,20 +2222,79 @@ const ConfigModule = {
           footer.appendChild(Utils.createElement('button', {
             className: 'btn btn-primary', textContent: 'Save Account',
             onClick: async () => {
+              const maxOrder = Math.max(0, ...coa.map(c => Number(c.sortOrder) || 0));
               const data = {
+                sortOrder: maxOrder + 1,
                 subGroup: Utils.$('#coaSubGroup').value,
-                parentAccount: Utils.$('#coaParent').value,
-                glDescription: Utils.$('#coaGl').value,
-                ledgerCode: Utils.$('#coaCode').value
+                parentAccount: Utils.$('#coaParent').value.trim(),
+                glDescription: Utils.$('#coaGl').value.trim(),
+                ledgerCode: Utils.$('#coaCode').value.trim()
               };
+              if (!data.parentAccount || !data.glDescription || !data.ledgerCode) {
+                Utils.showToast('Please fill in all account fields.', 'warning');
+                return;
+              }
               await db.add(STORES.chartOfAccounts, data);
-              Utils.showToast('Account line added!', 'success');
+              Utils.showToast('Account line added! Available for budgeting in Other Costs.', 'success');
               close();
-              App.renderCurrentPage();
+              await ConfigModule.renderChartOfAccounts(container);
             }
           }));
         }
       });
+    });
+  },
+
+  async editChartOfAccountsLine(id) {
+    const item = await db.get(STORES.chartOfAccounts, id);
+    if (!item) return;
+
+    const content = `
+      <form id="editCoaForm">
+        <div class="form-group">
+          <label class="form-label">Sub Group</label>
+          <select class="form-select" id="editCoaSubGroup">
+            <option value="Direct Cost" ${item.subGroup === 'Direct Cost' ? 'selected' : ''}>Direct Cost</option>
+            <option value="Indirect Cost" ${item.subGroup === 'Indirect Cost' ? 'selected' : ''}>Indirect Cost</option>
+            <option value="Payroll Cost" ${item.subGroup === 'Payroll Cost' ? 'selected' : ''}>Payroll Cost</option>
+            <option value="Direct Consultants" ${item.subGroup === 'Direct Consultants' ? 'selected' : ''}>Direct Consultants</option>
+            <option value="Fixed Assets" ${item.subGroup === 'Fixed Assets' ? 'selected' : ''}>Fixed Assets</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Parent Account</label>
+          <input type="text" class="form-input" id="editCoaParent" value="${Utils.escapeHtml(item.parentAccount || '')}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">GL Description</label>
+          <input type="text" class="form-input" id="editCoaGl" value="${Utils.escapeHtml(item.glDescription || '')}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ledger Code</label>
+          <input type="text" class="form-input" id="editCoaCode" value="${Utils.escapeHtml(item.ledgerCode || '')}" required>
+        </div>
+      </form>
+    `;
+
+    Utils.showModal('Edit Account Line', content, {
+      footer: (footer, close) => {
+        footer.appendChild(Utils.createElement('button', { className: 'btn btn-ghost', textContent: 'Cancel', onClick: close }));
+        footer.appendChild(Utils.createElement('button', {
+          className: 'btn btn-primary', textContent: 'Update Account',
+          onClick: async () => {
+            item.subGroup = Utils.$('#editCoaSubGroup').value;
+            item.parentAccount = Utils.$('#editCoaParent').value.trim();
+            item.glDescription = Utils.$('#editCoaGl').value.trim();
+            item.ledgerCode = Utils.$('#editCoaCode').value.trim();
+
+            await db.put(STORES.chartOfAccounts, item);
+            Utils.showToast('Account line updated!', 'success');
+            close();
+            const container = document.querySelector('#page-content') || document.querySelector('.page-content');
+            if (container) await ConfigModule.renderChartOfAccounts(container);
+          }
+        }));
+      }
     });
   },
 
@@ -6562,7 +6729,7 @@ const ConfigModule = {
   async renderRoles(container) {
     const roles = await db.getRoles();
     const users = await db.getUsers();
-    const coa = await db.getAll(STORES.chartOfAccounts);
+    const coa = await db.getChartOfAccounts();
 
     if (!roles.some(r => r.id === this._permSelectedRoleId)) {
       this._permSelectedRoleId = roles[0]?.id || 'role-admin';
@@ -8217,7 +8384,7 @@ const ConfigModule = {
   async renderLinePermissions(container) {
     const roles = await db.getRoles();
     const users = await db.getUsers();
-    let coa = await db.getAll(STORES.chartOfAccounts);
+    let coa = await db.getChartOfAccounts();
     if (!coa || coa.length === 0) {
       coa = SEED_DATA.chartOfAccounts || [];
     }
