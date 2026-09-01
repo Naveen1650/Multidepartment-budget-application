@@ -34,7 +34,7 @@ const STRING_ID_TABLES = [
 
 const TABLE_COLUMNS = {
   entities: ['id', 'name', 'short_name', 'country_code', 'dept_prefix', 'country', 'currency', 'flag'],
-  departments: ['id', 'number', 'code_template', 'name', 'scope', 'entity_mapping'],
+  departments: ['id', 'number', 'code_template', 'name', 'scope', 'entity_mapping', 'has_tot_access'],
   chart_of_accounts: ['id', 'parent_account', 'gl_description', 'ledger_code', 'linked_input_source', 'sub_group', 'sort_order'],
   budget_years: ['id', 'year', 'name', 'is_active', 'status', 'conversion_rates'],
   entity_dept_configs: ['id', 'year_id', 'entity_id', 'dept_id', 'is_active'],

@@ -231,13 +231,25 @@ const ConfigModule = {
   async toggleDeptTotAccess(deptId, forcedState = null) {
     const dept = await db.get(STORES.departments, deptId);
     if (!dept) return;
-    const currentState = dept.hasTotAccess !== undefined ? Boolean(dept.hasTotAccess) : (dept.id.includes('imp') || dept.id.includes('trng') || dept.name.toLowerCase().includes('implementation') || dept.name.toLowerCase().includes('training'));
+    const currentState = dept.hasTotAccess !== undefined ? Boolean(dept.hasTotAccess) : false;
     const newState = forcedState !== null ? Boolean(forcedState) : !currentState;
-    await db.setDepartmentTotAccess(deptId, newState);
-    Utils.showToast(`${newState ? '🎯 Enabled' : '🚫 Disabled'} ToT Budget Template for "${dept.name}"`, 'success');
-    if (typeof ImpTotModule !== 'undefined' && ImpTotModule._totDeptCache) {
-      ImpTotModule._totDeptCache[deptId.toLowerCase()] = newState;
+    
+    // Safety check & user notification
+    if (!newState) {
+      const allTotEvents = (await db.getAll(STORES.impTotEvents)) || [];
+      const deptTotEvents = allTotEvents.filter(e => String(e.deptId || e.dept_id) === String(deptId));
+      if (deptTotEvents.length > 0) {
+        const years = [...new Set(deptTotEvents.map(e => e.yearId || e.year_id || '2026'))];
+        Utils.showToast(`⚠️ Notice: Department "${dept.name}" has ${deptTotEvents.length} existing ToT budget event(s) recorded in CY-${years.join(', CY-')}. ToT Template access is now disabled and will be hidden from Other Costs.`, 'warning', 6500);
+      } else {
+        Utils.showToast(`🚫 Disabled ToT Budget Template for "${dept.name}"`, 'info');
+      }
+    } else {
+      Utils.showToast(`🎯 Enabled ToT Budget Template for "${dept.name}"`, 'success');
     }
+
+    await db.setDepartmentTotAccess(deptId, newState);
+
     const pageContent = document.getElementById('pageContent');
     if (pageContent) {
       if (this.impRateActiveTab === 'departments') {

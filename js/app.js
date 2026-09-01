@@ -57,6 +57,11 @@ const App = {
     this.setupNavigation();
     this.setupSidebarToggle();
 
+    // Preload ToT department access cache
+    if (typeof ImpTotModule !== 'undefined' && ImpTotModule.preloadTotDeptCache) {
+      await ImpTotModule.preloadTotDeptCache();
+    }
+
     // Populate global selectors
     await this.populateGlobalSelectors();
 

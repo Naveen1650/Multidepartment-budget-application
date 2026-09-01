@@ -633,10 +633,8 @@ class BudgetDB {
       const allDepts = await this.getAll(STORES.departments);
       for (const d of allDepts) {
         if (d.hasTotAccess === undefined) {
-          const id = String(d.id || '').toLowerCase();
-          const name = String(d.name || '').toLowerCase();
-          const isDefaultTot = id.includes('imp') || id.includes('trng') || id.includes('tot') || name.includes('implementation') || name.includes('training') || name.includes('tot');
-          d.hasTotAccess = isDefaultTot;
+          const seedMatch = (typeof SEED_DATA !== 'undefined' && SEED_DATA.departments) ? SEED_DATA.departments.find(sd => sd.id === d.id) : null;
+          d.hasTotAccess = seedMatch ? Boolean(seedMatch.hasTotAccess) : false;
           await this.put(STORES.departments, d);
         }
       }
@@ -662,9 +660,7 @@ class BudgetDB {
       const depts = await this.getDepartments();
       const enabled = depts.filter(d => {
         if (d.hasTotAccess !== undefined) return Boolean(d.hasTotAccess);
-        const id = String(d.id || '').toLowerCase();
-        const name = String(d.name || '').toLowerCase();
-        return id.includes('imp') || id.includes('trng') || id.includes('tot') || name.includes('implementation') || name.includes('training');
+        return false;
       }).map(d => d.id);
       return enabled;
     } catch {
@@ -679,6 +675,16 @@ class BudgetDB {
     if (dept) {
       dept.hasTotAccess = Boolean(hasAccess);
       await this.put(STORES.departments, dept);
+      if (typeof CloudSyncModule !== 'undefined' && CloudSyncModule.pushRecordToCloud) {
+        CloudSyncModule.pushRecordToCloud(STORES.departments, dept);
+      }
+      if (typeof ImpTotModule !== 'undefined' && ImpTotModule._totDeptCache) {
+        const dId = String(deptId).toLowerCase();
+        ImpTotModule._totDeptCache[dId] = Boolean(hasAccess);
+        if (dept.codeTemplate) {
+          ImpTotModule._totDeptCache[String(dept.codeTemplate).toLowerCase()] = Boolean(hasAccess);
+        }
+      }
       await this.logAudit({
         category: 'config',
         action: 'UPDATE_DEPT_TOT_ACCESS',
@@ -692,12 +698,24 @@ class BudgetDB {
   async bulkSetDepartmentsTotAccess(deptIds, hasAccess) {
     await this.ready;
     if (!this.db || !this.db.objectStoreNames.contains(STORES.departments)) return;
+    const updatedDepts = [];
     for (const deptId of deptIds) {
       const dept = await this.get(STORES.departments, deptId);
       if (dept) {
         dept.hasTotAccess = Boolean(hasAccess);
         await this.put(STORES.departments, dept);
+        updatedDepts.push(dept);
+        if (typeof ImpTotModule !== 'undefined' && ImpTotModule._totDeptCache) {
+          const dId = String(deptId).toLowerCase();
+          ImpTotModule._totDeptCache[dId] = Boolean(hasAccess);
+          if (dept.codeTemplate) {
+            ImpTotModule._totDeptCache[String(dept.codeTemplate).toLowerCase()] = Boolean(hasAccess);
+          }
+        }
       }
+    }
+    if (typeof CloudSyncModule !== 'undefined' && CloudSyncModule.pushManyToCloud && updatedDepts.length > 0) {
+      await CloudSyncModule.pushManyToCloud(STORES.departments, updatedDepts);
     }
     await this.logAudit({
       category: 'config',

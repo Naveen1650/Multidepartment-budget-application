@@ -87,32 +87,51 @@ const ImpTotModule = {
     }
   },
 
+  _totDeptCache: {},
+
+  async preloadTotDeptCache() {
+    if (!this._totDeptCache) this._totDeptCache = {};
+    try {
+      if (typeof db !== 'undefined') {
+        const depts = (await db.getAll(STORES.departments)) || [];
+        if (depts && depts.length > 0) {
+          depts.forEach(d => {
+            const hasAccess = d.hasTotAccess !== undefined ? Boolean(d.hasTotAccess) : false;
+            const dId = String(d.id || '').toLowerCase();
+            this._totDeptCache[dId] = hasAccess;
+            if (d.codeTemplate) {
+              this._totDeptCache[String(d.codeTemplate).toLowerCase()] = hasAccess;
+            }
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Error preloading ToT dept cache:', e);
+    }
+  },
+
   // Check if department is Implementation / has access to ToT Budget Template
   isImpDept(dept) {
     if (!dept) return false;
     
-    // 1. Direct explicit property check if passed on dept object
+    // 1. Direct explicit boolean property check on dept object
     if (typeof dept === 'object' && dept !== null && typeof dept.hasTotAccess === 'boolean') {
       return dept.hasTotAccess;
     }
 
-    if (typeof dept === 'string') {
-      const s = dept.toLowerCase();
-      // Check in-memory configured cache if available
-      if (this._totDeptCache && this._totDeptCache[s] !== undefined) {
-        return this._totDeptCache[s];
-      }
-      return s.includes('imp') || s.includes('pdel') || s.includes('implementation') || s.includes('training') || s.includes('tot');
+    // 2. Check in-memory configured cache by id, code, or dept string
+    const key = (typeof dept === 'string' ? dept : String(dept.id || dept.deptId || dept.codeTemplate || dept.code || '')).toLowerCase();
+    if (this._totDeptCache && this._totDeptCache[key] !== undefined) {
+      return Boolean(this._totDeptCache[key]);
     }
 
-    const id = String(dept.id || dept.deptId || '').toLowerCase();
-    if (this._totDeptCache && this._totDeptCache[id] !== undefined) {
-      return this._totDeptCache[id];
+    // 3. If dept is object and has hasTotAccess defined (even non-boolean)
+    if (typeof dept === 'object' && dept !== null && dept.hasTotAccess !== undefined) {
+      return Boolean(dept.hasTotAccess);
     }
 
-    const name = String(dept.name || dept.department || '').toLowerCase();
-    const code = String(dept.codeTemplate || dept.code || '').toLowerCase();
-    return id.includes('imp') || id.includes('pdel') || id.includes('tot') || name.includes('implementation') || name.includes('training') || name.includes('tot') || code.includes('imp') || code.includes('pdel');
+    // 4. Fallback: default to false (never assume true based on name if not explicitly enabled)
+    return false;
   },
 
   // Switch View Mode: 'matrix' vs 'registry'
