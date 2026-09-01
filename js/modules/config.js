@@ -224,7 +224,6 @@ const ConfigModule = {
   },
 
   // ─── 2. Departments Configuration ───
-  deptTotFilter: 'all', // 'all', 'enabled', 'disabled'
   deptScopeFilter: 'all',
   deptSearchQuery: '',
 
@@ -252,9 +251,9 @@ const ConfigModule = {
 
     const pageContent = document.getElementById('pageContent');
     if (pageContent) {
-      if (this.impRateActiveTab === 'departments') {
+      if (this.impRateActiveTab === 'departments' || (typeof App !== 'undefined' && App.currentPage === 'config-imp-rates')) {
         this.renderImpUnitRates(pageContent);
-      } else {
+      } else if (typeof App !== 'undefined' && App.currentPage === 'config-departments') {
         this.renderDepartments(pageContent);
       }
     }
@@ -270,9 +269,9 @@ const ConfigModule = {
     }
     const pageContent = document.getElementById('pageContent');
     if (pageContent) {
-      if (this.impRateActiveTab === 'departments') {
+      if (this.impRateActiveTab === 'departments' || (typeof App !== 'undefined' && App.currentPage === 'config-imp-rates')) {
         this.renderImpUnitRates(pageContent);
-      } else {
+      } else if (typeof App !== 'undefined' && App.currentPage === 'config-departments') {
         this.renderDepartments(pageContent);
       }
     }
@@ -281,20 +280,17 @@ const ConfigModule = {
   async resetDeptTotAccessToDefaults() {
     const depts = await db.getAll(STORES.departments);
     for (const d of depts) {
-      const id = String(d.id || '').toLowerCase();
-      const name = String(d.name || '').toLowerCase();
-      const isDefault = id.includes('imp') || id.includes('trng') || id.includes('tot') || name.includes('implementation') || name.includes('training') || name.includes('tot');
-      await db.setDepartmentTotAccess(d.id, isDefault);
+      await db.setDepartmentTotAccess(d.id, false);
       if (typeof ImpTotModule !== 'undefined' && ImpTotModule._totDeptCache) {
-        ImpTotModule._totDeptCache[d.id.toLowerCase()] = isDefault;
+        ImpTotModule._totDeptCache[d.id.toLowerCase()] = false;
       }
     }
-    Utils.showToast('🔄 Reset department ToT access to standard default departments (Implementation / Training)!', 'info');
+    Utils.showToast('🔄 Reset all departments: ToT access is disabled by default. Enable only the specific departments you need!', 'info');
     const pageContent = document.getElementById('pageContent');
     if (pageContent) {
-      if (this.impRateActiveTab === 'departments') {
+      if (this.impRateActiveTab === 'departments' || (typeof App !== 'undefined' && App.currentPage === 'config-imp-rates')) {
         this.renderImpUnitRates(pageContent);
-      } else {
+      } else if (typeof App !== 'undefined' && App.currentPage === 'config-departments') {
         this.renderDepartments(pageContent);
       }
     }
@@ -304,53 +300,22 @@ const ConfigModule = {
     const allDepartments = Utils.sortDepartments(await db.getAll(STORES.departments));
     const entities = await db.getAll(STORES.entities);
 
-    const totEnabledCount = allDepartments.filter(d => Boolean(d.hasTotAccess)).length;
-
-    // Filter departments by search, scope, and ToT status
+    // Filter departments by search and scope
     const q = (this.deptSearchQuery || '').toLowerCase().trim();
     const filteredDepts = allDepartments.filter(d => {
-      const isTot = Boolean(d.hasTotAccess);
-      const matchTot = this.deptTotFilter === 'all' || (this.deptTotFilter === 'enabled' && isTot) || (this.deptTotFilter === 'disabled' && !isTot);
       const matchScope = this.deptScopeFilter === 'all' || d.scope === this.deptScopeFilter;
       const matchSearch = !q || d.name.toLowerCase().includes(q) || d.codeTemplate.toLowerCase().includes(q) || (d.number && d.number.includes(q)) || d.id.toLowerCase().includes(q);
-      return matchTot && matchScope && matchSearch;
+      return matchScope && matchSearch;
     });
 
     container.innerHTML = `
       <div class="page-header flex justify-between items-center" style="flex-wrap: wrap; gap: 12px;">
         <div>
           <h2>Departments Master Configuration</h2>
-          <p>Define global, digital product, and country-specific department templates &amp; manage ToT template access</p>
+          <p>Define global, digital product, and country-specific department templates, numbering, and code formats</p>
         </div>
         <div class="flex gap-xs">
           <button class="btn btn-primary font-bold" id="addDeptBtn">➕ + Add Department</button>
-        </div>
-      </div>
-
-      <!-- 🎯 TOP CARD: ToT Budget Template Access Manager -->
-      <div class="card p-md mb-lg" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(16, 185, 129, 0.06)); border: 1.5px solid rgba(99, 102, 241, 0.35); border-radius: 12px;">
-        <div class="flex justify-between items-center mb-sm" style="flex-wrap: wrap; gap: 10px;">
-          <div>
-            <div class="flex items-center gap-xs">
-              <span style="font-size: 1.25rem;">🎯</span>
-              <strong style="font-size: 14px; color: var(--text-primary);">ToT Budget Template Access by Department</strong>
-              <span class="badge badge-emerald font-bold" style="font-size: 11px;">${totEnabledCount} of ${allDepartments.length} Departments Active</span>
-            </div>
-            <div class="text-secondary mt-xs" style="font-size: 12px; line-height: 1.4;">
-              Configure which departments see the <strong>"🎯 ToT Program Budget (IMP)"</strong> tab under Other Costs to budget Training events, batches, and use Activity Templates (10.1 to 10.8). Toggle access below or inside each department template.
-            </div>
-          </div>
-          <div class="flex items-center gap-xs" style="flex-wrap: wrap;">
-            <button class="btn btn-sm btn-secondary font-bold text-success" onclick="ConfigModule.bulkToggleDeptTotAccess(true)" title="Enable ToT template access for all departments">
-              ✅ Enable All
-            </button>
-            <button class="btn btn-sm btn-secondary font-bold text-danger" onclick="ConfigModule.bulkToggleDeptTotAccess(false)" title="Disable ToT template access for all departments">
-              🚫 Disable All
-            </button>
-            <button class="btn btn-sm btn-ghost font-bold" onclick="ConfigModule.resetDeptTotAccessToDefaults()" title="Reset to default Training & Implementation departments">
-              🔄 Reset Defaults
-            </button>
-          </div>
         </div>
       </div>
 
@@ -367,12 +332,6 @@ const ConfigModule = {
             <option value="dp-gp" ${this.deptScopeFilter === 'dp-gp' ? 'selected' : ''}>📱 Digital Product (Global)</option>
             <option value="general" ${this.deptScopeFilter === 'general' ? 'selected' : ''}>🏷️ General / Cross-Cutting</option>
           </select>
-
-          <select class="form-select font-bold" id="deptTotFilterSelect" style="max-width: 220px; font-size: 12.5px;">
-            <option value="all" ${this.deptTotFilter === 'all' ? 'selected' : ''}>🎯 All ToT Access States</option>
-            <option value="enabled" ${this.deptTotFilter === 'enabled' ? 'selected' : ''}>✅ ToT Enabled Only (${totEnabledCount})</option>
-            <option value="disabled" ${this.deptTotFilter === 'disabled' ? 'selected' : ''}>🚫 ToT Disabled Only (${allDepartments.length - totEnabledCount})</option>
-          </select>
         </div>
         <div class="text-tertiary" style="font-size: 12px;">
           Showing <strong>${filteredDepts.length}</strong> of <strong>${allDepartments.length}</strong> departments
@@ -383,7 +342,7 @@ const ConfigModule = {
         <div class="card-header flex justify-between items-center">
           <div>
             <div class="card-title">Master Department Templates (${filteredDepts.length})</div>
-            <div class="card-subtitle">Click "Toggle ToT Access" to quickly give or remove access to the ToT Budget Template</div>
+            <div class="card-subtitle">Manage department codes, numbering, and organizational scopes</div>
           </div>
         </div>
 
@@ -401,28 +360,18 @@ const ConfigModule = {
               'general': '<span class="badge">General</span>'
             };
 
-            const isTotActive = Boolean(d.hasTotAccess);
-
             return `
-              <div class="config-list-item" style="border-left: 4px solid ${isTotActive ? 'var(--accent-primary)' : 'transparent'};">
+              <div class="config-list-item">
                 <div class="item-info">
                   <div>
                     <div class="item-name flex items-center gap-xs" style="flex-wrap: wrap;">
                       <span>${d.number ? d.number + '. ' : ''}<code>${d.codeTemplate}</code> — <strong>${d.name}</strong></span>
                       ${scopeBadges[d.scope] || ''}
-                      ${isTotActive ? `
-                        <span class="badge badge-emerald font-bold" style="font-size: 11px; padding: 2px 8px;">🎯 ToT Enabled</span>
-                      ` : `
-                        <span class="badge badge-secondary" style="font-size: 11px; padding: 2px 8px; opacity: 0.7;">🚫 ToT Disabled</span>
-                      `}
                     </div>
                     <div class="item-detail mt-xs">Scope: <code>${d.scope}</code> | Code Template: <code>${d.codeTemplate}</code> | ID: <code>${d.id}</code></div>
                   </div>
                 </div>
                 <div class="item-actions flex items-center gap-xs">
-                  <button class="btn btn-sm ${isTotActive ? 'btn-secondary font-bold text-danger' : 'btn-secondary font-bold text-success'}" onclick="ConfigModule.toggleDeptTotAccess('${d.id}')" title="Click to ${isTotActive ? 'disable' : 'enable'} ToT Program Budget access for this department">
-                    ${isTotActive ? '🚫 Remove ToT' : '🎯 Enable ToT'}
-                  </button>
                   <button class="btn btn-ghost btn-sm" onclick="ConfigModule.editDepartment('${d.id}')">✏️ Edit</button>
                   <button class="btn btn-danger btn-sm" onclick="ConfigModule.deleteDepartment('${d.id}')">🗑️ Delete</button>
                 </div>
@@ -448,17 +397,10 @@ const ConfigModule = {
       this.deptScopeFilter = e.target.value;
       this.renderDepartments(container);
     });
-
-    const totSelect = container.querySelector('#deptTotFilterSelect');
-    totSelect?.addEventListener('change', (e) => {
-      this.deptTotFilter = e.target.value;
-      this.renderDepartments(container);
-    });
   },
 
   showDeptForm(dept = null) {
     const isEdit = !!dept;
-    const isTotActive = dept ? Boolean(dept.hasTotAccess) : false;
 
     const content = `
       <form id="deptForm">
@@ -486,16 +428,6 @@ const ConfigModule = {
             <option value="general" ${dept?.scope === 'general' ? 'selected' : ''}>General / Cross-Cutting</option>
           </select>
         </div>
-
-        <div class="form-group p-sm mb-sm" style="background: var(--bg-surface); border: 1.5px solid rgba(99, 102, 241, 0.3); border-radius: var(--radius-md); margin-top: 8px;">
-          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700; color: var(--text-primary);">
-            <input type="checkbox" id="deptHasTotAccess" ${isTotActive ? 'checked' : ''} style="width: 18px; height: 18px;">
-            <span>🎯 Enable ToT Program Budget &amp; Activity Templates (10.1–10.8) Access</span>
-          </label>
-          <div class="text-secondary" style="font-size: 11.5px; margin-left: 26px; margin-top: 4px;">
-            When checked, employees budgeting for this department will see the <strong>"🎯 ToT Program Budget (IMP)"</strong> tab under Other Costs, enabling them to plan Training events, batches, and use Activity Templates.
-          </div>
-        </div>
       </form>
     `;
 
@@ -508,20 +440,15 @@ const ConfigModule = {
           className: 'btn btn-primary font-bold',
           textContent: isEdit ? 'Save Changes' : 'Add Department',
           onClick: async () => {
-            const hasTotAccess = Utils.$('#deptHasTotAccess')?.checked || false;
             const data = {
               id: dept?.id || Utils.slugify(Utils.$('#deptCode').value),
               number: Utils.$('#deptNum').value.trim(),
               codeTemplate: Utils.$('#deptCode').value.trim(),
               name: Utils.$('#deptName').value.trim(),
               scope: Utils.$('#deptScope').value,
-              hasTotAccess: hasTotAccess
+              hasTotAccess: dept ? (dept.hasTotAccess !== undefined ? Boolean(dept.hasTotAccess) : false) : false
             };
             await db.put(STORES.departments, data);
-
-            if (typeof ImpTotModule !== 'undefined' && ImpTotModule._totDeptCache) {
-              ImpTotModule._totDeptCache[data.id.toLowerCase()] = hasTotAccess;
-            }
 
             // Automatically activate this new department across all budget cycles and entities
             const allYears = await db.getAll(STORES.budgetYears);
@@ -546,7 +473,7 @@ const ConfigModule = {
               category: 'config',
               action: isEdit ? 'UPDATE_DEPT' : 'CREATE_DEPT',
               recordId: data.id,
-              description: `${isEdit ? 'Updated' : 'Created'} department template "${data.name}" (<code>${data.codeTemplate}</code>) — ToT Access: ${hasTotAccess ? 'Enabled' : 'Disabled'}`,
+              description: `${isEdit ? 'Updated' : 'Created'} department template "${data.name}" (<code>${data.codeTemplate}</code>)`,
               changes: data
             });
 
@@ -3810,12 +3737,7 @@ const ConfigModule = {
     const templates = await db.getAllImpActivityTemplates();
     const allDepts = Utils.sortDepartments(await db.getAll(STORES.departments));
 
-    const totEnabledCount = allDepts.filter(d => {
-      if (d.hasTotAccess !== undefined) return Boolean(d.hasTotAccess);
-      const id = String(d.id || '').toLowerCase();
-      const name = String(d.name || '').toLowerCase();
-      return id.includes('imp') || id.includes('trng') || id.includes('tot') || name.includes('implementation') || name.includes('training');
-    }).length;
+    const totEnabledCount = allDepts.filter(d => Boolean(d.hasTotAccess)).length;
 
     container.innerHTML = `
       <div class="page-header flex justify-between items-center" style="flex-wrap: wrap; gap: 12px;">
@@ -6684,16 +6606,11 @@ const ConfigModule = {
       allDepartments = Utils.sortDepartments(await db.getAll(STORES.departments));
     }
 
-    const totEnabledCount = allDepartments.filter(d => {
-      if (d.hasTotAccess !== undefined) return Boolean(d.hasTotAccess);
-      const id = String(d.id || '').toLowerCase();
-      const name = String(d.name || '').toLowerCase();
-      return id.includes('imp') || id.includes('trng') || id.includes('tot') || name.includes('implementation') || name.includes('training');
-    }).length;
+    const totEnabledCount = allDepartments.filter(d => Boolean(d.hasTotAccess)).length;
 
     const q = (this.impDeptSearchQuery || '').toLowerCase().trim();
     const filtered = allDepartments.filter(d => {
-      const isTot = d.hasTotAccess !== undefined ? Boolean(d.hasTotAccess) : (d.id.includes('imp') || d.id.includes('trng') || d.name.toLowerCase().includes('implementation') || d.name.toLowerCase().includes('training'));
+      const isTot = Boolean(d.hasTotAccess);
       const matchTot = this.impDeptTotFilter === 'all' || (this.impDeptTotFilter === 'enabled' && isTot) || (this.impDeptTotFilter === 'disabled' && !isTot);
       const matchScope = this.impDeptScopeFilter === 'all' || d.scope === this.impDeptScopeFilter;
       const matchSearch = !q || d.name.toLowerCase().includes(q) || d.codeTemplate.toLowerCase().includes(q) || (d.number && d.number.includes(q)) || d.id.toLowerCase().includes(q);
@@ -6778,7 +6695,7 @@ const ConfigModule = {
                   'dp-cp': '<span class="badge badge-emerald">Digital Product (Country)</span>',
                   'general': '<span class="badge">General</span>'
                 };
-                const isTotActive = d.hasTotAccess !== undefined ? Boolean(d.hasTotAccess) : (d.id.includes('imp') || d.id.includes('trng') || d.name.toLowerCase().includes('implementation') || d.name.toLowerCase().includes('training'));
+                const isTotActive = Boolean(d.hasTotAccess);
 
                 return `
                   <tr style="${isTotActive ? 'background: rgba(16, 185, 129, 0.03);' : ''}">
