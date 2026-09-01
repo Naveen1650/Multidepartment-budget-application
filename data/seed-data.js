@@ -27,9 +27,9 @@ const SEED_DATA = {
     { id: 'pdd-ssdes', number: '3', codeTemplate: '{CC}-PDD-SSDES', name: 'Needs finding, Testing & prototyping', scope: 'country', entityMapping: { nhipl: true, yaif: false }, hasTotAccess: false },
 
     // PD (Program Delivery / Implementation / Training)
-    { id: 'pdel-trng', number: '9', codeTemplate: '{CC}-PDEL-TRNG', name: 'Training design and delivery', scope: 'country', entityMapping: { nhipl: true, yaif: true, nhbd: true, 'nh-indo': true, 'nh-nepal': true, 'noora-us': true }, hasTotAccess: true },
-    { id: 'pdel-imp', number: '10', codeTemplate: '{CC}-PDEL-IMP', name: 'Implementation (ToTs, Supervision, etc.)', scope: 'country', entityMapping: { nhipl: true, yaif: true, nhbd: true, 'nh-indo': true, 'nh-nepal': true, 'noora-us': true }, hasTotAccess: true },
-    { id: 'pdel-partner', number: '', codeTemplate: '{CC}-PDEL-PARTNER IMP', name: 'Partner Implementation', scope: 'country', entityMapping: { nhipl: true, yaif: true, nhbd: true, 'nh-indo': true, 'nh-nepal': true, 'noora-us': true }, hasTotAccess: true },
+    { id: 'pdel-trng', number: '9', codeTemplate: '{CC}-PDEL-TRNG', name: 'Training design and delivery', scope: 'country', entityMapping: { nhipl: true, yaif: true, nhbd: true, 'nh-indo': true, 'nh-nepal': true, 'noora-us': true }, hasTotAccess: false },
+    { id: 'pdel-imp', number: '10', codeTemplate: '{CC}-PDEL-IMP', name: 'Implementation (ToTs, Supervision, etc.)', scope: 'country', entityMapping: { nhipl: true, yaif: true, nhbd: true, 'nh-indo': true, 'nh-nepal': true, 'noora-us': true }, hasTotAccess: false },
+    { id: 'pdel-partner', number: '', codeTemplate: '{CC}-PDEL-PARTNER IMP', name: 'Partner Implementation', scope: 'country', entityMapping: { nhipl: true, yaif: true, nhbd: true, 'nh-indo': true, 'nh-nepal': true, 'noora-us': true }, hasTotAccess: false },
 
     // M&E (Monitoring & Evaluation / Research)
     { id: 'me-monitoring', number: '5', codeTemplate: '{CC}-M&E-MONITORING', name: 'Monitoring', scope: 'country', entityMapping: { nhipl: false, yaif: true }, hasTotAccess: false },
@@ -56,7 +56,7 @@ const SEED_DATA = {
     // ─── 4. Global Departments (GL) ───
     // I&L (Insights & Learning / Training / Strategy / NIAB)
     { id: 'gl-learn-impact', number: '20', codeTemplate: 'GL-I&L-LEARN &IMPACT STGY', name: 'Knowledge sharing and dissemination', scope: 'gl', hasTotAccess: false },
-    { id: 'gl-hcw-trng', number: '9', codeTemplate: 'GL-I&L-HCW PROD & TRNG', name: 'Health Care Worker Products & Training', scope: 'gl', hasTotAccess: true },
+    { id: 'gl-hcw-trng', number: '9', codeTemplate: 'GL-I&L-HCW PROD & TRNG', name: 'Health Care Worker Products & Training', scope: 'gl', hasTotAccess: false },
     { id: 'gl-niab', number: '12', codeTemplate: 'GL-I&L-NIAB', name: 'Noora In a Box (NIAB)', scope: 'gl', hasTotAccess: false },
 
     // C&I (Creative & Innovation / Research / Comms)

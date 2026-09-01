@@ -628,13 +628,12 @@ class BudgetDB {
       }
     }
 
-    // Ensure departments have hasTotAccess flag initialized
+    // Ensure departments have hasTotAccess flag initialized (defaults strictly to false unless user explicitly enables)
     if (this.db.objectStoreNames.contains(STORES.departments)) {
       const allDepts = await this.getAll(STORES.departments);
       for (const d of allDepts) {
         if (d.hasTotAccess === undefined) {
-          const seedMatch = (typeof SEED_DATA !== 'undefined' && SEED_DATA.departments) ? SEED_DATA.departments.find(sd => sd.id === d.id) : null;
-          d.hasTotAccess = seedMatch ? Boolean(seedMatch.hasTotAccess) : false;
+          d.hasTotAccess = false;
           await this.put(STORES.departments, d);
         }
       }
@@ -658,13 +657,10 @@ class BudgetDB {
   async getTotEnabledDepartmentIds() {
     try {
       const depts = await this.getDepartments();
-      const enabled = depts.filter(d => {
-        if (d.hasTotAccess !== undefined) return Boolean(d.hasTotAccess);
-        return false;
-      }).map(d => d.id);
+      const enabled = depts.filter(d => Boolean(d.hasTotAccess)).map(d => d.id);
       return enabled;
     } catch {
-      return ['pdel-imp', 'pdel-trng', 'pdel-partner', 'gl-hcw-trng'];
+      return [];
     }
   }
 

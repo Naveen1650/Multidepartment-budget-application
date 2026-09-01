@@ -304,17 +304,12 @@ const ConfigModule = {
     const allDepartments = Utils.sortDepartments(await db.getAll(STORES.departments));
     const entities = await db.getAll(STORES.entities);
 
-    const totEnabledCount = allDepartments.filter(d => {
-      if (d.hasTotAccess !== undefined) return Boolean(d.hasTotAccess);
-      const id = String(d.id || '').toLowerCase();
-      const name = String(d.name || '').toLowerCase();
-      return id.includes('imp') || id.includes('trng') || id.includes('tot') || name.includes('implementation') || name.includes('training');
-    }).length;
+    const totEnabledCount = allDepartments.filter(d => Boolean(d.hasTotAccess)).length;
 
     // Filter departments by search, scope, and ToT status
     const q = (this.deptSearchQuery || '').toLowerCase().trim();
     const filteredDepts = allDepartments.filter(d => {
-      const isTot = d.hasTotAccess !== undefined ? Boolean(d.hasTotAccess) : (d.id.includes('imp') || d.id.includes('trng') || d.name.toLowerCase().includes('implementation') || d.name.toLowerCase().includes('training'));
+      const isTot = Boolean(d.hasTotAccess);
       const matchTot = this.deptTotFilter === 'all' || (this.deptTotFilter === 'enabled' && isTot) || (this.deptTotFilter === 'disabled' && !isTot);
       const matchScope = this.deptScopeFilter === 'all' || d.scope === this.deptScopeFilter;
       const matchSearch = !q || d.name.toLowerCase().includes(q) || d.codeTemplate.toLowerCase().includes(q) || (d.number && d.number.includes(q)) || d.id.toLowerCase().includes(q);
@@ -406,7 +401,7 @@ const ConfigModule = {
               'general': '<span class="badge">General</span>'
             };
 
-            const isTotActive = d.hasTotAccess !== undefined ? Boolean(d.hasTotAccess) : (d.id.includes('imp') || d.id.includes('trng') || d.name.toLowerCase().includes('implementation') || d.name.toLowerCase().includes('training'));
+            const isTotActive = Boolean(d.hasTotAccess);
 
             return `
               <div class="config-list-item" style="border-left: 4px solid ${isTotActive ? 'var(--accent-primary)' : 'transparent'};">
@@ -463,7 +458,7 @@ const ConfigModule = {
 
   showDeptForm(dept = null) {
     const isEdit = !!dept;
-    const isTotActive = dept ? (dept.hasTotAccess !== undefined ? Boolean(dept.hasTotAccess) : (dept.id.includes('imp') || dept.id.includes('trng') || dept.name.toLowerCase().includes('implementation') || dept.name.toLowerCase().includes('training'))) : false;
+    const isTotActive = dept ? Boolean(dept.hasTotAccess) : false;
 
     const content = `
       <form id="deptForm">
