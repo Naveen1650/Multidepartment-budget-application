@@ -160,11 +160,11 @@ const ConfigModule = {
               category: 'config',
               action: isEdit ? 'UPDATE_ENTITY' : 'CREATE_ENTITY',
               recordId: data.id,
-              description: `${isEdit ? 'Updated' : 'Created'} entity "${data.name}" (${data.shortName}) with currency ${data.currency} @ rate ${rateNum}/USD`,
-              changes: { ...data, exchangeRate: rateNum }
+              description: `${isEdit ? 'Updated' : 'Created'} entity "${data.name}" (${data.shortName}) with operating currency ${data.currency}`,
+              changes: data
             });
 
-            Utils.showToast(`Entity "${data.shortName}" (${data.currency} @ ${rateNum}/USD) saved & synchronized everywhere!`, 'success');
+            Utils.showToast(`Entity "${data.shortName}" (${data.currency}) saved successfully!`, 'success');
             close();
             if (typeof App !== 'undefined') {
               if (App.populateGlobalSelectors) await App.populateGlobalSelectors();

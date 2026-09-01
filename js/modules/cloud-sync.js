@@ -261,11 +261,14 @@ const CloudSyncModule = {
 
   // ─── Real-Time Single Record Push (Hooked to db.put & db.add) ───
   pushRecordToCloud(storeName, record) {
-    if (!this._client || !record || this._isSyncing) return;
+    if (!this._client || !record) return;
     const table = STORE_TABLE_MAP[storeName] || STORE_TABLE_MAP[STORES[storeName]];
     if (!table) return;
 
-    const queueKey = `${table}:${record.id || 'new'}`;
+    const recordId = record.id;
+    if (recordId === undefined || recordId === null) return;
+    const queueKey = `${table}:${recordId}`;
+
     if (this._pushQueue.has(queueKey)) {
       clearTimeout(this._pushQueue.get(queueKey).timer);
     }
@@ -284,14 +287,14 @@ const CloudSyncModule = {
       } catch (err) {
         console.warn(`[CloudSync] Exception pushing to ${table}:`, err);
       }
-    }, 250);
+    }, 100);
 
     this._pushQueue.set(queueKey, { storeName, record, timer });
   },
 
   // ─── Real-Time Batch Push (Hooked to db.putMany) ───
   async pushManyToCloud(storeName, records) {
-    if (!this._client || !records || records.length === 0 || this._isSyncing) return;
+    if (!this._client || !records || records.length === 0) return;
     const table = STORE_TABLE_MAP[storeName] || STORE_TABLE_MAP[STORES[storeName]];
     if (!table) return;
 
@@ -441,13 +444,18 @@ const CloudSyncModule = {
             }
             if (CloudSyncModule._uiRefreshTimer) clearTimeout(CloudSyncModule._uiRefreshTimer);
             CloudSyncModule._uiRefreshTimer = setTimeout(async () => {
+              const hasOpenModal = Boolean(typeof document !== 'undefined' && document.querySelector('.modal-overlay'));
+              const isTyping = Boolean(typeof document !== 'undefined' && document.activeElement && document.activeElement.matches('input, select, textarea'));
+              if (hasOpenModal || isTyping) {
+                // Do not interrupt user who is actively typing or editing in a modal
+                return;
+              }
               if (App.currentPage === 'budget-entry' && typeof BudgetEntryModule !== 'undefined' && BudgetEntryModule._entity && BudgetEntryModule._dept) {
-                // If on budget-entry grid, refresh active grid seamlessly
                 await BudgetEntryModule.renderGrid(BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._budgetYear, BudgetEntryModule._actualsMonth);
               } else if (App.renderCurrentPage) {
                 await App.renderCurrentPage();
               }
-            }, 80);
+            }, 120);
           }
         });
       });
@@ -469,16 +477,18 @@ const CloudSyncModule = {
       if (this._config.enabled && this._config.autoSync && this._client) {
         try {
           await this.downloadAllFromCloud(() => {}, true);
-          if (typeof App !== 'undefined') {
-            if (App.currentPage === 'budget-entry' && typeof BudgetEntryModule !== 'undefined' && BudgetEntryModule._entity && BudgetEntryModule._dept) {
-              await BudgetEntryModule.renderGrid(BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._budgetYear, BudgetEntryModule._actualsMonth);
-            } else if (App.renderCurrentPage) {
-              await App.renderCurrentPage();
+          if (typeof App !== 'undefined' && App.currentPage === 'budget-entry') {
+            if (typeof BudgetEntryModule !== 'undefined' && BudgetEntryModule._entity && BudgetEntryModule._dept) {
+              const hasOpenModal = Boolean(typeof document !== 'undefined' && document.querySelector('.modal-overlay'));
+              const isTyping = Boolean(typeof document !== 'undefined' && document.activeElement && document.activeElement.matches('input, select, textarea'));
+              if (!hasOpenModal && !isTyping) {
+                await BudgetEntryModule.renderGrid(BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._budgetYear, BudgetEntryModule._actualsMonth);
+              }
             }
           }
         } catch (e) {}
       }
-    }, 15000);
+    }, 20000);
   },
 
   // ─── Full Store Upload & Download ───
@@ -554,12 +564,13 @@ const CloudSyncModule = {
               camel.id = `${camel.yearId}_${camel.entityId}_${camel.deptId}`;
             }
             if (table === 'departments') {
-              if (camel.hasTotAccess === undefined) {
-                const localExisting = await db.get(STORES.departments, camel.id);
-                if (localExisting && localExisting.hasTotAccess !== undefined) {
+              const localExisting = await db.get(STORES.departments, camel.id);
+              if (localExisting) {
+                if (!camel.scope && localExisting.scope) camel.scope = localExisting.scope;
+                if (!camel.codeTemplate && localExisting.codeTemplate) camel.codeTemplate = localExisting.codeTemplate;
+                if (!camel.number && localExisting.number) camel.number = localExisting.number;
+                if (camel.hasTotAccess === undefined) {
                   camel.hasTotAccess = Boolean(localExisting.hasTotAccess);
-                } else {
-                  camel.hasTotAccess = false;
                 }
               }
               if (typeof ImpTotModule !== 'undefined' && ImpTotModule._totDeptCache) {
@@ -568,6 +579,39 @@ const CloudSyncModule = {
                 if (camel.codeTemplate) {
                   ImpTotModule._totDeptCache[String(camel.codeTemplate).toLowerCase()] = Boolean(camel.hasTotAccess);
                 }
+              }
+            } else if (table === 'entities') {
+              const localExisting = await db.get(STORES.entities, camel.id);
+              if (localExisting) {
+                if (!camel.deptPrefix && localExisting.deptPrefix) camel.deptPrefix = localExisting.deptPrefix;
+                if (!camel.countryCode && localExisting.countryCode) camel.countryCode = localExisting.countryCode;
+                if (!camel.currency && localExisting.currency) camel.currency = localExisting.currency;
+                if (!camel.flag && localExisting.flag) camel.flag = localExisting.flag;
+              }
+            } else if (table === 'budget_years') {
+              const localExisting = await db.get(STORES.budgetYears, camel.id);
+              if (localExisting) {
+                if (!camel.entityStatuses && localExisting.entityStatuses) camel.entityStatuses = localExisting.entityStatuses;
+                if (!camel.inactiveEntities && localExisting.inactiveEntities) camel.inactiveEntities = localExisting.inactiveEntities;
+                if (!camel.priorYear && localExisting.priorYear) camel.priorYear = localExisting.priorYear;
+                if (!camel.actualsThroughMonth && localExisting.actualsThroughMonth) camel.actualsThroughMonth = localExisting.actualsThroughMonth;
+              }
+            } else if (table === 'roles') {
+              const localExisting = await db.get(STORES.roles, camel.id);
+              if (localExisting) {
+                if (!camel.tier && localExisting.tier) camel.tier = localExisting.tier;
+                if (!camel.badgeColor && localExisting.badgeColor) camel.badgeColor = localExisting.badgeColor;
+                if ((!camel.permissions || Object.keys(camel.permissions).length === 0) && localExisting.permissions) {
+                  camel.permissions = localExisting.permissions;
+                }
+              }
+            } else if (table === 'users') {
+              const localExisting = await db.get(STORES.users, camel.id);
+              if (localExisting) {
+                if (!camel.assignedEntities && localExisting.assignedEntities) camel.assignedEntities = localExisting.assignedEntities;
+                if (!camel.assignedDepartments && localExisting.assignedDepartments) camel.assignedDepartments = localExisting.assignedDepartments;
+                if (!camel.categoryOverrides && localExisting.categoryOverrides) camel.categoryOverrides = localExisting.categoryOverrides;
+                if (!camel.roleId && localExisting.roleId) camel.roleId = localExisting.roleId;
               }
             }
             camel._fromCloud = true;
@@ -650,6 +694,19 @@ const CloudSyncModule = {
       const hasTot = Boolean(record.hasTotAccess !== undefined ? record.hasTotAccess : (record.has_tot_access !== undefined ? record.has_tot_access : mapping.has_tot_access));
       mapping.has_tot_access = hasTot;
       sanitized.entity_mapping = mapping;
+    } else if (table === 'budget_years') {
+      let rates = record.conversionRates || record.conversion_rates || {};
+      if (typeof rates === 'string') {
+        try { rates = JSON.parse(rates); } catch (e) { rates = {}; }
+      }
+      if (!rates || typeof rates !== 'object' || Array.isArray(rates)) rates = { USD: 1.0 };
+      rates._meta = {
+        entity_statuses: record.entityStatuses || record.entity_statuses || {},
+        inactive_entities: record.inactiveEntities || record.inactive_entities || [],
+        prior_year: record.priorYear || record.prior_year || (record.year ? record.year - 1 : 2025),
+        actuals_through_month: record.actualsThroughMonth || record.actuals_through_month || 'Oct'
+      };
+      sanitized.conversion_rates = rates;
     } else if (table === 'entity_dept_configs') {
       sanitized.is_active = sanitized.is_active !== false;
     } else if (table === 'budget_lock_status') {
@@ -725,6 +782,19 @@ const CloudSyncModule = {
         const hasTot = Boolean(record.hasTotAccess !== undefined ? record.hasTotAccess : (record.has_tot_access !== undefined ? record.has_tot_access : mapping.has_tot_access));
         mapping.has_tot_access = hasTot;
         sanitized.entity_mapping = mapping;
+      } else if (table === 'budget_years') {
+        let rates = record.conversionRates || record.conversion_rates || {};
+        if (typeof rates === 'string') {
+          try { rates = JSON.parse(rates); } catch (e) { rates = {}; }
+        }
+        if (!rates || typeof rates !== 'object' || Array.isArray(rates)) rates = { USD: 1.0 };
+        rates._meta = {
+          entity_statuses: record.entityStatuses || record.entity_statuses || {},
+          inactive_entities: record.inactiveEntities || record.inactive_entities || [],
+          prior_year: record.priorYear || record.prior_year || (record.year ? record.year - 1 : 2025),
+          actuals_through_month: record.actualsThroughMonth || record.actuals_through_month || 'Oct'
+        };
+        sanitized.conversion_rates = rates;
       } else if (table === 'entity_dept_configs') {
         sanitized.is_active = sanitized.is_active !== false;
       } else if (table === 'budget_lock_status') {
@@ -804,6 +874,18 @@ const CloudSyncModule = {
       res.hasTotAccess = Boolean(res.entityMapping.has_tot_access);
     } else if (res.entity_mapping && typeof res.entity_mapping === 'object' && res.entity_mapping.has_tot_access !== undefined) {
       res.hasTotAccess = Boolean(res.entity_mapping.has_tot_access);
+    }
+    // Unpack budget_years metadata from conversion_rates._meta if present
+    if (res.conversionRates && typeof res.conversionRates === 'object') {
+      const meta = res.conversionRates._meta || res.conversionRates._metadata;
+      if (meta && typeof meta === 'object') {
+        if (meta.entity_statuses) res.entityStatuses = meta.entity_statuses;
+        if (meta.inactive_entities) res.inactiveEntities = meta.inactive_entities;
+        if (meta.prior_year) res.priorYear = meta.prior_year;
+        if (meta.actuals_through_month) res.actualsThroughMonth = meta.actuals_through_month;
+        delete res.conversionRates._meta;
+        delete res.conversionRates._metadata;
+      }
     }
     // Fallback: ensure totalCY is populated if totalCy or monthlyValues exists
     if (res.totalCY === undefined || res.totalCY === null) {
