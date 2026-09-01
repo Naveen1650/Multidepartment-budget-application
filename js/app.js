@@ -160,7 +160,7 @@ const App = {
       entities = Auth.filterAccessibleEntities(entities);
     }
 
-    entitySelect.innerHTML = '<option value="">All Entities</option>';
+    entitySelect.innerHTML = '<option value="">🌍 All Entities</option>';
     entities.forEach(e => {
       const eStat = typeof Auth !== 'undefined' ? Auth.getYearStatus(this.selectedYear, e.id) : 'active';
       const isEditable = eStat === 'draft' || eStat === 'active';
@@ -169,10 +169,22 @@ const App = {
 
     entitySelect.onchange = () => {
       this.selectedEntity = entitySelect.value;
+      if (typeof BudgetEntryModule !== 'undefined') {
+        BudgetEntryModule.currentEntityId = entitySelect.value ? entitySelect.value : 'all';
+        BudgetEntryModule.currentDeptId = null;
+      }
       this.onGlobalFilterChange();
     };
 
     this.updateSidebarVisibility();
+  },
+
+  syncGlobalEntity(entityId) {
+    this.selectedEntity = (entityId === 'all') ? '' : (entityId || '');
+    const globalEl = document.querySelector('#globalEntitySelect');
+    if (globalEl) {
+      globalEl.value = this.selectedEntity;
+    }
   },
 
   updateSidebarVisibility() {

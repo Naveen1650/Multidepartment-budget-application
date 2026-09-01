@@ -46,46 +46,50 @@ const BudgetEntryModule = {
       return;
     }
 
-    // Determine currentEntityId (must be within accessible entities)
+    // Determine currentEntityId (must be within accessible entities or 'all')
     const appSelectedEntity = typeof App !== 'undefined' ? App.selectedEntity : null;
-    if (!this.currentEntityId || !entities.some(e => e.id === this.currentEntityId)) {
-      if (appSelectedEntity && entities.some(e => e.id === appSelectedEntity)) {
-        this.currentEntityId = appSelectedEntity;
-      } else {
-        this.currentEntityId = entities[0].id;
-      }
+    if (appSelectedEntity === '' || appSelectedEntity === 'all') {
+      this.currentEntityId = 'all';
+    } else if (appSelectedEntity && entities.some(e => e.id === appSelectedEntity)) {
+      this.currentEntityId = appSelectedEntity;
+    } else if (this.currentEntityId !== 'all' && (!this.currentEntityId || !entities.some(e => e.id === this.currentEntityId))) {
+      this.currentEntityId = entities[0]?.id || 'all';
     }
-    const selectedEntity = entities.find(e => e.id === this.currentEntityId) || entities[0];
+
+    const isAllEntities = (this.currentEntityId === 'all');
+    const selectedEntity = isAllEntities
+      ? { id: 'all', name: 'All Entities (Consolidated)', shortName: 'All Entities', currency: 'USD', flag: '🌍', deptPrefix: 'ALL' }
+      : (entities.find(e => e.id === this.currentEntityId) || entities[0]);
+
+    // Keep top navigation globalEntitySelect in exact sync
+    if (typeof App !== 'undefined' && App.syncGlobalEntity) {
+      App.syncGlobalEntity(this.currentEntityId);
+    }
 
     // Filter active departments for entity in this budget year
     const yearId = (typeof App !== 'undefined' && App.selectedYear) ? App.selectedYear : (years[0]?.id || '2026');
-    const configs = await db.getEntityDeptConfigForYear(yearId, this.currentEntityId);
     const sortedDepartments = Utils.sortDepartments(allDepartments);
-    let entityDepts = sortedDepartments;
-    if (configs && configs.length > 0) {
-      const activeDeptIds = new Set(configs.filter(c => c.isActive !== false && c.is_active !== false).map(c => c.deptId || c.dept_id));
-      entityDepts = sortedDepartments.filter(d => activeDeptIds.has(d.id));
+    let activeDepts = [];
+
+    if (isAllEntities) {
+      activeDepts = sortedDepartments;
+    } else {
+      const configs = await db.getEntityDeptConfigForYear(yearId, this.currentEntityId);
+      let entityDepts = sortedDepartments;
+      if (configs && configs.length > 0) {
+        const activeDeptIds = new Set(configs.filter(c => c.isActive !== false && c.is_active !== false).map(c => c.deptId || c.dept_id));
+        entityDepts = sortedDepartments.filter(d => activeDeptIds.has(d.id));
+      }
+      activeDepts = typeof Auth !== 'undefined' ? Auth.filterAccessibleDepts(entityDepts, this.currentEntityId) : entityDepts;
     }
 
-    // Filter accessible departments for active user for this entity
-    const activeDepts = typeof Auth !== 'undefined' ? Auth.filterAccessibleDepts(entityDepts, this.currentEntityId) : entityDepts;
-
     if (activeDepts.length === 0) {
-      container.innerHTML = `
-        <div class="card p-xl text-center" style="max-width: 620px; margin: 40px auto; border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-card);">
-          <div style="font-size: 2.8rem; margin-bottom: 12px;">🔒</div>
-          <h3 style="margin: 0 0 8px; color: var(--text-primary);">No Active Department Access</h3>
-          <p class="text-secondary" style="margin: 0 0 16px; font-size: 13px; line-height: 1.5;">
-            No active departments are configured or accessible in <strong>${selectedEntity.shortName}</strong> for CY-${yearId}.
-          </p>
-        </div>
-      `;
-      return;
+      activeDepts = sortedDepartments;
     }
 
     // Determine currentDeptId (must be within accessible active depts)
     if (!this.currentDeptId || !activeDepts.some(d => d.id === this.currentDeptId)) {
-      this.currentDeptId = activeDepts[0].id;
+      this.currentDeptId = activeDepts[0]?.id || '';
     }
     const selectedDept = activeDepts.find(d => d.id === this.currentDeptId) || activeDepts[0];
 
@@ -188,6 +192,7 @@ const BudgetEntryModule = {
           <div>
             <label class="form-label">Entity</label>
             <select class="form-select" id="entryEntitySelect">
+              <option value="all" ${isAllEntities ? 'selected' : ''}>🌍 All Entities (Consolidated)</option>
               ${entities.map(e => {
                 const eStatus = typeof Auth !== 'undefined' ? Auth.getYearStatus(yearId, e.id) : 'active';
                 const isEEditable = eStatus === 'draft' || eStatus === 'active';
@@ -252,9 +257,13 @@ const BudgetEntryModule = {
 
     // Event listeners for toolbar
     container.querySelector('#entryEntitySelect')?.addEventListener('change', (e) => {
-      this.currentEntityId = e.target.value;
+      const val = e.target.value;
+      this.currentEntityId = val;
       this.currentDeptId = null; // Reset dept so it picks first valid dept of newly selected entity
-      App.selectedEntity = e.target.value;
+      if (typeof App !== 'undefined') {
+        App.selectedEntity = (val === 'all') ? '' : val;
+        if (App.syncGlobalEntity) App.syncGlobalEntity(val);
+      }
       this.render(container);
     });
 
@@ -500,11 +509,47 @@ const BudgetEntryModule = {
     }
   },
 
+  switchEntity(entityId) {
+    this.currentEntityId = entityId;
+    if (typeof App !== 'undefined') {
+      App.selectedEntity = (entityId === 'all') ? '' : entityId;
+      if (App.syncGlobalEntity) App.syncGlobalEntity(entityId);
+    }
+    this.currentDeptId = null;
+    const container = document.querySelector('#page-content') || document.querySelector('.page-content') || document.querySelector('#pageContent');
+    if (container) this.render(container);
+  },
+
   async renderGrid(entity, dept, budgetYear, actualsMonth) {
     const grid = Utils.$('#gridContainer') || this._container;
     if (!grid) return;
     // Use cached _yearId so queries always match what addRow() saves
     const yearId = this._yearId || App.selectedYear || '2026';
+
+    // If in All Entities mode and user selects an input tab, guide them with entity switch cards
+    if (entity.id === 'all' && this.activeTab !== 'total-costs') {
+      const rawEntities = await db.getAll(STORES.entities);
+      const accEnts = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
+      grid.innerHTML = `
+        <div class="card p-xl text-center" style="max-width: 680px; margin: 30px auto; border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-card);">
+          <div style="font-size: 2.5rem; margin-bottom: 12px;">🌍</div>
+          <h3 style="margin: 0 0 8px; color: var(--text-primary);">Consolidated All Entities View</h3>
+          <p class="text-secondary" style="margin: 0 0 20px; font-size: 13px; line-height: 1.5;">
+            You are currently viewing the consolidated budget across <strong>All Entities</strong>. The <strong>Total Dept Cost</strong> tab displays the full multi-entity consolidated department budget in USD ($). To enter or edit itemized lines in local currency, please select a specific operating entity below:
+          </p>
+          <div class="flex gap-sm justify-center flex-wrap">
+            ${accEnts.map(e => `
+              <button class="btn btn-secondary btn-sm flex items-center gap-xs" onclick="BudgetEntryModule.switchEntity('${e.id}')">
+                <span>${e.flag}</span>
+                <strong>${e.shortName}</strong>
+                <span class="text-tertiary">(${e.currency})</span>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      return;
+    }
 
     // If activeTab is imp-tot but current dept is not an Implementation dept, reset to total-costs
     if (this.activeTab === 'imp-tot' && (typeof ImpTotModule === 'undefined' || !ImpTotModule.isImpDept(dept))) {
@@ -4660,41 +4705,70 @@ const BudgetEntryModule = {
 
   // ─── Total Dept Cost Grid (Master Summary Linked from Input Sheets) ───
   async renderTotalCostGrid(container, yearId, entity, dept, budgetYear) {
-    await this.ensureTemplateSyncsClean(yearId, entity.id, dept.id);
+    const isAll = (entity.id === 'all');
+    if (!isAll) {
+      await this.ensureTemplateSyncsClean(yearId, entity.id, dept.id);
+    }
     const coa = await db.getChartOfAccounts();
 
-    // Fetch all input records for this department & year
-    const personnelAll = await db.getBudgetData(STORES.payrollPersonnel, yearId, entity.id, dept.id);
-    const salariesRows = personnelAll.filter(p => !p.subCategory || p.subCategory === 'salaries-wages');
-    const otherStaffRows = personnelAll.filter(p => p.subCategory === 'other-staff-expenses');
-    const gratuityRows = personnelAll.filter(p => p.subCategory === 'gratuity-bonus');
-    const ehaRows = await db.getBudgetData(STORES.payrollEHA, yearId, entity.id, dept.id);
-    const fixedAssetRows = await db.getBudgetData(STORES.payrollFixedAsset, yearId, entity.id, dept.id);
-    const otherCostRows = await db.getBudgetData(STORES.nonPayrollCost, yearId, entity.id, dept.id);
-
-    // Fetch stored basis and remarks notes
-    const savedTotalCostRecords = await db.getBudgetData(STORES.totalCostSheet, yearId, entity.id, dept.id);
+    let allSalariesRows = [];
+    let allOtherStaffRows = [];
+    let allGratuityRows = [];
+    let allEhaRows = [];
+    let allFixedAssetRows = [];
+    let allOtherCostRows = [];
     const savedBasisMap = {};
     const savedRemarksMap = {};
-    savedTotalCostRecords.forEach(r => {
-      if (r.ledgerCode) {
-        savedBasisMap[r.ledgerCode] = r.basisOfExpense || '';
-        savedRemarksMap[r.ledgerCode] = r.remarks || '';
-      } else if (r.glDescription) {
-        savedBasisMap[r.glDescription] = r.basisOfExpense || '';
-        savedRemarksMap[r.glDescription] = r.remarks || '';
-      }
-    });
+
+    let targetEntities = [entity];
+    if (isAll) {
+      const rawEntities = await db.getAll(STORES.entities);
+      targetEntities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
+    }
+
+    for (const ent of targetEntities) {
+      const eRate = isAll ? (this._conversionRates?.[ent.currency] || 1.0) : 1.0;
+      const personnelAll = await db.getBudgetData(STORES.payrollPersonnel, yearId, ent.id, dept.id);
+      const salariesRows = personnelAll.filter(p => !p.subCategory || p.subCategory === 'salaries-wages');
+      const otherStaffRows = personnelAll.filter(p => p.subCategory === 'other-staff-expenses');
+      const gratuityRows = personnelAll.filter(p => p.subCategory === 'gratuity-bonus');
+      const ehaRows = await db.getBudgetData(STORES.payrollEHA, yearId, ent.id, dept.id);
+      const fixedAssetRows = await db.getBudgetData(STORES.payrollFixedAsset, yearId, ent.id, dept.id);
+      const otherCostRows = await db.getBudgetData(STORES.nonPayrollCost, yearId, ent.id, dept.id);
+
+      const attachMeta = (rows) => rows.map(r => ({ ...r, entityId: ent.id, currency: ent.currency, rate: eRate }));
+      allSalariesRows.push(...attachMeta(salariesRows));
+      allOtherStaffRows.push(...attachMeta(otherStaffRows));
+      allGratuityRows.push(...attachMeta(gratuityRows));
+      allEhaRows.push(...attachMeta(ehaRows));
+      allFixedAssetRows.push(...attachMeta(fixedAssetRows));
+      allOtherCostRows.push(...attachMeta(otherCostRows));
+
+      const savedTotalCostRecords = await db.getBudgetData(STORES.totalCostSheet, yearId, ent.id, dept.id);
+      savedTotalCostRecords.forEach(r => {
+        const k1 = r.ledgerCode ? Utils.cleanStr(r.ledgerCode) : '';
+        const k2 = r.glDescription ? Utils.cleanStr(r.glDescription) : '';
+        if (k1) {
+          savedBasisMap[k1] = (savedBasisMap[k1] ? savedBasisMap[k1] + '; ' : '') + (r.basisOfExpense || '');
+          savedRemarksMap[k1] = (savedRemarksMap[k1] ? savedRemarksMap[k1] + '; ' : '') + (r.remarks || '');
+        } else if (k2) {
+          savedBasisMap[k2] = (savedBasisMap[k2] ? savedBasisMap[k2] + '; ' : '') + (r.basisOfExpense || '');
+          savedRemarksMap[k2] = (savedRemarksMap[k2] ? savedRemarksMap[k2] + '; ' : '') + (r.remarks || '');
+        }
+      });
+    }
 
     const sumMonths = (rows) => {
       const months = Array(12).fill(0);
       let total = 0;
       rows.forEach(r => {
+        const rRate = isAll ? (r.rate || 1.0) : 1.0;
         if (r.monthlyValues) {
           Object.entries(r.monthlyValues).forEach(([mIdx, val]) => {
             const num = Utils.parseNumber(val);
-            months[mIdx] += num;
-            total += num;
+            const finalVal = isAll ? Utils.convertToUSD(num, rRate) : num;
+            months[mIdx] += finalVal;
+            total += finalVal;
           });
         }
       });
@@ -4708,46 +4782,46 @@ const BudgetEntryModule = {
       let sourceIcon = '📑';
       let entryCount = 0;
       let rollup = { monthlyValues: Array(12).fill(0), totalCY: 0 };
-      let remarks = savedRemarksMap[account.ledgerCode] || savedRemarksMap[account.glDescription] || '';
-
       const accGlClean = Utils.cleanStr(account.glDescription);
       const accLedgerClean = Utils.cleanStr(account.ledgerCode);
       const accParentClean = Utils.cleanStr(account.parentAccount);
+
+      let remarks = savedRemarksMap[accLedgerClean] || savedRemarksMap[accGlClean] || '';
 
       // 1. Salaries and Wages
       if (accGlClean.includes('salariesandwages') || accLedgerClean.startsWith('911') || accParentClean.includes('salariesandwages')) {
         linkedSource = 'Payroll — Salaries & Wages';
         sourceIcon = '👥';
-        rollup = sumMonths(salariesRows);
-        entryCount = salariesRows.length;
+        rollup = sumMonths(allSalariesRows);
+        entryCount = allSalariesRows.length;
       }
       // 2. Staff Training, Learning (Other Staff Expenses)
       else if (accGlClean.includes('stafftraining') || accLedgerClean.startsWith('913') || accParentClean.includes('otherstaff')) {
         linkedSource = 'Payroll — Other Staff Expenses';
         sourceIcon = '👥';
-        rollup = sumMonths(otherStaffRows);
-        entryCount = otherStaffRows.length;
+        rollup = sumMonths(allOtherStaffRows);
+        entryCount = allOtherStaffRows.length;
       }
       // 3. Gratuity and Bonus
       else if (accGlClean.includes('gratuity') || accLedgerClean.startsWith('912') || accParentClean.includes('health') || accParentClean.includes('retirement')) {
         linkedSource = 'Payroll — Gratuity & Bonus';
         sourceIcon = '👥';
-        rollup = sumMonths(gratuityRows);
-        entryCount = gratuityRows.length;
+        rollup = sumMonths(allGratuityRows);
+        entryCount = allGratuityRows.length;
       }
       // 4. Program Resource Consultant (EHA)
       else if (accGlClean.includes('programresource') || accGlClean.includes('eha') || accLedgerClean.startsWith('921') || accParentClean.includes('resourceperson')) {
         linkedSource = 'Payroll — EHA Consultants';
         sourceIcon = '🤝';
-        rollup = sumMonths(ehaRows);
-        entryCount = ehaRows.length;
+        rollup = sumMonths(allEhaRows);
+        entryCount = allEhaRows.length;
       }
       // 5. Fixed Assets (Laptop/Printer)
       else if (accGlClean.includes('laptop') || accGlClean.includes('printer') || accLedgerClean.startsWith('113') || accParentClean.includes('fixedasset')) {
         linkedSource = 'Fixed Assets';
         sourceIcon = '💻';
-        rollup = sumMonths(fixedAssetRows);
-        entryCount = fixedAssetRows.length;
+        rollup = sumMonths(allFixedAssetRows);
+        entryCount = allFixedAssetRows.length;
       }
       // 6. Other non-payroll expenses (Direct Costs & Indirect Costs)
       else {
@@ -4764,7 +4838,7 @@ const BudgetEntryModule = {
         linkedSource = cMeta.label;
         sourceIcon = cMeta.icon;
 
-        const matchingOther = otherCostRows.filter((o, idx) => {
+        const matchingOther = allOtherCostRows.filter((o, idx) => {
           const oLedger = Utils.cleanStr(o.ledgerCode);
           const oGl = Utils.cleanStr(o.glDescription);
           const oParent = Utils.cleanStr(o.parentAccount);
@@ -4779,15 +4853,13 @@ const BudgetEntryModule = {
 
         rollup = sumMonths(matchingOther);
         entryCount = matchingOther.length;
-
         if (!remarks) {
-          const rems = matchingOther.map(o => o.remarks).filter(Boolean);
-          if (rems.length > 0) remarks = rems.join('; ');
+          const distinctOtherRemarks = Array.from(new Set(matchingOther.map(m => m.remarks).filter(Boolean)));
+          if (distinctOtherRemarks.length > 0) remarks = distinctOtherRemarks.join('; ');
         }
       }
 
       return {
-        subGroup: account.subGroup,
         parentAccount: account.parentAccount,
         glDescription: account.glDescription,
         ledgerCode: account.ledgerCode,
@@ -4801,56 +4873,74 @@ const BudgetEntryModule = {
     });
 
     // Also include any custom added lines from Other Costs that were not in default chart of accounts
-    otherCostRows.forEach((o, idx) => {
+    const customGroupMap = {};
+    allOtherCostRows.forEach((o, idx) => {
       if (!matchedOtherCostIndices.has(idx)) {
-        const months = Array(12).fill(0);
-        let total = 0;
-        if (o.monthlyValues) {
-          Object.entries(o.monthlyValues).forEach(([mIdx, val]) => {
-            const num = Utils.parseNumber(val);
-            months[mIdx] += num;
-            total += num;
-          });
+        const key = `${o.parentAccount || 'Other Costs'}__${o.glDescription || 'Misc'}__${o.ledgerCode || '93999'}`;
+        if (!customGroupMap[key]) {
+          customGroupMap[key] = {
+            parentAccount: o.parentAccount || 'Other Costs',
+            glDescription: o.glDescription || 'Miscellaneous Expense',
+            ledgerCode: o.ledgerCode || '93999',
+            categoryKey: o.categoryKey || this.getOtherCostCategory(o),
+            rows: []
+          };
         }
-
-        const catKey = o.categoryKey || this.getOtherCostCategory(o);
-        const catLabels = {
-          travel: { label: 'Travel & Lodging Package', icon: '✈️' },
-          supplies: { label: 'Supplies & Printing', icon: '🖨️' },
-          communication: { label: 'Communication Expenses', icon: '📡' },
-          office: { label: 'Office Expenses', icon: '🏢' },
-          professional: { label: 'Professional & Consulting', icon: '💼' },
-          other: { label: 'Other Operating Costs', icon: '📑' }
-        };
-        const cMeta = catLabels[catKey] || catLabels.other;
-
-        lines.push({
-          subGroup: o.subGroup || 'Direct Cost',
-          parentAccount: o.parentAccount || 'Other Costs',
-          glDescription: o.glDescription || 'Miscellaneous Expense',
-          ledgerCode: o.ledgerCode || '93999',
-          linkedSource: cMeta.label,
-          sourceIcon: cMeta.icon,
-          entryCount: 1,
-          remarks: o.remarks || '',
-          monthlyValues: months,
-          totalCY: total
-        });
+        customGroupMap[key].rows.push(o);
       }
     });
 
-    const priorCosts = await db.getPriorPeriodCosts(yearId, entity.id, dept.id);
-    const priorMap = {};
-    priorCosts.forEach(p => {
-      if (p.ledgerCode) priorMap[Utils.cleanStr(p.ledgerCode)] = p.priorCost || 0;
-      if (p.glDescription) priorMap[Utils.cleanStr(p.glDescription)] = p.priorCost || 0;
+    Object.values(customGroupMap).forEach(cg => {
+      const rollup = sumMonths(cg.rows);
+      const catLabels = {
+        travel: { label: 'Travel & Lodging Package', icon: '✈️' },
+        supplies: { label: 'Supplies & Printing', icon: '🖨️' },
+        communication: { label: 'Communication Expenses', icon: '📡' },
+        office: { label: 'Office Expenses', icon: '🏢' },
+        professional: { label: 'Professional & Consulting', icon: '💼' },
+        other: { label: 'Other Operating Costs', icon: '📑' }
+      };
+      const cMeta = catLabels[cg.categoryKey] || catLabels.other;
+      lines.push({
+        subGroup: 'Direct Cost',
+        parentAccount: cg.parentAccount,
+        glDescription: cg.glDescription,
+        ledgerCode: cg.ledgerCode,
+        linkedSource: cMeta.label,
+        sourceIcon: cMeta.icon,
+        entryCount: cg.rows.length,
+        remarks: cg.rows.map(r => r.remarks).filter(Boolean).join('; '),
+        monthlyValues: rollup.monthlyValues,
+        totalCY: rollup.totalCY
+      });
     });
+
+    const priorMap = {};
+    if (isAll) {
+      for (const ent of targetEntities) {
+        const eRate = this._conversionRates?.[ent.currency] || 1.0;
+        const ePriors = await db.getPriorPeriodCosts(yearId, ent.id, dept.id);
+        ePriors.forEach(p => {
+          const lKey = Utils.cleanStr(p.ledgerCode);
+          const gKey = Utils.cleanStr(p.glDescription);
+          const valUSD = Utils.convertToUSD(p.priorCost || 0, eRate);
+          if (lKey) priorMap[lKey] = (priorMap[lKey] || 0) + valUSD;
+          if (gKey) priorMap[gKey] = (priorMap[gKey] || 0) + valUSD;
+        });
+      }
+    } else {
+      const priorCosts = await db.getPriorPeriodCosts(yearId, entity.id, dept.id);
+      priorCosts.forEach(p => {
+        if (p.ledgerCode) priorMap[Utils.cleanStr(p.ledgerCode)] = p.priorCost || 0;
+        if (p.glDescription) priorMap[Utils.cleanStr(p.glDescription)] = p.priorCost || 0;
+      });
+    }
 
     lines.forEach(r => {
       r.priorCost = priorMap[Utils.cleanStr(r.ledgerCode)] || priorMap[Utils.cleanStr(r.glDescription)] || 0;
     });
 
-    const remarksSummary = await db.getDeptRemarksSummary(yearId, entity.id, dept.id);
+    const remarksSummary = isAll ? {} : await db.getDeptRemarksSummary(yearId, entity.id, dept.id);
 
     // ─── Filter lines strictly by View Permission ───
     const visibleLines = lines.filter(r => {
@@ -4866,9 +4956,12 @@ const BudgetEntryModule = {
       });
     });
 
-    const deptDisplayName = Utils.getDeptName(dept, entity.deptPrefix);
+    const deptDisplayName = isAll
+      ? `${dept.name || dept.id.toUpperCase()} (All Entities Consolidated)`
+      : Utils.getDeptName(dept, entity.deptPrefix);
+    const displayCurrency = isAll ? 'USD' : entity.currency;
     const rate = this._conversionRates?.[entity.currency] || 1.0;
-    const isLocked = typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entity.id);
+    const isLocked = isAll || (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entity.id));
     const lockAttr = isLocked ? 'disabled readonly style="cursor: not-allowed; opacity: 0.85; background: var(--bg-tertiary);"' : '';
 
     if (visibleLines.length === 0) {
@@ -4908,10 +5001,10 @@ const BudgetEntryModule = {
             <div id="bannerCount" style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary);">${visibleLines.length} Account Lines &bull; ${totalEntriesCount} Total Entries ${isPartialView ? `<span class="badge badge-subtle" style="font-size: 10px; vertical-align: middle;" title="Some cost lines are restricted from your role">🔒 ${lines.length - visibleLines.length} Restricted</span>` : ''}</div>
           </div>
           <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
-            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Total Dept Cost Budget (${entity.currency})</div>
-            <div id="bannerTotal" style="font-size: 1.4rem; font-weight: 700; color: var(--success);">${Utils.formatCurrency(totalCost, entity.currency)}</div>
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Total Dept Cost Budget (${displayCurrency})</div>
+            <div id="bannerTotal" style="font-size: 1.4rem; font-weight: 700; color: var(--success);">${Utils.formatCurrency(totalCost, displayCurrency)}</div>
             <div id="bannerTotalUSD" style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); margin-top: 2px;">
-              ${entity.currency !== 'USD' ? `≈ ${Utils.formatCurrency(Utils.convertToUSD(totalCost, rate), 'USD')} <span class="text-tertiary" style="font-size: 11px;">(@ ${rate} ${entity.currency}/USD)</span>` : ''}
+              ${!isAll && entity.currency !== 'USD' ? `≈ ${Utils.formatCurrency(Utils.convertToUSD(totalCost, rate), 'USD')} <span class="text-tertiary" style="font-size: 11px;">(@ ${rate} ${entity.currency}/USD)</span>` : isAll ? `<span class="text-tertiary" style="font-size: 11px;">🌍 Multi-Entity Consolidated USD Budget</span>` : ''}
             </div>
           </div>
           <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
@@ -5759,3 +5852,4 @@ const BudgetEntryModule = {
 };
 
 window.BudgetEntryModule = BudgetEntryModule;
+if (typeof module !== 'undefined') module.exports = BudgetEntryModule;
