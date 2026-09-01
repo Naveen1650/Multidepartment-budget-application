@@ -2485,9 +2485,10 @@ const ExcelIOModule = {
           Object.entries(r.monthlyValues).forEach(([mIdx, val]) => {
             const num = Utils.parseNumber(val);
             monthlyLocal[mIdx] += num;
-            monthlyUSD[mIdx] += Utils.convertToUSD(num, rate);
+            const usdVal = num / rate;
+            monthlyUSD[mIdx] += usdVal;
             totalLocal += num;
-            totalUSD += Utils.convertToUSD(num, rate);
+            totalUSD += usdVal;
           });
         }
       });
@@ -2610,29 +2611,31 @@ const ExcelIOModule = {
         });
 
         const monthlyLocal = Array(12).fill(0);
+        const monthlyUSD = Array(12).fill(0);
         let totalLocal = 0;
+        let totalUSD = 0;
+        const rate = activeYearObj.conversionRates?.[e.currency] || 1.0;
 
         [...filteredPayroll, ...eha, ...fixedAssets, ...filteredNonPayroll].forEach(row => {
           if (row.monthlyValues) {
             Object.entries(row.monthlyValues).forEach(([mIdx, val]) => {
               const num = Utils.parseNumber(val);
               monthlyLocal[mIdx] += num;
+              const usdVal = num / rate;
+              monthlyUSD[mIdx] += usdVal;
               totalLocal += num;
+              totalUSD += usdVal;
             });
           }
         });
 
-        const rate = activeYearObj.conversionRates?.[e.currency] || 1.0;
-        const monthlyUSD = monthlyLocal.map(v => Utils.convertToUSD(v, rate));
-        const totalUSD = Utils.convertToUSD(totalLocal, rate);
-
         monthlyUSD.forEach((v, idx) => grandMonthlyUSD[idx] += v);
         grandTotalUSD += totalUSD;
 
-        rows.push([e.name, e.country, e.currency, rate, totalLocal, totalUSD, ...monthlyUSD]);
+        rows.push([e.name, e.country, e.currency, rate, totalLocal, Math.round(totalUSD), ...monthlyUSD.map(v => Math.round(v))]);
       }
 
-      rows.push(['GRAND TOTAL (GLOBAL USD)', 'All Entities', 'USD', 1.0, '', grandTotalUSD, ...grandMonthlyUSD]);
+      rows.push(['GRAND TOTAL (GLOBAL USD)', 'All Entities', 'USD', 1.0, '', Math.round(grandTotalUSD), ...grandMonthlyUSD.map(v => Math.round(v))]);
       const ws = XLSX.utils.aoa_to_sheet(rows);
       XLSX.utils.book_append_sheet(wb, ws, 'Global USD Summary');
     };
