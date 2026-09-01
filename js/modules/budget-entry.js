@@ -4661,7 +4661,22 @@ const BudgetEntryModule = {
   // ─── Total Dept Cost Grid (Master Summary Linked from Input Sheets) ───
   async renderTotalCostGrid(container, yearId, entity, dept, budgetYear) {
     await this.ensureTemplateSyncsClean(yearId, entity.id, dept.id);
-    const coa = await db.getAll(STORES.chartOfAccounts);
+    const rawCoa = (await db.getAll(STORES.chartOfAccounts)) || [];
+
+    // Deduplicate COA accounts by canonical ledger code / GL description
+    const coaSeen = new Set();
+    const coa = [];
+    rawCoa.forEach(account => {
+      let key = Utils.cleanStr(account.ledgerCode);
+      if (key.startsWith('911')) key = '91101';
+      else if (key.startsWith('912')) key = '91201';
+      else if (key.startsWith('913')) key = '91302';
+      else if (!key) key = Utils.cleanStr(account.glDescription);
+      if (!coaSeen.has(key)) {
+        coaSeen.add(key);
+        coa.push(account);
+      }
+    });
 
     // Fetch all input records for this department & year
     const personnelAll = await db.getBudgetData(STORES.payrollPersonnel, yearId, entity.id, dept.id);

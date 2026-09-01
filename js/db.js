@@ -501,11 +501,21 @@ class BudgetDB {
         await this.putMany(STORES.payrollPersonnel, SEED_DATA.samplePersonnel);
       }
     } else {
-      // Ensure any newly added standard COA accounts (e.g. 93701) are present
+      // Ensure COA is deduplicated and standard accounts are present
       if (this.db.objectStoreNames.contains(STORES.chartOfAccounts)) {
         const existingCoa = await this.getAll(STORES.chartOfAccounts);
+        const seenLedgers = new Set();
+        for (const c of existingCoa) {
+          const cleanCode = Utils.cleanStr(c.ledgerCode);
+          if (seenLedgers.has(cleanCode) || (cleanCode.startsWith('911') && seenLedgers.has('91101')) || (cleanCode === '9110191107' && seenLedgers.has('91101'))) {
+            await this.delete(STORES.chartOfAccounts, c.id);
+          } else {
+            seenLedgers.add(cleanCode.startsWith('911') ? '91101' : cleanCode);
+          }
+        }
+        const updatedCoa = await this.getAll(STORES.chartOfAccounts);
         for (const account of (SEED_DATA.chartOfAccounts || [])) {
-          if (!existingCoa.some(c => String(c.ledgerCode).trim() === String(account.ledgerCode).trim())) {
+          if (!updatedCoa.some(c => String(c.ledgerCode).trim() === String(account.ledgerCode).trim())) {
             await this.add(STORES.chartOfAccounts, account);
           }
         }

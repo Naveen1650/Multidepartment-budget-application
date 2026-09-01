@@ -191,7 +191,7 @@ const SEED_DATA = {
   // ─── Non-Payroll Chart of Accounts ───
   chartOfAccounts: [
     // Payroll-related
-    { subGroup: 'Payroll Cost', parentAccount: 'Salaries and Wages', glDescription: 'Salaries and Wages', ledgerCode: '91101-91107' },
+    { subGroup: 'Payroll Cost', parentAccount: 'Salaries & Benefits', glDescription: 'Salaries & Wages', ledgerCode: '91101' },
     { subGroup: 'Payroll Cost', parentAccount: 'Health and Retirement Benefits', glDescription: 'Gratuity & Bonus', ledgerCode: '91201-91207' },
     { subGroup: 'Payroll Cost', parentAccount: 'Other Staff Expenses', glDescription: 'Staff Training, Learning & Development Exp', ledgerCode: '91302' },
     { subGroup: 'Direct Consultants', parentAccount: 'Resource Persons', glDescription: 'Program Resource Consultant (EHA)', ledgerCode: '92101' },
