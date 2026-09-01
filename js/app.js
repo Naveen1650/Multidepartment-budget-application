@@ -171,7 +171,12 @@ const App = {
       this.selectedEntity = entitySelect.value;
       if (typeof BudgetEntryModule !== 'undefined') {
         BudgetEntryModule.currentEntityId = entitySelect.value ? entitySelect.value : 'all';
-        BudgetEntryModule.currentDeptId = null;
+        if (BudgetEntryModule.currentEntityId === 'all') {
+          BudgetEntryModule.currentDeptId = 'all';
+          BudgetEntryModule.activeTab = 'total-costs';
+        } else if (BudgetEntryModule.currentDeptId === 'all') {
+          BudgetEntryModule.currentDeptId = null;
+        }
       }
       this.onGlobalFilterChange();
     };

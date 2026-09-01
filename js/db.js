@@ -929,6 +929,9 @@ class BudgetDB {
   }
 
   async getBudgetData(storeName, yearId, entityId, deptId) {
+    if (!deptId || deptId === 'all') {
+      return this.getEntityBudgetData(storeName, yearId, entityId);
+    }
     return this.getByIndex(storeName, 'yearEntityDept', [yearId, entityId, deptId]);
   }
 

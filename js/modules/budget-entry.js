@@ -87,11 +87,21 @@ const BudgetEntryModule = {
       activeDepts = sortedDepartments;
     }
 
-    // Determine currentDeptId (must be within accessible active depts)
-    if (!this.currentDeptId || !activeDepts.some(d => d.id === this.currentDeptId)) {
-      this.currentDeptId = activeDepts[0]?.id || '';
+    // Determine currentDeptId (must be within accessible active depts or 'all')
+    if (isAllEntities) {
+      if (!this.currentDeptId || this.currentDeptId === 'all') {
+        this.currentDeptId = 'all';
+      }
+      this.activeTab = 'total-costs';
+    } else {
+      if (!this.currentDeptId || this.currentDeptId === 'all' || !activeDepts.some(d => d.id === this.currentDeptId)) {
+        this.currentDeptId = activeDepts[0]?.id || '';
+      }
     }
-    const selectedDept = activeDepts.find(d => d.id === this.currentDeptId) || activeDepts[0];
+
+    const selectedDept = (isAllEntities && this.currentDeptId === 'all')
+      ? { id: 'all', name: 'All Departments (Consolidated Organization-Wide)', codeTemplate: 'ALL-DEPTS' }
+      : (activeDepts.find(d => d.id === this.currentDeptId) || activeDepts[0]);
 
     const yearObj = years.find(y => y.id === yearId) || { year: 2026, actualsThroughMonth: 'Oct' };
     const budgetYear = yearObj.year || 2026;
@@ -205,10 +215,11 @@ const BudgetEntryModule = {
           <div>
             <label class="form-label">Department</label>
             <select class="form-select" id="entryDeptSelect">
+              ${isAllEntities ? `<option value="all" ${this.currentDeptId === 'all' ? 'selected' : ''}>🌍 All Departments (Consolidated Organization-Wide)</option>` : ''}
               ${activeDepts.map(d => {
                 const codePrefix = selectedEntity.deptPrefix || 'GEN';
                 const deptCode = d.codeTemplate ? d.codeTemplate.replace('{CC}', codePrefix) : d.id.toUpperCase();
-                return `<option value="${d.id}" title="${d.name}" ${d.id === this.currentDeptId ? 'selected' : ''}>${deptCode}</option>`;
+                return `<option value="${d.id}" title="${d.name}" ${d.id === this.currentDeptId ? 'selected' : ''}>${isAllEntities ? `${deptCode} — ${d.name}` : deptCode}</option>`;
               }).join('')}
             </select>
           </div>
@@ -221,22 +232,26 @@ const BudgetEntryModule = {
 
       <!-- Module Tabs -->
       <div class="tabs" id="entryTabs">
-        ${canViewTotal ? `<button class="tab ${this.activeTab === 'total-costs' ? 'active' : ''}" data-tab="total-costs">📊 Total Dept Cost</button>` : ''}
-        ${canViewPersonnel ? `<button class="tab ${this.activeTab === 'personnel' ? 'active' : ''}" data-tab="personnel">👥 Payroll — Personnel Cost</button>` : ''}
-        ${canViewEha ? `<button class="tab ${this.activeTab === 'eha' ? 'active' : ''}" data-tab="eha">🤝 Payroll — EHA Consultants</button>` : ''}
-        ${canViewFA ? `<button class="tab ${this.activeTab === 'fixed-assets' ? 'active' : ''}" data-tab="fixed-assets">💻 Fixed Assets (Laptops/Printers)</button>` : ''}
-        ${canViewOtherCosts ? `<button class="tab ${this.activeTab === 'other-costs' ? 'active' : ''}" data-tab="other-costs">📑 Other Costs (Travel, Supplies & others)</button>` : ''}
+        ${isAllEntities ? `
+          <button class="tab active" data-tab="total-costs">📊 Total Dept Cost</button>
+        ` : `
+          ${canViewTotal ? `<button class="tab ${this.activeTab === 'total-costs' ? 'active' : ''}" data-tab="total-costs">📊 Total Dept Cost</button>` : ''}
+          ${canViewPersonnel ? `<button class="tab ${this.activeTab === 'personnel' ? 'active' : ''}" data-tab="personnel">👥 Payroll — Personnel Cost</button>` : ''}
+          ${canViewEha ? `<button class="tab ${this.activeTab === 'eha' ? 'active' : ''}" data-tab="eha">🤝 Payroll — EHA Consultants</button>` : ''}
+          ${canViewFA ? `<button class="tab ${this.activeTab === 'fixed-assets' ? 'active' : ''}" data-tab="fixed-assets">💻 Fixed Assets (Laptops/Printers)</button>` : ''}
+          ${canViewOtherCosts ? `<button class="tab ${this.activeTab === 'other-costs' ? 'active' : ''}" data-tab="other-costs">📑 Other Costs (Travel, Supplies & others)</button>` : ''}
+        `}
       </div>
 
-      <!-- Personnel Sub-Tabs (Visible when activeTab === 'personnel') -->
-      <div class="sub-tabs" id="personnelSubTabs" style="${this.activeTab === 'personnel' ? '' : 'display: none;'}">
+      <!-- Personnel Sub-Tabs (Visible when activeTab === 'personnel' and not in all entities mode) -->
+      <div class="sub-tabs" id="personnelSubTabs" style="${(!isAllEntities && this.activeTab === 'personnel') ? '' : 'display: none;'}">
         ${canViewSalaries ? `<button class="sub-tab ${this.activePersonnelSubTab === 'salaries-wages' ? 'active' : ''}" data-subtab="salaries-wages">💼 Salaries and Wages</button>` : ''}
         ${canViewOtherStaff ? `<button class="sub-tab ${this.activePersonnelSubTab === 'other-staff-expenses' ? 'active' : ''}" data-subtab="other-staff-expenses">📚 Other Staff Expenses</button>` : ''}
         ${canViewGratuity ? `<button class="sub-tab ${this.activePersonnelSubTab === 'gratuity-bonus' ? 'active' : ''}" data-subtab="gratuity-bonus">🎁 Gratuity and Bonus</button>` : ''}
       </div>
 
-      <!-- Other Costs Sub-Tabs (Visible when activeTab === 'other-costs') -->
-      <div class="sub-tabs flex items-center justify-between" id="otherCostSubTabs" style="${this.activeTab === 'other-costs' ? '' : 'display: none;'} flex-wrap: wrap; gap: 8px;">
+      <!-- Other Costs Sub-Tabs (Visible when activeTab === 'other-costs' and not in all entities mode) -->
+      <div class="sub-tabs flex items-center justify-between" id="otherCostSubTabs" style="${(!isAllEntities && this.activeTab === 'other-costs') ? '' : 'display: none;'} flex-wrap: wrap; gap: 8px;">
         <div class="flex items-center gap-xs" style="flex-wrap: wrap;">
           <button class="sub-tab ${this.activeOtherCostSubTab === 'grid' || this.activeOtherCostSubTab === 'all' ? 'active' : ''}" data-subtab="grid">📊 All Accounts Overview</button>
           ${canViewTravel ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'travel' || this.activeOtherCostSubTab === 'travel-packages' ? 'active' : ''}" data-subtab="travel">✈️ Travel & Lodging</button>` : ''}
@@ -259,7 +274,12 @@ const BudgetEntryModule = {
     container.querySelector('#entryEntitySelect')?.addEventListener('change', (e) => {
       const val = e.target.value;
       this.currentEntityId = val;
-      this.currentDeptId = null; // Reset dept so it picks first valid dept of newly selected entity
+      if (val === 'all') {
+        this.currentDeptId = 'all';
+        this.activeTab = 'total-costs';
+      } else if (this.currentDeptId === 'all') {
+        this.currentDeptId = null;
+      }
       if (typeof App !== 'undefined') {
         App.selectedEntity = (val === 'all') ? '' : val;
         if (App.syncGlobalEntity) App.syncGlobalEntity(val);
@@ -515,7 +535,12 @@ const BudgetEntryModule = {
       App.selectedEntity = (entityId === 'all') ? '' : entityId;
       if (App.syncGlobalEntity) App.syncGlobalEntity(entityId);
     }
-    this.currentDeptId = null;
+    if (entityId === 'all') {
+      this.currentDeptId = 'all';
+      this.activeTab = 'total-costs';
+    } else if (this.currentDeptId === 'all') {
+      this.currentDeptId = null;
+    }
     const container = document.querySelector('#page-content') || document.querySelector('.page-content') || document.querySelector('#pageContent');
     if (container) this.render(container);
   },
@@ -4706,7 +4731,10 @@ const BudgetEntryModule = {
   // ─── Total Dept Cost Grid (Master Summary Linked from Input Sheets) ───
   async renderTotalCostGrid(container, yearId, entity, dept, budgetYear) {
     const isAll = (entity.id === 'all');
-    if (!isAll) {
+    const isAllDepts = (!dept || dept.id === 'all');
+    const targetDeptId = isAllDepts ? 'all' : dept.id;
+
+    if (!isAll && !isAllDepts) {
       await this.ensureTemplateSyncsClean(yearId, entity.id, dept.id);
     }
     const coa = await db.getChartOfAccounts();
@@ -4728,13 +4756,13 @@ const BudgetEntryModule = {
 
     for (const ent of targetEntities) {
       const eRate = isAll ? (this._conversionRates?.[ent.currency] || 1.0) : 1.0;
-      const personnelAll = await db.getBudgetData(STORES.payrollPersonnel, yearId, ent.id, dept.id);
+      const personnelAll = await db.getBudgetData(STORES.payrollPersonnel, yearId, ent.id, targetDeptId);
       const salariesRows = personnelAll.filter(p => !p.subCategory || p.subCategory === 'salaries-wages');
       const otherStaffRows = personnelAll.filter(p => p.subCategory === 'other-staff-expenses');
       const gratuityRows = personnelAll.filter(p => p.subCategory === 'gratuity-bonus');
-      const ehaRows = await db.getBudgetData(STORES.payrollEHA, yearId, ent.id, dept.id);
-      const fixedAssetRows = await db.getBudgetData(STORES.payrollFixedAsset, yearId, ent.id, dept.id);
-      const otherCostRows = await db.getBudgetData(STORES.nonPayrollCost, yearId, ent.id, dept.id);
+      const ehaRows = await db.getBudgetData(STORES.payrollEHA, yearId, ent.id, targetDeptId);
+      const fixedAssetRows = await db.getBudgetData(STORES.payrollFixedAsset, yearId, ent.id, targetDeptId);
+      const otherCostRows = await db.getBudgetData(STORES.nonPayrollCost, yearId, ent.id, targetDeptId);
 
       const attachMeta = (rows) => rows.map(r => ({ ...r, entityId: ent.id, currency: ent.currency, rate: eRate }));
       allSalariesRows.push(...attachMeta(salariesRows));
@@ -4744,7 +4772,7 @@ const BudgetEntryModule = {
       allFixedAssetRows.push(...attachMeta(fixedAssetRows));
       allOtherCostRows.push(...attachMeta(otherCostRows));
 
-      const savedTotalCostRecords = await db.getBudgetData(STORES.totalCostSheet, yearId, ent.id, dept.id);
+      const savedTotalCostRecords = await db.getBudgetData(STORES.totalCostSheet, yearId, ent.id, targetDeptId);
       savedTotalCostRecords.forEach(r => {
         const k1 = r.ledgerCode ? Utils.cleanStr(r.ledgerCode) : '';
         const k2 = r.glDescription ? Utils.cleanStr(r.glDescription) : '';
@@ -4919,7 +4947,7 @@ const BudgetEntryModule = {
     if (isAll) {
       for (const ent of targetEntities) {
         const eRate = this._conversionRates?.[ent.currency] || 1.0;
-        const ePriors = await db.getPriorPeriodCosts(yearId, ent.id, dept.id);
+        const ePriors = await db.getPriorPeriodCosts(yearId, ent.id, isAllDepts ? null : dept.id);
         ePriors.forEach(p => {
           const lKey = Utils.cleanStr(p.ledgerCode);
           const gKey = Utils.cleanStr(p.glDescription);
@@ -4929,7 +4957,7 @@ const BudgetEntryModule = {
         });
       }
     } else {
-      const priorCosts = await db.getPriorPeriodCosts(yearId, entity.id, dept.id);
+      const priorCosts = await db.getPriorPeriodCosts(yearId, entity.id, isAllDepts ? null : dept.id);
       priorCosts.forEach(p => {
         if (p.ledgerCode) priorMap[Utils.cleanStr(p.ledgerCode)] = p.priorCost || 0;
         if (p.glDescription) priorMap[Utils.cleanStr(p.glDescription)] = p.priorCost || 0;
@@ -4940,7 +4968,7 @@ const BudgetEntryModule = {
       r.priorCost = priorMap[Utils.cleanStr(r.ledgerCode)] || priorMap[Utils.cleanStr(r.glDescription)] || 0;
     });
 
-    const remarksSummary = isAll ? {} : await db.getDeptRemarksSummary(yearId, entity.id, dept.id);
+    const remarksSummary = isAll ? {} : await db.getDeptRemarksSummary(yearId, entity.id, isAllDepts ? null : dept.id);
 
     // ─── Filter lines strictly by View Permission ───
     const visibleLines = lines.filter(r => {
@@ -4952,13 +4980,19 @@ const BudgetEntryModule = {
         glDescription: r.glDescription,
         parentAccount: r.parentAccount,
         entityId: entity.id,
-        deptId: dept.id
+        deptId: isAllDepts ? undefined : dept.id
       });
     });
 
-    const deptDisplayName = isAll
-      ? `${dept.name || dept.id.toUpperCase()} (All Entities Consolidated)`
-      : Utils.getDeptName(dept, entity.deptPrefix);
+    let deptDisplayName = Utils.getDeptName(dept, entity.deptPrefix);
+    if (isAll && isAllDepts) {
+      deptDisplayName = 'All Departments (Consolidated Organization-Wide)';
+    } else if (isAll) {
+      deptDisplayName = `${dept.name || dept.id.toUpperCase()} (All Entities Consolidated)`;
+    } else if (isAllDepts) {
+      deptDisplayName = 'All Departments (Consolidated)';
+    }
+
     const displayCurrency = isAll ? 'USD' : entity.currency;
     const rate = this._conversionRates?.[entity.currency] || 1.0;
     const isLocked = isAll || (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entity.id));
