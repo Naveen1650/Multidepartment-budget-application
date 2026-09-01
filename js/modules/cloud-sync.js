@@ -34,7 +34,7 @@ const STRING_ID_TABLES = [
 
 const TABLE_COLUMNS = {
   entities: ['id', 'name', 'short_name', 'country_code', 'dept_prefix', 'country', 'currency', 'flag'],
-  departments: ['id', 'number', 'code_template', 'name', 'scope', 'entity_mapping', 'has_tot_access'],
+  departments: ['id', 'number', 'code_template', 'name', 'scope', 'entity_mapping'],
   chart_of_accounts: ['id', 'parent_account', 'gl_description', 'ledger_code', 'linked_input_source', 'sub_group', 'sort_order'],
   budget_years: ['id', 'year', 'name', 'is_active', 'status', 'conversion_rates'],
   entity_dept_configs: ['id', 'year_id', 'entity_id', 'dept_id', 'is_active'],
@@ -408,6 +408,23 @@ const CloudSyncModule = {
               if (table === 'entity_dept_configs' && camel.yearId && camel.entityId && camel.deptId) {
                 camel.id = `${camel.yearId}_${camel.entityId}_${camel.deptId}`;
               }
+              if (table === 'departments') {
+                if (camel.hasTotAccess === undefined) {
+                  const localExisting = await db.get(STORES.departments, camel.id);
+                  if (localExisting && localExisting.hasTotAccess !== undefined) {
+                    camel.hasTotAccess = Boolean(localExisting.hasTotAccess);
+                  } else {
+                    camel.hasTotAccess = false;
+                  }
+                }
+                if (typeof ImpTotModule !== 'undefined' && ImpTotModule._totDeptCache) {
+                  const dId = String(camel.id || '').toLowerCase();
+                  ImpTotModule._totDeptCache[dId] = Boolean(camel.hasTotAccess);
+                  if (camel.codeTemplate) {
+                    ImpTotModule._totDeptCache[String(camel.codeTemplate).toLowerCase()] = Boolean(camel.hasTotAccess);
+                  }
+                }
+              }
               camel._fromCloud = true;
               await db.put(actualStore, camel);
             }
@@ -536,6 +553,23 @@ const CloudSyncModule = {
             if (table === 'entity_dept_configs' && camel.yearId && camel.entityId && camel.deptId) {
               camel.id = `${camel.yearId}_${camel.entityId}_${camel.deptId}`;
             }
+            if (table === 'departments') {
+              if (camel.hasTotAccess === undefined) {
+                const localExisting = await db.get(STORES.departments, camel.id);
+                if (localExisting && localExisting.hasTotAccess !== undefined) {
+                  camel.hasTotAccess = Boolean(localExisting.hasTotAccess);
+                } else {
+                  camel.hasTotAccess = false;
+                }
+              }
+              if (typeof ImpTotModule !== 'undefined' && ImpTotModule._totDeptCache) {
+                const dId = String(camel.id || '').toLowerCase();
+                ImpTotModule._totDeptCache[dId] = Boolean(camel.hasTotAccess);
+                if (camel.codeTemplate) {
+                  ImpTotModule._totDeptCache[String(camel.codeTemplate).toLowerCase()] = Boolean(camel.hasTotAccess);
+                }
+              }
+            }
             camel._fromCloud = true;
             await db.put(storeName, camel);
           }
@@ -607,6 +641,15 @@ const CloudSyncModule = {
       sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
     } else if (table === 'imp_tot_events') {
       sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
+    } else if (table === 'departments') {
+      let mapping = record.entityMapping || record.entity_mapping;
+      if (typeof mapping === 'string') {
+        try { mapping = JSON.parse(mapping); } catch (e) { mapping = {}; }
+      }
+      if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)) mapping = {};
+      const hasTot = Boolean(record.hasTotAccess !== undefined ? record.hasTotAccess : (record.has_tot_access !== undefined ? record.has_tot_access : mapping.has_tot_access));
+      mapping.has_tot_access = hasTot;
+      sanitized.entity_mapping = mapping;
     } else if (table === 'entity_dept_configs') {
       sanitized.is_active = sanitized.is_active !== false;
     } else if (table === 'budget_lock_status') {
@@ -673,6 +716,15 @@ const CloudSyncModule = {
         sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
       } else if (table === 'imp_tot_events') {
         sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
+      } else if (table === 'departments') {
+        let mapping = record.entityMapping || record.entity_mapping;
+        if (typeof mapping === 'string') {
+          try { mapping = JSON.parse(mapping); } catch (e) { mapping = {}; }
+        }
+        if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)) mapping = {};
+        const hasTot = Boolean(record.hasTotAccess !== undefined ? record.hasTotAccess : (record.has_tot_access !== undefined ? record.has_tot_access : mapping.has_tot_access));
+        mapping.has_tot_access = hasTot;
+        sanitized.entity_mapping = mapping;
       } else if (table === 'entity_dept_configs') {
         sanitized.is_active = sanitized.is_active !== false;
       } else if (table === 'budget_lock_status') {
@@ -746,6 +798,12 @@ const CloudSyncModule = {
         const camelKey = k.replace(/_([a-z0-9])/g, (_, g) => g.toUpperCase());
         res[camelKey] = v;
       }
+    }
+    // Unpack has_tot_access for departments from entity_mapping
+    if (res.entityMapping && typeof res.entityMapping === 'object' && res.entityMapping.has_tot_access !== undefined) {
+      res.hasTotAccess = Boolean(res.entityMapping.has_tot_access);
+    } else if (res.entity_mapping && typeof res.entity_mapping === 'object' && res.entity_mapping.has_tot_access !== undefined) {
+      res.hasTotAccess = Boolean(res.entity_mapping.has_tot_access);
     }
     // Fallback: ensure totalCY is populated if totalCy or monthlyValues exists
     if (res.totalCY === undefined || res.totalCY === null) {

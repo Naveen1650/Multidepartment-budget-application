@@ -670,6 +670,10 @@ class BudgetDB {
     const dept = await this.get(STORES.departments, deptId);
     if (dept) {
       dept.hasTotAccess = Boolean(hasAccess);
+      if (!dept.entityMapping || typeof dept.entityMapping !== 'object') {
+        dept.entityMapping = {};
+      }
+      dept.entityMapping.has_tot_access = Boolean(hasAccess);
       await this.put(STORES.departments, dept);
       if (typeof CloudSyncModule !== 'undefined' && CloudSyncModule.pushRecordToCloud) {
         CloudSyncModule.pushRecordToCloud(STORES.departments, dept);
@@ -699,6 +703,10 @@ class BudgetDB {
       const dept = await this.get(STORES.departments, deptId);
       if (dept) {
         dept.hasTotAccess = Boolean(hasAccess);
+        if (!dept.entityMapping || typeof dept.entityMapping !== 'object') {
+          dept.entityMapping = {};
+        }
+        dept.entityMapping.has_tot_access = Boolean(hasAccess);
         await this.put(STORES.departments, dept);
         updatedDepts.push(dept);
         if (typeof ImpTotModule !== 'undefined' && ImpTotModule._totDeptCache) {

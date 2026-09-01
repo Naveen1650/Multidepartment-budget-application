@@ -50,51 +50,46 @@ const ConfigModule = {
 
   async showEntityForm(entity = null) {
     const isEdit = !!entity;
-    const budgetYears = await db.getAll(STORES.budgetYears);
-    const firstYear = budgetYears[0];
     const defaultRateMap = { INR: 83.5, BDT: 117.0, IDR: 16200, NPR: 133.5, KES: 130.0, PHP: 58.0, GBP: 0.78, EUR: 0.92, SGD: 1.35, CAD: 1.38, AUD: 1.52, NGN: 1600 };
-    const existingRate = entity?.currency ? (firstYear?.conversionRates?.[entity.currency] || defaultRateMap[entity.currency] || 1.0) : 83.5;
 
     const content = `
       <form id="entityForm">
         <div class="form-group mb-sm">
-          <label class="form-label font-bold">Full Entity Name</label>
+          <label class="form-label font-bold">Full Entity Name <span class="text-danger">*</span></label>
           <input type="text" class="form-input" id="entityName" value="${entity?.name || ''}" placeholder="e.g. Noora Health Kenya" required>
         </div>
         <div class="form-row mb-sm">
           <div class="form-group">
-            <label class="form-label font-bold">Short Name / Entity Code</label>
-            <input type="text" class="form-input" id="entityShort" value="${entity?.shortName || ''}" placeholder="e.g. NH Kenya" required>
+            <label class="form-label font-bold">Short Name / Entity Code <span class="text-danger">*</span></label>
+            <input type="text" class="form-input font-bold" id="entityShort" value="${entity?.shortName || ''}" placeholder="e.g. NH Kenya" required>
           </div>
           <div class="form-group">
-            <label class="form-label font-bold">Country Code (Dept Prefix)</label>
-            <input type="text" class="form-input" id="entityPrefix" value="${entity?.deptPrefix || ''}" placeholder="e.g. KE" required>
+            <label class="form-label font-bold">Country Code (Dept Prefix) <span class="text-danger">*</span></label>
+            <input type="text" class="form-input font-mono font-bold" id="entityPrefix" value="${entity?.deptPrefix || ''}" placeholder="e.g. KE" required>
           </div>
         </div>
         <div class="form-row mb-sm">
           <div class="form-group">
-            <label class="form-label font-bold">Country</label>
+            <label class="form-label font-bold">Country <span class="text-danger">*</span></label>
             <input type="text" class="form-input" id="entityCountry" value="${entity?.country || ''}" placeholder="e.g. Kenya" required>
           </div>
           <div class="form-group">
-            <label class="form-label font-bold">Local Currency</label>
-            <input type="text" class="form-input" id="entityCurrency" value="${entity?.currency || ''}" placeholder="e.g. KES" required>
+            <label class="form-label font-bold">Local Operating Currency <span class="text-danger">*</span></label>
+            <input type="text" class="form-input font-mono font-bold" id="entityCurrency" value="${entity?.currency || ''}" placeholder="e.g. KES" required style="text-transform: uppercase;">
           </div>
           <div class="form-group">
             <label class="form-label font-bold">Flag Emoji</label>
             <input type="text" class="form-input" id="entityFlag" value="${entity?.flag || '🇰🇪'}" placeholder="e.g. 🇰🇪">
           </div>
         </div>
-        <div class="form-group" style="background: var(--bg-surface); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-top: 8px;">
-          <label class="form-label font-bold" style="color: var(--accent-primary);">💱 Pre-Approved USD Exchange Rate (1 USD = ? Local Currency)</label>
-          <div class="flex items-center gap-sm">
-            <span style="font-weight: 700; font-size: 13px;">1 USD =</span>
-            <input type="number" step="any" class="form-input" id="entityExchangeRate" value="${existingRate}" placeholder="e.g. 130.0" required style="font-family: monospace; font-weight: 700; max-width: 180px;">
-            <span id="rateCurrencyLabel" style="font-weight: 700; color: var(--text-secondary);">${entity?.currency || 'Local Currency'}</span>
+        <div class="form-group" style="background: var(--bg-surface); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-top: 10px;">
+          <div class="flex items-center gap-xs">
+            <span style="font-size: 1.15rem;">💱</span>
+            <span style="font-weight: 700; font-size: 12.5px; color: var(--text-primary);">Budget Currency &amp; Exchange Rates</span>
           </div>
-          <small class="text-tertiary" style="font-size: 11px; display: block; margin-top: 4px;">
-            This exchange rate is automatically synchronized across all existing and future budget cycles.
-          </small>
+          <p class="text-secondary" style="font-size: 11.5px; margin: 4px 0 0; line-height: 1.4;">
+            Approved USD conversion rates are configured per budget cycle under <strong style="color: var(--accent-primary);">Configuration &rarr; Budget Year Setup (&ldquo;💱 Rates&rdquo;)</strong>.
+          </p>
         </div>
       </form>
     `;
@@ -105,11 +100,10 @@ const ConfigModule = {
           className: 'btn btn-ghost', textContent: 'Cancel', onClick: close
         }));
         footer.appendChild(Utils.createElement('button', {
-          className: 'btn btn-primary',
+          className: 'btn btn-primary font-bold',
           textContent: isEdit ? 'Save Changes' : 'Add Entity',
           onClick: async () => {
             const currency = Utils.$('#entityCurrency').value.trim().toUpperCase();
-            const rateNum = parseFloat(Utils.$('#entityExchangeRate').value) || 1.0;
             const data = {
               id: entity?.id || Utils.slugify(Utils.$('#entityShort').value),
               name: Utils.$('#entityName').value.trim(),
@@ -123,12 +117,14 @@ const ConfigModule = {
 
             await db.put(STORES.entities, data);
 
-            // 1. Synchronize currency conversion rates across all budget years
+            // 1. Ensure new currency exists in all budget years conversion rates
             const allYears = await db.getAll(STORES.budgetYears);
             for (const y of allYears) {
               if (!y.conversionRates) y.conversionRates = { USD: 1.0 };
-              y.conversionRates[currency] = rateNum;
-              await db.put(STORES.budgetYears, y);
+              if (y.conversionRates[currency] === undefined) {
+                y.conversionRates[currency] = defaultRateMap[currency] || 1.0;
+                await db.put(STORES.budgetYears, y);
+              }
             }
 
             // 2. Automatically initialize department mappings for the new entity
@@ -252,9 +248,10 @@ const ConfigModule = {
     const pageContent = document.getElementById('pageContent');
     if (pageContent) {
       if (this.impRateActiveTab === 'departments' || (typeof App !== 'undefined' && App.currentPage === 'config-imp-rates')) {
-        this.renderImpUnitRates(pageContent);
+        this.impRateActiveTab = 'departments';
+        await this.renderImpUnitRates(pageContent);
       } else if (typeof App !== 'undefined' && App.currentPage === 'config-departments') {
-        this.renderDepartments(pageContent);
+        await this.renderDepartments(pageContent);
       }
     }
   },
@@ -516,8 +513,7 @@ const ConfigModule = {
     { value: 'under-review', label: 'Under Review (Dept Submissions)', icon: '🟡', badgeClass: 'badge-cyan', dotClass: 'active' },
     { value: 'finance-approved', label: 'Finance Approved (Pending CFO)', icon: '🔵', badgeClass: 'badge-primary', dotClass: 'active' },
     { value: 'finalized-locked', label: 'Finalized & Locked (CFO Approved)', icon: '🔒', badgeClass: 'badge-purple', dotClass: 'draft' },
-    { value: 'closed', label: 'Closed / Archived', icon: '📁', badgeClass: 'badge-danger', dotClass: 'draft' },
-    { value: 'inactive', label: '🚫 Inactive (Not Budgeted in CY)', icon: '🚫', badgeClass: 'badge-danger', dotClass: 'draft' }
+    { value: 'closed', label: 'Closed / Archived', icon: '📁', badgeClass: 'badge-danger', dotClass: 'draft' }
   ],
 
   _matrixCollapsedState: {},
@@ -683,13 +679,19 @@ const ConfigModule = {
                                 </button>
                               </td>
                               <td>
-                                <select class="form-select form-select-sm entity-status-selector entity-status-matrix-select ${!isEntActive ? 'is-inactive' : isEntEditable ? 'is-active' : 'is-locked'}" data-year-id="${y.id}" data-entity-id="${ent.id}" title="Update workflow status for ${ent.shortName}">
-                                  ${this.BUDGET_STATUS_OPTIONS.map(o => `
-                                    <option value="${o.value}" ${entStatus === o.value ? 'selected' : ''}>
-                                      ${o.icon} ${o.label}
-                                    </option>
-                                  `).join('')}
-                                </select>
+                                ${isEntActive ? `
+                                  <select class="form-select form-select-sm entity-status-selector entity-status-matrix-select ${isEntEditable ? 'is-active' : 'is-locked'}" data-year-id="${y.id}" data-entity-id="${ent.id}" title="Update workflow status for ${ent.shortName}">
+                                    ${this.BUDGET_STATUS_OPTIONS.map(o => `
+                                      <option value="${o.value}" ${entStatus === o.value ? 'selected' : ''}>
+                                        ${o.icon} ${o.label}
+                                      </option>
+                                    `).join('')}
+                                  </select>
+                                ` : `
+                                  <span class="badge badge-secondary" style="font-size: 11px; opacity: 0.85; padding: 4px 8px; border: 1px solid var(--border-subtle);">
+                                    🚫 Excluded from CY-${y.year}
+                                  </span>
+                                `}
                               </td>
                               <td>
                                 ${!isEntActive ? `
@@ -910,6 +912,7 @@ const ConfigModule = {
               <tbody>
                 ${entities.map(ent => {
                   const entStatus = year.entityStatuses?.[ent.id] || currentStatus;
+                  const isEntActive = entStatus !== 'inactive' && !year.inactiveEntities?.includes(ent.id);
                   return `
                     <tr>
                       <td style="padding: 8px 12px;">
@@ -922,9 +925,13 @@ const ConfigModule = {
                         <span class="badge badge-subtle font-mono font-bold" style="font-size: 11px;">${ent.currency}</span>
                       </td>
                       <td style="padding: 8px 12px;">
-                        <select class="form-select form-select-xs edit-modal-entity-status" data-entity-id="${ent.id}" style="font-size: 11.5px; font-weight: 600; padding: 4px 8px; width: 100%; max-width: 190px;">
-                          ${this.BUDGET_STATUS_OPTIONS.map(opt => `<option value="${opt.value}" ${entStatus === opt.value ? 'selected' : ''}>${opt.icon} ${opt.label}</option>`).join('')}
-                        </select>
+                        ${isEntActive ? `
+                          <select class="form-select form-select-xs edit-modal-entity-status" data-entity-id="${ent.id}" style="font-size: 11.5px; font-weight: 600; padding: 4px 8px; width: 100%; max-width: 190px;">
+                            ${this.BUDGET_STATUS_OPTIONS.map(opt => `<option value="${opt.value}" ${entStatus === opt.value ? 'selected' : ''}>${opt.icon} ${opt.label}</option>`).join('')}
+                          </select>
+                        ` : `
+                          <span class="badge badge-secondary" style="font-size: 10.5px; padding: 3px 8px;">🚫 Excluded</span>
+                        `}
                       </td>
                     </tr>
                   `;
@@ -6724,17 +6731,22 @@ const ConfigModule = {
     container.querySelector('#impDeptSearchInput')?.addEventListener('input', (e) => {
       this.impDeptSearchQuery = e.target.value;
       if (this._impDeptSearchTimer) clearTimeout(this._impDeptSearchTimer);
-      this._impDeptSearchTimer = setTimeout(() => this.renderImpDeptAccessTab(container, allDepartments), 200);
+      this._impDeptSearchTimer = setTimeout(async () => {
+        const freshDepts = Utils.sortDepartments(await db.getAll(STORES.departments));
+        this.renderImpDeptAccessTab(container, freshDepts);
+      }, 200);
     });
 
-    container.querySelector('#impDeptScopeSelect')?.addEventListener('change', (e) => {
+    container.querySelector('#impDeptScopeSelect')?.addEventListener('change', async (e) => {
       this.impDeptScopeFilter = e.target.value;
-      this.renderImpDeptAccessTab(container, allDepartments);
+      const freshDepts = Utils.sortDepartments(await db.getAll(STORES.departments));
+      this.renderImpDeptAccessTab(container, freshDepts);
     });
 
-    container.querySelector('#impDeptTotSelect')?.addEventListener('change', (e) => {
+    container.querySelector('#impDeptTotSelect')?.addEventListener('change', async (e) => {
       this.impDeptTotFilter = e.target.value;
-      this.renderImpDeptAccessTab(container, allDepartments);
+      const freshDepts = Utils.sortDepartments(await db.getAll(STORES.departments));
+      this.renderImpDeptAccessTab(container, freshDepts);
     });
   },
 
