@@ -3772,14 +3772,7 @@ const ConfigModule = {
             <button class="btn btn-primary btn-sm font-bold" onclick="ConfigModule.showTemplateLineItemModal()">
               ➕ + Add Template Cost Line Item
             </button>
-          ` : `
-            <button class="btn btn-secondary btn-sm font-bold text-success" onclick="ConfigModule.bulkToggleDeptTotAccess(true)">
-              ✅ Enable All Departments
-            </button>
-            <button class="btn btn-secondary btn-sm font-bold text-danger" onclick="ConfigModule.bulkToggleDeptTotAccess(false)">
-              🚫 Disable All
-            </button>
-          `))}
+          ` : ''))}
         </div>
       </div>
 
