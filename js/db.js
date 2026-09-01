@@ -281,7 +281,7 @@ class BudgetDB {
       STORES.travelPackages,
       STORES.impTotEvents
     ];
-    if (BUDGET_TX_STORES.includes(storeName) && item.yearId) {
+    if (!item._fromCloud && BUDGET_TX_STORES.includes(storeName) && item.yearId) {
       if (await this.isYearLocked(item.yearId, item.entityId)) {
         console.warn(`[BudgetDB] Blocked put to ${storeName}: Budget cycle CY-${item.yearId} (${item.entityId || 'All'}) is locked.`);
         return null;
@@ -321,7 +321,7 @@ class BudgetDB {
       STORES.travelPackages,
       STORES.impTotEvents
     ];
-    if (BUDGET_TX_STORES.includes(storeName) && item.yearId) {
+    if (!item._fromCloud && BUDGET_TX_STORES.includes(storeName) && item.yearId) {
       if (await this.isYearLocked(item.yearId, item.entityId)) {
         console.warn(`[BudgetDB] Blocked add to ${storeName}: Budget cycle CY-${item.yearId} (${item.entityId || 'All'}) is locked.`);
         return null;

@@ -123,14 +123,12 @@ const CloudSyncModule = {
 
   loadConfig() {
     try {
-      if (DEFAULT_CLOUD_CONFIG.url && DEFAULT_CLOUD_CONFIG.anonKey) {
-        this._config = { ...this._config, ...DEFAULT_CLOUD_CONFIG, enabled: true };
-      }
+      this._config = { ...this._config, ...DEFAULT_CLOUD_CONFIG, enabled: true };
       const saved = localStorage.getItem('noora_cloud_sync_config');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && parsed.url && parsed.anonKey) {
-          this._config = { ...this._config, ...parsed };
+          this._config = { ...this._config, ...parsed, enabled: parsed.enabled !== false };
         }
       }
     } catch (e) {
@@ -247,8 +245,12 @@ const CloudSyncModule = {
       if (typeof Utils !== 'undefined' && Utils.showToast) {
         Utils.showToast('✓ Cloud data successfully synchronized with all team members!', 'success');
       }
-      if (typeof App !== 'undefined' && App.renderCurrentPage) {
-        App.renderCurrentPage();
+      if (typeof App !== 'undefined') {
+        if (App.currentPage === 'budget-entry' && typeof BudgetEntryModule !== 'undefined' && BudgetEntryModule._entity && BudgetEntryModule._dept) {
+          await BudgetEntryModule.renderGrid(BudgetEntryModule._entity, BudgetEntryModule._dept, BudgetEntryModule._budgetYear, BudgetEntryModule._actualsMonth);
+        } else if (App.renderCurrentPage) {
+          await App.renderCurrentPage();
+        }
       }
     } catch (err) {
       if (typeof Utils !== 'undefined' && Utils.showToast) {
@@ -600,6 +602,8 @@ const CloudSyncModule = {
       sanitized.quantity = sanitized.quantity !== null && sanitized.quantity !== undefined ? sanitized.quantity : 1;
       sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
     } else if (table === 'non_payroll_costs') {
+      sanitized.description = sanitized.description || record.itemName || record.description || record.glDescription || '';
+      sanitized.gl_description = sanitized.gl_description || record.glDescription || record.itemName || '';
       sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
     } else if (table === 'imp_tot_events') {
       sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
@@ -664,6 +668,8 @@ const CloudSyncModule = {
         sanitized.quantity = sanitized.quantity !== null && sanitized.quantity !== undefined ? sanitized.quantity : 1;
         sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
       } else if (table === 'non_payroll_costs') {
+        sanitized.description = sanitized.description || record.itemName || record.description || record.glDescription || '';
+        sanitized.gl_description = sanitized.gl_description || record.glDescription || record.itemName || '';
         sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
       } else if (table === 'imp_tot_events') {
         sanitized.monthly_values = sanitized.monthly_values || record.monthlyValues || {};
@@ -796,9 +802,15 @@ const CloudSyncModule = {
     }
 
     container.innerHTML = `
-      <button type="button" class="cloud-blip-btn" onclick="ConfigModule.openSettingsModal('cloud-sync')" title="${tooltip}" aria-label="${tooltip}">
-        <span class="cloud-blip-dot ${dotClass}"></span>
-      </button>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <button type="button" class="btn btn-ghost btn-xs flex items-center gap-xs" style="font-size: 11px; padding: 3px 8px; border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-secondary);" onclick="CloudSyncModule.syncNow()" title="Click to instantly re-sync and fetch latest team updates">
+          <span style="font-size: 12px; ${this._status === 'syncing' ? 'animation: spin 1s linear infinite; display: inline-block;' : ''}">🔄</span>
+          <span style="font-weight: 500;">Sync</span>
+        </button>
+        <button type="button" class="cloud-blip-btn" onclick="ConfigModule.openSettingsModal('cloud-sync')" title="${tooltip}" aria-label="${tooltip}">
+          <span class="cloud-blip-dot ${dotClass}"></span>
+        </button>
+      </div>
     `;
   }
 };
