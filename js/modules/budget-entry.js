@@ -68,7 +68,6 @@ const BudgetEntryModule = {
     }
 
     // Filter active departments for entity in this budget year
-    const yearId = (typeof App !== 'undefined' && App.selectedYear) ? App.selectedYear : (years[0]?.id || '2026');
     const sortedDepartments = Utils.sortDepartments(allDepartments);
     let activeDepts = [];
 
