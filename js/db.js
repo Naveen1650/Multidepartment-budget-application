@@ -43,7 +43,7 @@ const STORES = {
 class BudgetDB {
   constructor() {
     this.db = null;
-    this.ready = this.init();
+    this.ready = (typeof indexedDB !== 'undefined') ? this.init() : Promise.resolve();
   }
 
   async init() {
@@ -897,10 +897,135 @@ class BudgetDB {
     return this.getByIndex(STORES.conversionRates, 'year', year);
   }
 
+  async isEntityActiveForYear(yearId, entityId) {
+    await this.ready;
+    if (!yearId || !entityId || entityId === 'all') return true;
+    try {
+      const years = (await this.getAll(STORES.budgetYears)) || [];
+      const sYear = String(yearId);
+      const yearObj = years.find(y => String(y.id) === sYear || String(y.year) === sYear);
+      if (!yearObj) return true;
+
+      // 1. Check entityStatuses map
+      const entStatus = yearObj.entityStatuses?.[entityId];
+      if (entStatus === 'inactive') return false;
+
+      // 2. Check inactiveEntities array if present
+      if (Array.isArray(yearObj.inactiveEntities) && yearObj.inactiveEntities.includes(entityId)) {
+        return false;
+      }
+
+      // 3. Check entity master record
+      const entities = (await this.getAll(STORES.entities)) || [];
+      const ent = entities.find(e => e.id === entityId);
+      if (ent && ent.isActive === false) return false;
+
+      return true;
+    } catch (e) {
+      console.warn('Error in isEntityActiveForYear:', e);
+      return true;
+    }
+  }
+
+  async getActiveEntitiesForYear(yearId) {
+    await this.ready;
+    try {
+      const entities = (await this.getAll(STORES.entities)) || [];
+      if (!yearId || yearId === 'all') return entities;
+      const years = (await this.getAll(STORES.budgetYears)) || [];
+      const sYear = String(yearId);
+      const yearObj = years.find(y => String(y.id) === sYear || String(y.year) === sYear);
+      if (!yearObj) return entities;
+
+      const inactiveSet = new Set();
+      if (yearObj.entityStatuses) {
+        Object.entries(yearObj.entityStatuses).forEach(([eId, status]) => {
+          if (status === 'inactive') inactiveSet.add(eId);
+        });
+      }
+      if (Array.isArray(yearObj.inactiveEntities)) {
+        yearObj.inactiveEntities.forEach(eId => inactiveSet.add(eId));
+      }
+
+      return entities.filter(e => e.isActive !== false && !inactiveSet.has(e.id));
+    } catch (e) {
+      console.warn('Error in getActiveEntitiesForYear:', e);
+      return (await this.getAll(STORES.entities)) || [];
+    }
+  }
+
+  async setEntityActiveForYear(yearId, entityId, isActive) {
+    await this.ready;
+    try {
+      const years = (await this.getAll(STORES.budgetYears)) || [];
+      const sYear = String(yearId);
+      const yearObj = years.find(y => String(y.id) === sYear || String(y.year) === sYear);
+      if (!yearObj) return false;
+
+      yearObj.entityStatuses = yearObj.entityStatuses || {};
+      yearObj.inactiveEntities = Array.isArray(yearObj.inactiveEntities) ? yearObj.inactiveEntities : [];
+
+      if (!isActive) {
+        yearObj.entityStatuses[entityId] = 'inactive';
+        if (!yearObj.inactiveEntities.includes(entityId)) {
+          yearObj.inactiveEntities.push(entityId);
+        }
+      } else {
+        if (yearObj.entityStatuses[entityId] === 'inactive') {
+          yearObj.entityStatuses[entityId] = yearObj.status || 'draft';
+        }
+        yearObj.inactiveEntities = yearObj.inactiveEntities.filter(id => id !== entityId);
+      }
+
+      await this.put(STORES.budgetYears, yearObj);
+
+      // Bulk update entityDeptConfig for this entity and year
+      const departments = (await this.getAll(STORES.departments)) || [];
+      const configsToSave = [];
+      for (const dept of departments) {
+        const key = `${yearObj.id}_${entityId}_${dept.id}`;
+        configsToSave.push({
+          id: key,
+          yearId: String(yearObj.id),
+          entityId: entityId,
+          deptId: dept.id,
+          isActive: Boolean(isActive)
+        });
+      }
+
+      for (const cfg of configsToSave) {
+        await this.put(STORES.entityDeptConfig, cfg);
+      }
+
+      if (typeof CloudSyncModule !== 'undefined' && CloudSyncModule.pushManyToCloud) {
+        try {
+          await CloudSyncModule.pushManyToCloud(STORES.entityDeptConfig, configsToSave);
+          await CloudSyncModule.pushToCloud(STORES.budgetYears, yearObj);
+        } catch (err) {
+          console.warn('Cloud sync error on setEntityActiveForYear:', err);
+        }
+      }
+
+      await this.logAudit({
+        category: 'config',
+        action: isActive ? 'ACTIVATE_ENTITY_FOR_YEAR' : 'DEACTIVATE_ENTITY_FOR_YEAR',
+        recordId: `${yearObj.id}_${entityId}`,
+        description: `${isActive ? 'Activated' : 'Deactivated / Excluded'} entity "${entityId}" for CY-${yearObj.year} (all departments set to ${isActive ? 'active' : 'inactive'})`,
+        changes: { yearId: yearObj.id, entityId, isActive }
+      });
+
+      return true;
+    } catch (e) {
+      console.error('Error in setEntityActiveForYear:', e);
+      return false;
+    }
+  }
+
   async getEntityDeptConfigForYear(yearId, entityId) {
     await this.ready;
     if (!this.db || !this.db.objectStoreNames.contains(STORES.entityDeptConfig)) return [];
     try {
+      const isEntityActive = await this.isEntityActiveForYear(yearId, entityId);
       const all = await this.getAll(STORES.entityDeptConfig);
       const sYear = String(yearId);
       const sEntity = String(entityId);
@@ -911,7 +1036,7 @@ class BudgetDB {
       matched.forEach(c => {
         const dId = c.deptId || c.dept_id;
         if (dId) {
-          const isAct = (c.isActive !== false && c.is_active !== false);
+          const isAct = isEntityActive && (c.isActive !== false && c.is_active !== false);
           if (map.has(dId)) {
             const existing = map.get(dId);
             const combinedIsAct = existing.isActive && isAct;

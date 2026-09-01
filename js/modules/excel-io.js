@@ -2568,7 +2568,7 @@ const ExcelIOModule = {
     const yearId = activeYearObj.id;
     const budgetYear = activeYearObj.year;
     const years = await db.getAll(STORES.budgetYears);
-    const rawEntities = await db.getAll(STORES.entities);
+    const rawEntities = await db.getActiveEntitiesForYear(yearId);
     const entities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
     const departments = Utils.sortDepartments(await db.getAll(STORES.departments));
 

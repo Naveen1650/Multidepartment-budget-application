@@ -582,7 +582,8 @@ const ConfigModule = {
     { value: 'under-review', label: 'Under Review (Dept Submissions)', icon: '🟡', badgeClass: 'badge-cyan', dotClass: 'active' },
     { value: 'finance-approved', label: 'Finance Approved (Pending CFO)', icon: '🔵', badgeClass: 'badge-primary', dotClass: 'active' },
     { value: 'finalized-locked', label: 'Finalized & Locked (CFO Approved)', icon: '🔒', badgeClass: 'badge-purple', dotClass: 'draft' },
-    { value: 'closed', label: 'Closed / Archived', icon: '📁', badgeClass: 'badge-danger', dotClass: 'draft' }
+    { value: 'closed', label: 'Closed / Archived', icon: '📁', badgeClass: 'badge-danger', dotClass: 'draft' },
+    { value: 'inactive', label: '🚫 Inactive (Not Budgeted in CY)', icon: '🚫', badgeClass: 'badge-danger', dotClass: 'draft' }
   ],
 
   _matrixCollapsedState: {},
@@ -634,11 +635,16 @@ const ConfigModule = {
             const statusOpt = this.BUDGET_STATUS_OPTIONS.find(o => o.value === currentStatus) || this.BUDGET_STATUS_OPTIONS[0];
             const isCollapsed = this._matrixCollapsedState?.[String(y.id)] === true;
 
-            const activeCount = entities.filter(ent => {
-              const s = y.entityStatuses?.[ent.id] || y.status || 'draft';
+            const activeEntitiesCount = entities.filter(ent => {
+              const s = y.entityStatuses?.[ent.id] || (y.inactiveEntities?.includes(ent.id) ? 'inactive' : y.status) || 'draft';
+              return s !== 'inactive';
+            }).length;
+            const inactiveEntitiesCount = entities.length - activeEntitiesCount;
+
+            const openBudgetingCount = entities.filter(ent => {
+              const s = y.entityStatuses?.[ent.id] || (y.inactiveEntities?.includes(ent.id) ? 'inactive' : y.status) || 'draft';
               return s === 'draft' || s === 'active';
             }).length;
-            const lockedCount = entities.length - activeCount;
 
             return `
             <div class="config-list-item" style="flex-direction: column; align-items: stretch; gap: 16px; padding: 20px; background: var(--bg-card); border: 1.5px solid var(--border-default); border-radius: var(--radius-lg); margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
@@ -666,7 +672,7 @@ const ConfigModule = {
                       </div>
                     </div>
                     <div class="item-detail mt-xs" style="font-size: 12px; color: var(--text-secondary);">
-                      Prior Reference Base: <strong>CY-${y.priorYear || (y.year - 1)}</strong> &bull; Actuals Available: <strong>Jan–${y.actualsThroughMonth || 'Oct'}</strong> &bull; Currencies Configured: <strong>${entities.map(e => e.currency).filter((v, i, a) => a.indexOf(v) === i).join(', ')}</strong>
+                      Prior Reference Base: <strong>CY-${y.priorYear || (y.year - 1)}</strong> &bull; Actuals Available: <strong>Jan–${y.actualsThroughMonth || 'Oct'}</strong> &bull; Participating Entities: <strong>${activeEntitiesCount} of ${entities.length}</strong>
                     </div>
                   </div>
                 </div>
@@ -679,23 +685,23 @@ const ConfigModule = {
                 </div>
               </div>
 
-              <!-- Grid Matrix Matrix Table UI (With Minimize / Maximize Option) -->
+              <!-- Grid Matrix Table UI (With Minimize / Maximize Option) -->
               <div class="entity-matrix-wrapper">
                 <div class="entity-matrix-header flex justify-between items-center flex-wrap gap-sm" onclick="ConfigModule.toggleEntityMatrix('${y.id}')" style="cursor: pointer; user-select: none;" title="Click to minimize or maximize matrix">
                   <div class="flex items-center gap-sm">
                     <span style="font-size: 1.25rem;">🏛️</span>
                     <div>
                       <div class="flex items-center gap-xs">
-                        <h4 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary);">Entity-Wise Workflow Status Matrix</h4>
-                        <span class="badge ${lockedCount === 0 ? 'badge-emerald' : 'badge-amber'}" id="entityMatrixHeaderBadge_${y.id}" style="font-size: 10.5px; font-weight: 700; padding: 2px 7px;">
-                          ${activeCount} Active, ${lockedCount} Locked
+                        <h4 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--text-primary);">Entity-Wise Participation & Workflow Status Matrix</h4>
+                        <span class="badge ${inactiveEntitiesCount === 0 ? 'badge-emerald' : 'badge-amber'}" id="entityMatrixHeaderBadge_${y.id}" style="font-size: 10.5px; font-weight: 700; padding: 2px 7px;">
+                          ${activeEntitiesCount} Active, ${inactiveEntitiesCount} Inactive (Excluded)
                         </span>
                       </div>
-                      <span class="text-tertiary" style="font-size: 11px;">Independent budgeting states & lockout control per operating entity (${entities.length} Entities)</span>
+                      <span class="text-tertiary" style="font-size: 11px;">Toggle entity budget participation or set lockout control for CY-${y.year}</span>
                     </div>
                   </div>
                   <div class="flex items-center gap-xs" onclick="event.stopPropagation();">
-                    <span class="text-secondary font-medium" style="font-size: 11.5px;">⚡ Apply to All:</span>
+                    <span class="text-secondary font-medium" style="font-size: 11.5px;">⚡ Apply Status to All:</span>
                     <select class="form-select form-select-sm bulk-entity-status-select" data-year-id="${y.id}" style="font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px; min-width: 155px; background: var(--bg-surface); cursor: pointer;">
                       <option value="">— Choose Status —</option>
                       ${this.BUDGET_STATUS_OPTIONS.map(opt => `<option value="${opt.value}">${opt.icon} ${opt.label}</option>`).join('')}
@@ -708,19 +714,21 @@ const ConfigModule = {
                     <table class="entity-matrix-table">
                       <thead>
                         <tr>
-                          <th style="width: 30%;">Operating Entity</th>
-                          <th style="width: 15%;">Currency</th>
-                          <th style="width: 32%;">Workflow Status</th>
-                          <th style="width: 23%;">Budget Entry State</th>
+                          <th style="width: 26%;">Operating Entity</th>
+                          <th style="width: 12%;">Currency</th>
+                          <th style="width: 22%;">CY-${y.year} Participation</th>
+                          <th style="width: 22%;">Workflow Status</th>
+                          <th style="width: 18%;">Budget Entry State</th>
                         </tr>
                       </thead>
                       <tbody>
                         ${entities.map(ent => {
-                          const entStatus = y.entityStatuses?.[ent.id] || y.status || 'draft';
+                          const entStatus = y.entityStatuses?.[ent.id] || (y.inactiveEntities?.includes(ent.id) ? 'inactive' : y.status) || 'draft';
                           const opt = this.BUDGET_STATUS_OPTIONS.find(o => o.value === entStatus) || this.BUDGET_STATUS_OPTIONS[0];
-                          const isEntEditable = entStatus === 'draft' || entStatus === 'active';
+                          const isEntActive = entStatus !== 'inactive' && !y.inactiveEntities?.includes(ent.id);
+                          const isEntEditable = isEntActive && (entStatus === 'draft' || entStatus === 'active');
                           return `
-                            <tr>
+                            <tr style="${!isEntActive ? 'opacity: 0.65; background: rgba(239, 68, 68, 0.03);' : ''}">
                               <td>
                                 <div class="flex items-center gap-sm">
                                   <span style="font-size: 1.5rem; line-height: 1;">${ent.flag || '🏛️'}</span>
@@ -736,7 +744,12 @@ const ConfigModule = {
                                 </span>
                               </td>
                               <td>
-                                <select class="form-select form-select-sm entity-status-selector entity-status-matrix-select ${isEntEditable ? 'is-active' : 'is-locked'}" data-year-id="${y.id}" data-entity-id="${ent.id}" title="Update workflow status for ${ent.shortName}">
+                                <button class="btn btn-sm ${isEntActive ? 'btn-secondary font-bold text-success' : 'btn-secondary font-bold text-danger'} entity-year-toggle-btn" data-year-id="${y.id}" data-entity-id="${ent.id}" data-active="${isEntActive ? 'true' : 'false'}" style="font-size: 11.5px; padding: 3px 10px; border-radius: 6px;" title="Click to ${isEntActive ? 'deactivate / exclude' : 'activate'} this entity in CY-${y.year}">
+                                  ${isEntActive ? '🟢 Active in CY-' + y.year : '🚫 Inactive (Excluded)'}
+                                </button>
+                              </td>
+                              <td>
+                                <select class="form-select form-select-sm entity-status-selector entity-status-matrix-select ${!isEntActive ? 'is-inactive' : isEntEditable ? 'is-active' : 'is-locked'}" data-year-id="${y.id}" data-entity-id="${ent.id}" title="Update workflow status for ${ent.shortName}">
                                   ${this.BUDGET_STATUS_OPTIONS.map(o => `
                                     <option value="${o.value}" ${entStatus === o.value ? 'selected' : ''}>
                                       ${o.icon} ${o.label}
@@ -745,7 +758,11 @@ const ConfigModule = {
                                 </select>
                               </td>
                               <td>
-                                ${isEntEditable ? `
+                                ${!isEntActive ? `
+                                  <span class="badge badge-danger font-bold flex items-center gap-xs" style="width: fit-content; padding: 5px 12px; font-size: 11px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.35);">
+                                    <span>🚫</span> Inactive (Not Budgeted)
+                                  </span>
+                                ` : isEntEditable ? `
                                   <span class="badge badge-emerald font-bold flex items-center gap-xs" style="width: fit-content; padding: 5px 12px; font-size: 11px;">
                                     <span>🟢</span> Open for Budgeting
                                   </span>
@@ -791,6 +808,17 @@ const ConfigModule = {
       });
     });
 
+    // Entity active/inactive toggle button listeners
+    container.querySelectorAll('.entity-year-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const yId = btn.dataset.yearId;
+        const entId = btn.dataset.entityId;
+        const currentlyActive = btn.dataset.active === 'true';
+        const targetStatus = currentlyActive ? 'inactive' : 'active';
+        await this.changeEntityBudgetStatus(yId, entId, targetStatus);
+      });
+    });
+
     // Bulk set entity status listeners
     container.querySelectorAll('.bulk-entity-status-select').forEach(sel => {
       sel.addEventListener('change', async (e) => {
@@ -812,6 +840,16 @@ const ConfigModule = {
     const oldStatus = year.status;
     year.status = newStatus;
     await db.put(STORES.budgetYears, year);
+
+    if (meta.applyToAllEntities && meta.entities) {
+      for (const ent of meta.entities) {
+        if (newStatus === 'inactive') {
+          await db.setEntityActiveForYear(yearId, ent.id, false);
+        } else {
+          await db.setEntityActiveForYear(yearId, ent.id, true);
+        }
+      }
+    }
 
     // Sync with budget lock status
     await db.setLockStatus(yearId, newStatus, {
@@ -838,6 +876,34 @@ const ConfigModule = {
     const nId = parseInt(sId);
     const year = (await db.get(STORES.budgetYears, sId)) || (!isNaN(nId) ? await db.get(STORES.budgetYears, nId) : null);
     if (!year) return;
+
+    if (newStatus === 'inactive') {
+      const [payroll, eha, fa, nonPayroll, tot] = await Promise.all([
+        db.getEntityBudgetData(STORES.payrollPersonnel, yearId, entityId),
+        db.getEntityBudgetData(STORES.payrollEHA, yearId, entityId),
+        db.getEntityBudgetData(STORES.payrollFixedAsset, yearId, entityId),
+        db.getEntityBudgetData(STORES.nonPayrollCost, yearId, entityId),
+        db.getEntityBudgetData(STORES.impTotEvents, yearId, entityId)
+      ]);
+      const allLines = [...(payroll || []), ...(eha || []), ...(fa || []), ...(nonPayroll || []), ...(tot || [])];
+      if (allLines.length > 0) {
+        const entObj = (await db.get(STORES.entities, entityId)) || { shortName: entityId };
+        let totalAmt = 0;
+        allLines.forEach(r => { totalAmt += Utils.parseNumber(r.totalCY || r.total_cy || 0); });
+        const formattedTotal = Utils.formatCurrency(totalAmt, entObj.currency || 'USD');
+
+        const confirmed = await Utils.confirm(
+          `⚠️ Entity Contains Existing Budget Data!\n\n"${entObj.shortName}" has ${allLines.length} budget line items (${formattedTotal}) entered in CY-${year.year}.\n\nMarking this entity as INACTIVE will deactivate all its departments and exclude it from Budget Entry, Executive Dashboard, and Consolidated Reports for CY-${year.year}.\n\nAre you sure you want to make this entity inactive for CY-${year.year}?`
+        );
+        if (!confirmed) {
+          if (typeof App !== 'undefined' && App.renderCurrentPage) await App.renderCurrentPage();
+          return;
+        }
+      }
+      await db.setEntityActiveForYear(yearId, entityId, false);
+    } else {
+      await db.setEntityActiveForYear(yearId, entityId, true);
+    }
 
     await db.setLockStatus(yearId, newStatus, {
       entityId,
@@ -972,6 +1038,11 @@ const ConfigModule = {
             await this.changeBudgetYearStatus(year.id || yearId, status);
 
             for (const [eId, eStat] of Object.entries(entityStatuses)) {
+              if (eStat === 'inactive') {
+                await db.setEntityActiveForYear(yearId, eId, false);
+              } else {
+                await db.setEntityActiveForYear(yearId, eId, true);
+              }
               await db.setLockStatus(yearId, eStat, { entityId: eId });
             }
             if (typeof Auth !== 'undefined') {
@@ -1223,20 +1294,54 @@ const ConfigModule = {
 
     const renderChecklist = (entityId) => {
       const entity = entities.find(e => e.id === entityId);
+      const isEntActive = year.entityStatuses?.[entityId] !== 'inactive' && !year.inactiveEntities?.includes(entityId);
       const checklistContainer = content.querySelector('#deptChecklist');
 
-      checklistContainer.innerHTML = departments.map(d => {
-        const key = `${yearId}_${entityId}_${d.id}`;
-        const isChecked = configMap[key] !== false;
-        const displayName = Utils.getDeptName(d, entity.deptPrefix);
+      checklistContainer.innerHTML = `
+        <div class="flex items-center justify-between p-sm mb-sm flex-wrap gap-xs" style="background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+          <div class="flex items-center gap-xs">
+            <span style="font-size: 1.1rem;">${entity.flag || '🏛️'}</span>
+            <strong>${entity.shortName}</strong>:
+            <span class="badge ${isEntActive ? 'badge-emerald' : 'badge-danger'} font-bold" style="font-size: 11px;">
+              ${isEntActive ? '🟢 Participating in CY-' + year.year : '🚫 Inactive in CY-' + year.year}
+            </span>
+          </div>
+          <div class="flex items-center gap-xs">
+            <button type="button" class="btn btn-xs btn-secondary font-bold" id="deptSelectAllBtn">✅ Select All</button>
+            <button type="button" class="btn btn-xs btn-secondary font-bold" id="deptDeselectAllBtn">🚫 Deselect All</button>
+          </div>
+        </div>
+        <div class="departments-scroll-list" style="max-height: 340px; overflow-y: auto;">
+          ${departments.map(d => {
+            const key = `${yearId}_${entityId}_${d.id}`;
+            const isChecked = configMap[key] !== false;
+            const displayName = Utils.getDeptName(d, entity.deptPrefix);
 
-        return `
-          <label class="form-checkbox p-sm" style="border-bottom: 1px solid var(--border-subtle);">
-            <input type="checkbox" data-key="${key}" ${isChecked ? 'checked' : ''}>
-            <span>${displayName}</span>
-          </label>
-        `;
-      }).join('');
+            return `
+              <label class="form-checkbox p-sm" style="border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" data-key="${key}" ${isChecked ? 'checked' : ''}>
+                <span>${displayName}</span>
+              </label>
+            `;
+          }).join('')}
+        </div>
+      `;
+
+      checklistContainer.querySelector('#deptSelectAllBtn')?.addEventListener('click', () => {
+        departments.forEach(d => {
+          const key = `${yearId}_${entityId}_${d.id}`;
+          configMap[key] = true;
+        });
+        renderChecklist(entityId);
+      });
+
+      checklistContainer.querySelector('#deptDeselectAllBtn')?.addEventListener('click', () => {
+        departments.forEach(d => {
+          const key = `${yearId}_${entityId}_${d.id}`;
+          configMap[key] = false;
+        });
+        renderChecklist(entityId);
+      });
     };
 
     renderChecklist(activeEntity);

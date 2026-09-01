@@ -23,7 +23,8 @@ const BudgetEntryModule = {
 
   async render(container) {
     const years = (await db.getAll(STORES.budgetYears)) || [];
-    const allEntities = (await db.getAll(STORES.entities)) || [];
+    const yearId = (typeof App !== 'undefined' && App.selectedYear) ? App.selectedYear : (years[0]?.id || '2026');
+    const allEntities = (await db.getActiveEntitiesForYear(yearId)) || [];
     const allDepartments = (await db.getAll(STORES.departments)) || [];
 
     if (allEntities.length === 0) {
@@ -4750,7 +4751,7 @@ const BudgetEntryModule = {
 
     let targetEntities = [entity];
     if (isAll) {
-      const rawEntities = await db.getAll(STORES.entities);
+      const rawEntities = await db.getActiveEntitiesForYear(yearId);
       targetEntities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
     }
 

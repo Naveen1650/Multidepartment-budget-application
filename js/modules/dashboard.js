@@ -24,8 +24,6 @@ const DashboardModule = {
 
   async _renderInner(container) {
     const years = await db.getAll(STORES.budgetYears);
-    const rawEntities = await db.getAll(STORES.entities);
-    const entities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
     const departments = Utils.sortDepartments(await db.getAll(STORES.departments));
 
     let activeYearObj = null;
@@ -39,6 +37,9 @@ const DashboardModule = {
 
     const yearId = activeYearObj ? activeYearObj.id : (App.selectedYear || '2026');
     const yearLabel = activeYearObj ? `CY-${activeYearObj.year}` : 'CY-2026';
+
+    const rawEntities = await db.getActiveEntitiesForYear(yearId);
+    const entities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
 
     // No budget year configured yet — show setup prompt
     if (years.length === 0) {

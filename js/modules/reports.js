@@ -19,8 +19,6 @@ const ReportsModule = {
 
   async render(container) {
     const years = (await db.getAll(STORES.budgetYears)) || [];
-    const rawEntities = (await db.getAll(STORES.entities)) || [];
-    const entities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
     const departments = Utils.sortDepartments((await db.getAll(STORES.departments)) || []);
 
     const yearId = this._selectedYear || (typeof App !== 'undefined' ? App.selectedYear : null) || years[0]?.id || '2026';
@@ -30,6 +28,9 @@ const ReportsModule = {
     if (typeof App !== 'undefined') {
       App.selectedYear = activeYearObj.id;
     }
+
+    const rawEntities = (await db.getActiveEntitiesForYear(activeYearObj.id)) || [];
+    const entities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
 
     // Sync global selector if present in DOM
     const globalYearSelect = Utils.$('#globalYearSelect');

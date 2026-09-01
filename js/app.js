@@ -150,14 +150,19 @@ const App = {
       if (typeof BudgetEntryModule !== 'undefined') BudgetEntryModule._yearId = yearSelect.value;
       // Refresh lock status for newly selected year
       if (typeof Auth !== 'undefined') await Auth.refreshLockStatus(yearSelect.value);
+      await this.populateGlobalSelectors();
       this.onGlobalFilterChange();
     };
 
-    // Entity selector (Filtered based on user permissions)
+    // Entity selector (Filtered based on active year participation AND user permissions)
     const entitySelect = Utils.$('#globalEntitySelect');
-    let entities = await db.getAll(STORES.entities);
+    let entities = await db.getActiveEntitiesForYear(this.selectedYear);
     if (typeof Auth !== 'undefined') {
       entities = Auth.filterAccessibleEntities(entities);
+    }
+
+    if (this.selectedEntity && this.selectedEntity !== 'all' && !entities.some(e => e.id === this.selectedEntity)) {
+      this.selectedEntity = '';
     }
 
     entitySelect.innerHTML = '<option value="">🌍 All Entities</option>';
