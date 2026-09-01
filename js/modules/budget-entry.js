@@ -4794,7 +4794,7 @@ const BudgetEntryModule = {
         if (r.monthlyValues) {
           Object.entries(r.monthlyValues).forEach(([mIdx, val]) => {
             const num = Utils.parseNumber(val);
-            const finalVal = isAll ? Utils.convertToUSD(num, rRate) : num;
+            const finalVal = isAll ? (num / rRate) : num;
             months[mIdx] += finalVal;
             total += finalVal;
           });

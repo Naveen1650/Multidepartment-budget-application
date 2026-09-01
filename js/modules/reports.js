@@ -19,7 +19,8 @@ const ReportsModule = {
 
   async render(container) {
     const years = (await db.getAll(STORES.budgetYears)) || [];
-    const entities = (await db.getAll(STORES.entities)) || [];
+    const rawEntities = (await db.getAll(STORES.entities)) || [];
+    const entities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
     const departments = Utils.sortDepartments((await db.getAll(STORES.departments)) || []);
 
     const yearId = this._selectedYear || (typeof App !== 'undefined' ? App.selectedYear : null) || years[0]?.id || '2026';
@@ -191,9 +192,10 @@ const ReportsModule = {
           Object.entries(r.monthlyValues).forEach(([mIdx, val]) => {
             const num = Utils.parseNumber(val);
             monthlyLocal[mIdx] += num;
-            monthlyUSD[mIdx] += Utils.convertToUSD(num, rate);
+            const usdVal = num / rate;
+            monthlyUSD[mIdx] += usdVal;
             totalLocal += num;
-            totalUSD += Utils.convertToUSD(num, rate);
+            totalUSD += usdVal;
           });
         }
       });
@@ -367,21 +369,23 @@ const ReportsModule = {
           }
 
           const monthlyLocal = Array(12).fill(0);
+          const monthlyUSD = Array(12).fill(0);
           let totalLocal = 0;
+          let totalUSD = 0;
+          const rate = yearObj.conversionRates?.[e.currency] || 1.0;
 
           rowsToSum.forEach(row => {
             if (row.monthlyValues) {
               Object.entries(row.monthlyValues).forEach(([mIdx, val]) => {
                 const num = Utils.parseNumber(val);
                 monthlyLocal[mIdx] += num;
+                const usdVal = num / rate;
+                monthlyUSD[mIdx] += usdVal;
                 totalLocal += num;
+                totalUSD += usdVal;
               });
             }
           });
-
-          const rate = yearObj.conversionRates?.[e.currency] || 1.0;
-          const monthlyUSD = monthlyLocal.map(v => Utils.convertToUSD(v, rate));
-          const totalUSD = Utils.convertToUSD(totalLocal, rate);
 
           return { entity: e, currency: e.currency, rate, monthlyLocal, totalLocal, monthlyUSD, totalUSD };
         }));
