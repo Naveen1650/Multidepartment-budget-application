@@ -1946,21 +1946,21 @@ const BudgetEntryModule = {
 
     container.innerHTML = `
       <div class="card grid-kpi-banner flex items-center justify-between" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.06), rgba(239, 68, 68, 0.06)); border-color: rgba(245, 158, 11, 0.2);">
-        <div class="flex items-center gap-md">
+        <div class="flex items-center gap-lg">
           <div>
-            <div class="text-tertiary" style="font-size: 10px; text-transform: uppercase;">Asset Requests</div>
-            <div id="bannerCount" class="kpi-val" style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary);">${records.length} Requests</div>
+            <div class="text-tertiary" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 3px;">Asset Requests</div>
+            <div id="bannerCount" class="kpi-val" style="font-size: 1.32rem; font-weight: 700; color: var(--text-primary);">${records.length} Requests</div>
           </div>
-          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-md);">
-            <div class="text-tertiary" style="font-size: 10px; text-transform: uppercase;">Total Asset Budget (${entity.currency})</div>
-            <div id="bannerTotal" class="kpi-val" style="font-size: 1.15rem; font-weight: 700; color: var(--accent-warm);">${Utils.formatCurrency(totalCost, entity.currency)}</div>
-            <div id="bannerTotalUSD" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">
-              ${entity.currency !== 'USD' ? `≈ ${Utils.formatCurrency(Utils.convertToUSD(totalCost, this._conversionRates?.[entity.currency] || 1.0), 'USD')} <span class="text-tertiary" style="font-size: 10.5px;">(@ ${this._conversionRates?.[entity.currency] || 1.0} ${entity.currency}/USD)</span>` : ''}
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+            <div class="text-tertiary" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 3px;">Total Asset Budget (${entity.currency})</div>
+            <div id="bannerTotal" class="kpi-val" style="font-size: 1.35rem; font-weight: 700; color: var(--accent-warm);">${Utils.formatCurrency(totalCost, entity.currency)}</div>
+            <div id="bannerTotalUSD" style="font-size: 0.86rem; font-weight: 600; color: var(--text-secondary); margin-top: 2px;">
+              ${entity.currency !== 'USD' ? `≈ ${Utils.formatCurrency(Utils.convertToUSD(totalCost, this._conversionRates?.[entity.currency] || 1.0), 'USD')} <span class="text-tertiary" style="font-size: 11px;">(@ ${this._conversionRates?.[entity.currency] || 1.0} ${entity.currency}/USD)</span>` : ''}
             </div>
           </div>
-          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-md);">
-            <div class="text-tertiary" style="font-size: 10px; text-transform: uppercase;">Department</div>
-            <div style="font-size: 0.92rem; font-weight: 600; color: var(--text-secondary);">${deptDisplayName}</div>
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+            <div class="text-tertiary" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 3px;">Department</div>
+            <div style="font-size: 0.98rem; font-weight: 600; color: var(--text-secondary); line-height: 1.3;">${deptDisplayName}</div>
           </div>
         </div>
       </div>
@@ -2549,25 +2549,25 @@ const BudgetEntryModule = {
 
       return `
         <div class="card grid-kpi-banner flex items-center justify-between" style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.06), rgba(59, 130, 246, 0.06)); border-color: rgba(6, 182, 212, 0.2);">
-          <div class="flex items-center gap-md">
+          <div class="flex items-center gap-lg">
             <div>
-              <div class="text-tertiary" style="font-size: 10px; text-transform: uppercase;">COA Accounts Overview</div>
-              <div class="kpi-val" style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary);">${coaRows.length} GL Account Lines &bull; ${coaRows.filter(r => r.itemCount > 0).length} Active Accounts</div>
+              <div class="text-tertiary" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 3px;">COA Accounts Overview</div>
+              <div class="kpi-val" style="font-size: 1.32rem; font-weight: 700; color: var(--text-primary);">${coaRows.length} GL Account Lines &bull; ${coaRows.filter(r => r.itemCount > 0).length} Active Accounts</div>
             </div>
-            <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-md);">
-              <div class="text-tertiary" style="font-size: 10px; text-transform: uppercase;">Total Other Costs Budget (${entity.currency})</div>
-              <div class="kpi-val" style="font-size: 1.15rem; font-weight: 700; color: var(--accent-primary);">${Utils.formatCurrency(totalRollupCost, entity.currency)}</div>
-              <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">
-                ${entity.currency !== 'USD' ? `≈ ${Utils.formatCurrency(Utils.convertToUSD(totalRollupCost, rate), 'USD')} <span class="text-tertiary" style="font-size: 10.5px;">(@ ${rate} ${entity.currency}/USD)</span>` : ''}
+            <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+              <div class="text-tertiary" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 3px;">Total Other Costs Budget (${entity.currency})</div>
+              <div class="kpi-val" style="font-size: 1.35rem; font-weight: 700; color: var(--accent-primary);">${Utils.formatCurrency(totalRollupCost, entity.currency)}</div>
+              <div style="font-size: 0.86rem; font-weight: 600; color: var(--text-secondary); margin-top: 2px;">
+                ${entity.currency !== 'USD' ? `≈ ${Utils.formatCurrency(Utils.convertToUSD(totalRollupCost, rate), 'USD')} <span class="text-tertiary" style="font-size: 11px;">(@ ${rate} ${entity.currency}/USD)</span>` : ''}
               </div>
             </div>
-            <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-md);">
-              <div class="text-tertiary" style="font-size: 10px; text-transform: uppercase;">Department</div>
-              <div style="font-size: 0.92rem; font-weight: 600; color: var(--text-secondary);">${Utils.getDeptName(dept, entity.deptPrefix)}</div>
+            <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+              <div class="text-tertiary" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 3px;">Department</div>
+              <div style="font-size: 0.98rem; font-weight: 600; color: var(--text-secondary); line-height: 1.3;">${Utils.getDeptName(dept, entity.deptPrefix)}</div>
             </div>
           </div>
           <div>
-            <span class="badge badge-cyan" style="padding: 4px 10px; font-size: 11px;">📊 Auto-Rollup from Categories</span>
+            <span class="badge badge-cyan" style="padding: 5px 12px; font-size: 11.5px;">📊 Auto-Rollup from Categories</span>
           </div>
         </div>
 
@@ -5072,27 +5072,27 @@ const BudgetEntryModule = {
 
     container.innerHTML = `
       <div class="card grid-kpi-banner flex items-center justify-between" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(6, 182, 212, 0.06)); border-color: rgba(16, 185, 129, 0.2);">
-        <div class="flex items-center gap-md">
+        <div class="flex items-center gap-lg">
           <div>
-            <div class="text-tertiary" style="font-size: 10px; text-transform: uppercase;">Total Dept Cost Lines</div>
-            <div id="bannerCount" class="kpi-val" style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary);">${visibleLines.length} Account Lines &bull; ${totalEntriesCount} Total Entries ${isPartialView ? `<span class="badge badge-subtle" style="font-size: 10px; vertical-align: middle;" title="Some cost lines are restricted from your role">🔒 ${lines.length - visibleLines.length} Restricted</span>` : ''}</div>
+            <div class="text-tertiary" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 3px;">Total Dept Cost Lines</div>
+            <div id="bannerCount" class="kpi-val" style="font-size: 1.32rem; font-weight: 700; color: var(--text-primary);">${visibleLines.length} Account Lines &bull; ${totalEntriesCount} Total Entries ${isPartialView ? `<span class="badge badge-subtle" style="font-size: 10.5px; vertical-align: middle;" title="Some cost lines are restricted from your role">🔒 ${lines.length - visibleLines.length} Restricted</span>` : ''}</div>
           </div>
-          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-md);">
-            <div class="text-tertiary" style="font-size: 10px; text-transform: uppercase;">Total Dept Cost Budget (${displayCurrency})</div>
-            <div id="bannerTotal" class="kpi-val" style="font-size: 1.15rem; font-weight: 700; color: var(--success);">${Utils.formatCurrency(totalCost, displayCurrency)}</div>
-            <div id="bannerTotalUSD" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">
-              ${!isAll && entity.currency !== 'USD' ? `≈ ${Utils.formatCurrency(Utils.convertToUSD(totalCost, rate), 'USD')} <span class="text-tertiary" style="font-size: 10.5px;">(@ ${rate} ${entity.currency}/USD)</span>` : isAll ? `<span class="text-tertiary" style="font-size: 10.5px;">🌍 Multi-Entity Consolidated USD Budget</span>` : ''}
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+            <div class="text-tertiary" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 3px;">Total Dept Cost Budget (${displayCurrency})</div>
+            <div id="bannerTotal" class="kpi-val" style="font-size: 1.35rem; font-weight: 700; color: var(--success);">${Utils.formatCurrency(totalCost, displayCurrency)}</div>
+            <div id="bannerTotalUSD" style="font-size: 0.86rem; font-weight: 600; color: var(--text-secondary); margin-top: 2px;">
+              ${!isAll && entity.currency !== 'USD' ? `≈ ${Utils.formatCurrency(Utils.convertToUSD(totalCost, rate), 'USD')} <span class="text-tertiary" style="font-size: 11px;">(@ ${rate} ${entity.currency}/USD)</span>` : isAll ? `<span class="text-tertiary" style="font-size: 11px;">🌍 Multi-Entity Consolidated USD Budget</span>` : ''}
             </div>
           </div>
-          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-md);">
-            <div class="text-tertiary" style="font-size: 10px; text-transform: uppercase;">Department</div>
-            <div style="font-size: 0.92rem; font-weight: 600; color: var(--text-secondary);">${deptDisplayName}</div>
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+            <div class="text-tertiary" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 3px;">Department</div>
+            <div style="font-size: 0.98rem; font-weight: 600; color: var(--text-secondary); line-height: 1.3;">${deptDisplayName}</div>
           </div>
         </div>
         <div class="flex gap-xs items-center">
-          <span class="badge badge-emerald" style="padding: 4px 10px; font-size: 11px;">🔗 Auto-Linked</span>
+          <span class="badge badge-emerald" style="padding: 5px 12px; font-size: 11.5px;">🔗 Auto-Linked</span>
           ${!isLocked && (typeof Auth === 'undefined' || Auth.hasPermission('edit', { category: 'prior-period', entityId: entity.id, deptId: dept.id })) ? `
-            <button class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 11px;" onclick="ConfigModule.managePriorPeriodCosts('${yearId}', '${entity.id}', '${dept.id}')" title="Directly update prior period costs in application">📊 Prior Period</button>
+            <button class="btn btn-secondary btn-sm" style="padding: 5px 12px; font-size: 11.5px;" onclick="ConfigModule.managePriorPeriodCosts('${yearId}', '${entity.id}', '${dept.id}')" title="Directly update prior period costs in application">📊 Prior Period</button>
           ` : ''}
         </div>
       </div>
