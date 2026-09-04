@@ -650,7 +650,7 @@ class BudgetDB {
     if (!this.db || !this.db.objectStoreNames.contains(STORES.departments)) {
       return SEED_DATA.departments || [];
     }
-    const depts = await this.getAll(STORES.departments);
+    const depts = (await this.getAll(STORES.departments)) || [];
     return depts.length > 0 ? depts : (SEED_DATA.departments || []);
   }
 

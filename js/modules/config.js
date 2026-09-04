@@ -257,7 +257,7 @@ const ConfigModule = {
   },
 
   async bulkToggleDeptTotAccess(enableAll) {
-    const depts = await db.getAll(STORES.departments);
+    const depts = (await db.getAll(STORES.departments)) || [];
     const ids = depts.map(d => d.id);
     await db.bulkSetDepartmentsTotAccess(ids, enableAll);
     Utils.showToast(`${enableAll ? '🎯 Enabled ToT for all' : '🚫 Disabled ToT for all'} ${ids.length} departments!`, 'success');
@@ -851,7 +851,7 @@ const ConfigModule = {
       await Auth.refreshAllLockStatuses();
     }
 
-    const entities = await db.getAll(STORES.entities);
+    const entities = (await db.getAll(STORES.entities)) || [];
     const ent = entities.find(e => e.id === entityId);
     const opt = this.BUDGET_STATUS_OPTIONS.find(o => o.value === newStatus);
     Utils.showToast(`${ent?.shortName || entityId} status updated to "${opt?.label || newStatus}" for CY-${year.year}`, 'success');
@@ -1866,11 +1866,11 @@ const ConfigModule = {
 
   // ─── 4. Dimensions Configuration ───
   async renderDimensions(container) {
-    const entities = await db.getAll(STORES.entities);
-    const locations = await db.getAll(STORES.locations);
-    const donors = await db.getAll(STORES.donors);
-    const activities = await db.getAll(STORES.activities);
-    const conditionAreas = await db.getAll(STORES.conditionAreas);
+    const entities = (await db.getAll(STORES.entities)) || [];
+    const locations = (await db.getAll(STORES.locations)) || [];
+    const donors = (await db.getAll(STORES.donors)) || [];
+    const activities = (await db.getAll(STORES.activities)) || [];
+    const conditionAreas = (await db.getAll(STORES.conditionAreas)) || [];
 
     container.innerHTML = `
       <div class="page-header">

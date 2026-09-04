@@ -248,8 +248,10 @@ const Utils = {
   },
 
   convertToUSD(amount, rate) {
-    if (!rate || rate === 0) return amount;
-    return Math.round(amount / rate);
+    const num = this.parseNumber(amount) || 0;
+    const r = this.parseNumber(rate);
+    if (!r || r <= 0) return num;
+    return Math.round(num / r);
   },
 
   formatDualCurrency(localAmount, currency = 'INR', rate = 1.0, options = {}) {
@@ -327,7 +329,10 @@ const Utils = {
       this.createElement('button', {
         className: 'toast-close',
         textContent: '×',
-        onClick: () => toast.remove()
+        onClick: () => {
+          if (toast && typeof toast.remove === 'function') toast.remove();
+          else if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
+        }
       })
     ]);
 
@@ -337,7 +342,10 @@ const Utils = {
       toast.style.opacity = '0';
       toast.style.transform = 'translateX(100%)';
       toast.style.transition = 'all 0.3s ease';
-      setTimeout(() => toast.remove(), 300);
+      setTimeout(() => {
+        if (toast && typeof toast.remove === 'function') toast.remove();
+        else if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 300);
     }, duration);
   },
 

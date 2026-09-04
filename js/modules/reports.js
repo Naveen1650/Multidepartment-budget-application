@@ -432,7 +432,7 @@ const ReportsModule = {
                     <tr>
                       <td class="sticky-col"><strong>${r.entity.flag} ${r.entity.shortName}</strong></td>
                       <td><code>${r.currency}</code></td>
-                      <td class="num">${r.rate.toFixed(2)}</td>
+                      <td class="num">${(Number(r.rate) || 1.0).toFixed(2)}</td>
                       <td class="num font-bold">${Utils.formatCurrency(r.totalLocal, r.currency)}</td>
                       <td class="num font-bold" style="color: var(--accent-primary);">${Utils.formatCurrency(r.totalUSD, 'USD')}</td>
                       ${r.monthlyUSD.map(v => `<td class="num month-col">${Utils.formatCurrency(v, 'USD')}</td>`).join('')}
@@ -1256,7 +1256,7 @@ const ReportsModule = {
                 <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Prior Period Cost (${entity.currency})</div>
                 <div style="font-size: 1.3rem; font-weight: 700; color: var(--accent-primary);">${Utils.formatCurrency(totalPriorCost, entity.currency)}</div>
                 <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); margin-top: 2px;">
-                  ${totalPriorCost > 0 ? `Change vs Prior: <strong>${((totalCost - totalPriorCost) / totalPriorCost * 100).toFixed(1)}%</strong>` : 'Historical Base'}
+                  ${totalPriorCost > 0 && !isNaN(totalCost) ? `Change vs Prior: <strong>${(((Number(totalCost) || 0) - totalPriorCost) / totalPriorCost * 100).toFixed(1)}%</strong>` : 'Historical Base'}
                 </div>
               </div>
               <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">

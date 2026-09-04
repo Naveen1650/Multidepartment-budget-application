@@ -169,105 +169,101 @@ const BudgetEntryModule = {
     const yearStatusLabel = typeof Auth !== 'undefined' ? Auth.getYearStatusLabel(yearId, this.currentEntityId) : 'Active';
 
     container.innerHTML = `
-      <div class="page-header flex justify-between items-center">
-        <div>
-          <h2>Budget Entry (${budgetYear})</h2>
-          <p>Prepare monthly budgets with 5-dimensional tagging and prior year reference data</p>
-        </div>
-        <div class="flex gap-xs items-center">
-          <button class="btn btn-secondary btn-sm" onclick="BudgetEntryModule.showDeptAuditTrail(BudgetEntryModule.currentEntityId, BudgetEntryModule.currentDeptId)" title="View tamper-evident history of entries, modifications, and deletions for this department">📜 Dept Audit History</button>
-        </div>
-      </div>
-
-      ${!canEditYear ? `
-        <div class="card p-sm mb-md flex items-center justify-between" style="background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: var(--radius-md);">
+      <div class="budget-entry-view">
+        <div class="page-header flex justify-between items-center">
           <div class="flex items-center gap-sm">
-            <span style="font-size: 1.3rem;">🔒</span>
-            <div>
-              <div style="font-weight: 700; color: var(--text-primary); font-size: 13px;">
-                ${selectedEntity.shortName} (${selectedEntity.currency}) is currently in <strong>"${yearStatusLabel}"</strong> mode (Locked / Read-Only)
-              </div>
-              <div class="text-secondary" style="font-size: 11.5px;">
-                Additions, row insertions, edits, and bulk uploads are disabled for this entity in CY-${budgetYear}. Only entities with <strong>Active (Open)</strong> or <strong>Draft</strong> status permit changes.
+            <h2>Budget Entry (${budgetYear})</h2>
+          </div>
+          <div class="flex gap-xs items-center">
+            <button class="btn btn-secondary btn-sm" onclick="BudgetEntryModule.showDeptAuditTrail(BudgetEntryModule.currentEntityId, BudgetEntryModule.currentDeptId)" title="View tamper-evident history of entries, modifications, and deletions for this department">📜 Dept Audit History</button>
+          </div>
+        </div>
+
+        ${!canEditYear ? `
+          <div class="card p-xs mb-xs flex items-center justify-between" style="background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: var(--radius-md); padding: 4px 10px; margin-bottom: 4px;">
+            <div class="flex items-center gap-xs">
+              <span style="font-size: 1.1rem;">🔒</span>
+              <div style="font-weight: 600; color: var(--text-primary); font-size: 12px;">
+                ${selectedEntity.shortName} (${selectedEntity.currency}) is in <strong>"${yearStatusLabel}"</strong> mode (Locked / Read-Only)
               </div>
             </div>
+            <span class="badge badge-amber font-bold" style="padding: 2px 8px; font-size: 10.5px;">🔒 ${yearStatusLabel}</span>
           </div>
-          <span class="badge badge-amber font-bold" style="padding: 5px 10px; font-size: 11px;">🔒 ${yearStatusLabel}</span>
-        </div>
-      ` : ''}
+        ` : ''}
 
-      <!-- Toolbar Selection -->
-      <div class="budget-toolbar">
-        <div class="toolbar-selectors">
-          <div>
-            <label class="form-label">Entity</label>
-            <select class="form-select" id="entryEntitySelect">
-              <option value="all" ${isAllEntities ? 'selected' : ''}>🌍 All Entities (Consolidated)</option>
-              ${entities.map(e => {
-                const eStatus = typeof Auth !== 'undefined' ? Auth.getYearStatus(yearId, e.id) : 'active';
-                const isEEditable = eStatus === 'draft' || eStatus === 'active';
-                const eLabel = typeof Auth !== 'undefined' ? Auth.getYearStatusLabel(yearId, e.id).split(' ')[0] : 'Active';
-                return `<option value="${e.id}" ${e.id === this.currentEntityId ? 'selected' : ''}>${e.flag} ${e.shortName} (${e.currency}) — ${isEEditable ? '🟢' : '🔒'} ${eLabel}</option>`;
-              }).join('')}
-            </select>
+        <!-- Toolbar Selection -->
+        <div class="budget-toolbar">
+          <div class="toolbar-selectors">
+            <div class="flex items-center gap-xs">
+              <label class="form-label">Entity:</label>
+              <select class="form-select" id="entryEntitySelect">
+                <option value="all" ${isAllEntities ? 'selected' : ''}>🌍 All Entities (Consolidated)</option>
+                ${entities.map(e => {
+                  const eStatus = typeof Auth !== 'undefined' ? Auth.getYearStatus(yearId, e.id) : 'active';
+                  const isEEditable = eStatus === 'draft' || eStatus === 'active';
+                  const eLabel = typeof Auth !== 'undefined' ? Auth.getYearStatusLabel(yearId, e.id).split(' ')[0] : 'Active';
+                  return `<option value="${e.id}" ${e.id === this.currentEntityId ? 'selected' : ''}>${e.flag} ${e.shortName} (${e.currency}) — ${isEEditable ? '🟢' : '🔒'} ${eLabel}</option>`;
+                }).join('')}
+              </select>
+            </div>
+
+            <div class="flex items-center gap-xs">
+              <label class="form-label">Dept:</label>
+              <select class="form-select" id="entryDeptSelect">
+                ${isAllEntities ? `<option value="all" ${this.currentDeptId === 'all' ? 'selected' : ''}>🌍 All Departments (Consolidated Organization-Wide)</option>` : ''}
+                ${activeDepts.map(d => {
+                  const codePrefix = selectedEntity.deptPrefix || 'GEN';
+                  const deptCode = d.codeTemplate ? d.codeTemplate.replace('{CC}', codePrefix) : d.id.toUpperCase();
+                  return `<option value="${d.id}" title="${d.name}" ${d.id === this.currentDeptId ? 'selected' : ''}>${isAllEntities ? `${deptCode} — ${d.name}` : deptCode}</option>`;
+                }).join('')}
+              </select>
+            </div>
           </div>
 
-          <div>
-            <label class="form-label">Department</label>
-            <select class="form-select" id="entryDeptSelect">
-              ${isAllEntities ? `<option value="all" ${this.currentDeptId === 'all' ? 'selected' : ''}>🌍 All Departments (Consolidated Organization-Wide)</option>` : ''}
-              ${activeDepts.map(d => {
-                const codePrefix = selectedEntity.deptPrefix || 'GEN';
-                const deptCode = d.codeTemplate ? d.codeTemplate.replace('{CC}', codePrefix) : d.id.toUpperCase();
-                return `<option value="${d.id}" title="${d.name}" ${d.id === this.currentDeptId ? 'selected' : ''}>${isAllEntities ? `${deptCode} — ${d.name}` : deptCode}</option>`;
-              }).join('')}
-            </select>
+          <div class="toolbar-actions" id="toolbarActionsContainer" style="display: flex; gap: var(--space-sm); flex-wrap: wrap;">
+            <!-- Dynamically populated based on activeTab -->
           </div>
         </div>
 
-        <div class="toolbar-actions" id="toolbarActionsContainer" style="display: flex; gap: var(--space-sm); flex-wrap: wrap;">
-          <!-- Dynamically populated based on activeTab -->
+        <!-- Module Tabs -->
+        <div class="tabs" id="entryTabs">
+          ${isAllEntities ? `
+            <button class="tab active" data-tab="total-costs">📊 Total Dept Cost</button>
+          ` : `
+            ${canViewTotal ? `<button class="tab ${this.activeTab === 'total-costs' ? 'active' : ''}" data-tab="total-costs">📊 Total Dept Cost</button>` : ''}
+            ${canViewPersonnel ? `<button class="tab ${this.activeTab === 'personnel' ? 'active' : ''}" data-tab="personnel">👥 Payroll — Personnel Cost</button>` : ''}
+            ${canViewEha ? `<button class="tab ${this.activeTab === 'eha' ? 'active' : ''}" data-tab="eha">🤝 Payroll — EHA Consultants</button>` : ''}
+            ${canViewFA ? `<button class="tab ${this.activeTab === 'fixed-assets' ? 'active' : ''}" data-tab="fixed-assets">💻 Fixed Assets (Laptops/Printers)</button>` : ''}
+            ${canViewOtherCosts ? `<button class="tab ${this.activeTab === 'other-costs' ? 'active' : ''}" data-tab="other-costs">📑 Other Costs (Travel, Supplies & others)</button>` : ''}
+          `}
         </div>
-      </div>
 
-      <!-- Module Tabs -->
-      <div class="tabs" id="entryTabs">
-        ${isAllEntities ? `
-          <button class="tab active" data-tab="total-costs">📊 Total Dept Cost</button>
-        ` : `
-          ${canViewTotal ? `<button class="tab ${this.activeTab === 'total-costs' ? 'active' : ''}" data-tab="total-costs">📊 Total Dept Cost</button>` : ''}
-          ${canViewPersonnel ? `<button class="tab ${this.activeTab === 'personnel' ? 'active' : ''}" data-tab="personnel">👥 Payroll — Personnel Cost</button>` : ''}
-          ${canViewEha ? `<button class="tab ${this.activeTab === 'eha' ? 'active' : ''}" data-tab="eha">🤝 Payroll — EHA Consultants</button>` : ''}
-          ${canViewFA ? `<button class="tab ${this.activeTab === 'fixed-assets' ? 'active' : ''}" data-tab="fixed-assets">💻 Fixed Assets (Laptops/Printers)</button>` : ''}
-          ${canViewOtherCosts ? `<button class="tab ${this.activeTab === 'other-costs' ? 'active' : ''}" data-tab="other-costs">📑 Other Costs (Travel, Supplies & others)</button>` : ''}
-        `}
-      </div>
-
-      <!-- Personnel Sub-Tabs (Visible when activeTab === 'personnel' and not in all entities mode) -->
-      <div class="sub-tabs" id="personnelSubTabs" style="${(!isAllEntities && this.activeTab === 'personnel') ? '' : 'display: none;'}">
-        ${canViewSalaries ? `<button class="sub-tab ${this.activePersonnelSubTab === 'salaries-wages' ? 'active' : ''}" data-subtab="salaries-wages">💼 Salaries and Wages</button>` : ''}
-        ${canViewOtherStaff ? `<button class="sub-tab ${this.activePersonnelSubTab === 'other-staff-expenses' ? 'active' : ''}" data-subtab="other-staff-expenses">📚 Other Staff Expenses</button>` : ''}
-        ${canViewGratuity ? `<button class="sub-tab ${this.activePersonnelSubTab === 'gratuity-bonus' ? 'active' : ''}" data-subtab="gratuity-bonus">🎁 Gratuity and Bonus</button>` : ''}
-      </div>
-
-      <!-- Other Costs Sub-Tabs (Visible when activeTab === 'other-costs' and not in all entities mode) -->
-      <div class="sub-tabs flex items-center justify-between" id="otherCostSubTabs" style="${(!isAllEntities && this.activeTab === 'other-costs') ? '' : 'display: none;'} flex-wrap: wrap; gap: 8px;">
-        <div class="flex items-center gap-xs" style="flex-wrap: wrap;">
-          <button class="sub-tab ${this.activeOtherCostSubTab === 'grid' || this.activeOtherCostSubTab === 'all' ? 'active' : ''}" data-subtab="grid">📊 All Accounts Overview</button>
-          ${canViewTravel ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'travel' || this.activeOtherCostSubTab === 'travel-packages' ? 'active' : ''}" data-subtab="travel">✈️ Travel & Lodging</button>` : ''}
-          ${canViewSupplies ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'supplies' ? 'active' : ''}" data-subtab="supplies">🖨️ Supplies & Printing</button>` : ''}
-          ${canViewComm ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'communication' ? 'active' : ''}" data-subtab="communication">📡 Communication</button>` : ''}
-          ${canViewOffice ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'office' ? 'active' : ''}" data-subtab="office">🏢 Office Expenses</button>` : ''}
-          ${canViewProf ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'professional' ? 'active' : ''}" data-subtab="professional">💼 Professional Charges</button>` : ''}
-          ${canViewOtherLines ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'other' ? 'active' : ''}" data-subtab="other">📑 Other Expense Lines</button>` : ''}
-          ${((canViewTot || canViewOtherCosts) && typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(selectedDept)) ? `
-            <button class="sub-tab ${this.activeOtherCostSubTab === 'tot' || this.activeOtherCostSubTab === 'imp-tot' ? 'active' : ''}" data-subtab="tot">🎯 ToT Program Budget (IMP)</button>
-          ` : ''}
+        <!-- Personnel Sub-Tabs (Visible when activeTab === 'personnel' and not in all entities mode) -->
+        <div class="sub-tabs" id="personnelSubTabs" style="${(!isAllEntities && this.activeTab === 'personnel') ? '' : 'display: none;'}">
+          ${canViewSalaries ? `<button class="sub-tab ${this.activePersonnelSubTab === 'salaries-wages' ? 'active' : ''}" data-subtab="salaries-wages">💼 Salaries and Wages</button>` : ''}
+          ${canViewOtherStaff ? `<button class="sub-tab ${this.activePersonnelSubTab === 'other-staff-expenses' ? 'active' : ''}" data-subtab="other-staff-expenses">📚 Other Staff Expenses</button>` : ''}
+          ${canViewGratuity ? `<button class="sub-tab ${this.activePersonnelSubTab === 'gratuity-bonus' ? 'active' : ''}" data-subtab="gratuity-bonus">🎁 Gratuity and Bonus</button>` : ''}
         </div>
-      </div>
 
-      <!-- Tab Content Area -->
-      <div id="gridContainer"></div>
+        <!-- Other Costs Sub-Tabs (Visible when activeTab === 'other-costs' and not in all entities mode) -->
+        <div class="sub-tabs flex items-center justify-between" id="otherCostSubTabs" style="${(!isAllEntities && this.activeTab === 'other-costs') ? '' : 'display: none;'} flex-wrap: wrap; gap: 8px;">
+          <div class="flex items-center gap-xs" style="flex-wrap: wrap;">
+            <button class="sub-tab ${this.activeOtherCostSubTab === 'grid' || this.activeOtherCostSubTab === 'all' ? 'active' : ''}" data-subtab="grid">📊 All Accounts Overview</button>
+            ${canViewTravel ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'travel' || this.activeOtherCostSubTab === 'travel-packages' ? 'active' : ''}" data-subtab="travel">✈️ Travel & Lodging</button>` : ''}
+            ${canViewSupplies ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'supplies' ? 'active' : ''}" data-subtab="supplies">🖨️ Supplies & Printing</button>` : ''}
+            ${canViewComm ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'communication' ? 'active' : ''}" data-subtab="communication">📡 Communication</button>` : ''}
+            ${canViewOffice ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'office' ? 'active' : ''}" data-subtab="office">🏢 Office Expenses</button>` : ''}
+            ${canViewProf ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'professional' ? 'active' : ''}" data-subtab="professional">💼 Professional Charges</button>` : ''}
+            ${canViewOtherLines ? `<button class="sub-tab ${this.activeOtherCostSubTab === 'other' ? 'active' : ''}" data-subtab="other">📑 Other Expense Lines</button>` : ''}
+            ${((canViewTot || canViewOtherCosts) && typeof ImpTotModule !== 'undefined' && ImpTotModule.isImpDept(selectedDept)) ? `
+              <button class="sub-tab ${this.activeOtherCostSubTab === 'tot' || this.activeOtherCostSubTab === 'imp-tot' ? 'active' : ''}" data-subtab="tot">🎯 ToT Program Budget (IMP)</button>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- Tab Content Area -->
+        <div id="gridContainer"></div>
+      </div>
     `;
 
     // Event listeners for toolbar
@@ -1521,11 +1517,18 @@ const BudgetEntryModule = {
     const monthlyValues = {};
     row.querySelectorAll('.month-input').forEach((m, idx) => { monthlyValues[idx] = Utils.parseNumber(m.value); });
     const empName = this.getEmpNameFromRow(row);
+    const nameSelect = row.querySelector('select.field-name');
+    const isManual = nameSelect ? (nameSelect.value === '__manual__') : false;
+    const selOpt = nameSelect?.options ? nameSelect.options[nameSelect.selectedIndex] : null;
 
     const record = {
       id: id || undefined,
       yearId, entityId, deptId,
       employeeName: empName,
+      name: empName,
+      isManual: isManual,
+      employeeCode: isManual ? '' : (selOpt?.dataset?.code || ''),
+      employeeId: isManual ? '' : (selOpt?.value || ''),
       assetType: row.querySelector('.field-asset')?.value || '',
       model: row.querySelector('.field-model')?.value || '',
       monthlyValues,
@@ -1942,22 +1945,24 @@ const BudgetEntryModule = {
     `;
 
     container.innerHTML = `
-      <div class="card p-md mb-md flex items-center gap-lg" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.06), rgba(239, 68, 68, 0.06)); border-color: rgba(245, 158, 11, 0.2);">
+      <div class="card grid-kpi-banner flex items-center justify-between" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.06), rgba(239, 68, 68, 0.06)); border-color: rgba(245, 158, 11, 0.2);">
+        <div class="flex items-center gap-md">
           <div>
-            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Asset Requests</div>
-            <div id="bannerCount" style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary);">${records.length} Requests</div>
+            <div class="text-tertiary" style="font-size: 10px; text-transform: uppercase;">Asset Requests</div>
+            <div id="bannerCount" class="kpi-val" style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary);">${records.length} Requests</div>
           </div>
-          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
-            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Total Asset Budget (${entity.currency})</div>
-            <div id="bannerTotal" style="font-size: 1.4rem; font-weight: 700; color: var(--accent-warm);">${Utils.formatCurrency(totalCost, entity.currency)}</div>
-            <div id="bannerTotalUSD" style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); margin-top: 2px;">
-              ${entity.currency !== 'USD' ? `≈ ${Utils.formatCurrency(Utils.convertToUSD(totalCost, this._conversionRates?.[entity.currency] || 1.0), 'USD')} <span class="text-tertiary" style="font-size: 11px;">(@ ${this._conversionRates?.[entity.currency] || 1.0} ${entity.currency}/USD)</span>` : ''}
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-md);">
+            <div class="text-tertiary" style="font-size: 10px; text-transform: uppercase;">Total Asset Budget (${entity.currency})</div>
+            <div id="bannerTotal" class="kpi-val" style="font-size: 1.15rem; font-weight: 700; color: var(--accent-warm);">${Utils.formatCurrency(totalCost, entity.currency)}</div>
+            <div id="bannerTotalUSD" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">
+              ${entity.currency !== 'USD' ? `≈ ${Utils.formatCurrency(Utils.convertToUSD(totalCost, this._conversionRates?.[entity.currency] || 1.0), 'USD')} <span class="text-tertiary" style="font-size: 10.5px;">(@ ${this._conversionRates?.[entity.currency] || 1.0} ${entity.currency}/USD)</span>` : ''}
             </div>
           </div>
-          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
-            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Department</div>
-            <div style="font-size: 1rem; font-weight: 600; color: var(--text-secondary);">${deptDisplayName}</div>
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-md);">
+            <div class="text-tertiary" style="font-size: 10px; text-transform: uppercase;">Department</div>
+            <div style="font-size: 0.92rem; font-weight: 600; color: var(--text-secondary);">${deptDisplayName}</div>
           </div>
+        </div>
       </div>
 
       <div class="table-container">
@@ -1979,11 +1984,11 @@ const BudgetEntryModule = {
           </thead>
           <tbody>
             ${records.length === 0 ? `
-              <tr><td colspan="22" class="text-center p-lg text-muted">No fixed asset requests added.</td></tr>
+              <tr><td colspan="22" class="text-center p-lg text-muted">No fixed asset requests added. <button class="btn btn-primary btn-sm ml-sm font-bold" onclick="BudgetEntryModule.addRow()">+ Add Asset Row</button></td></tr>
             ` : `
               ${records.map(r => `
                 <tr data-id="${r.id}">
-                  <td class="sticky-col-1">${this.buildEmpNameCell({ name: r.employeeName || r.name || '' }, masterEmps, deptEmployees, deptDisplayName, '', '', isLocked)}</td>
+                  <td class="sticky-col-1">${this.buildEmpNameCell(r, masterEmps, deptEmployees, deptDisplayName, '', '', isLocked)}</td>
                   <td class="sticky-col-2 editable"><input type="text" class="field-asset" value="${r.assetType || ''}" placeholder="Laptop/Printer" ${lockAttr}></td>
                   <td class="editable"><input type="text" class="field-model" value="${r.model || ''}" placeholder="Macbook Air/Pro/Lenovo" ${lockAttr}></td>
                   <td class="num font-bold field-total-cy">${Utils.formatNumber(r.totalCY || 0)}</td>
@@ -2035,18 +2040,40 @@ const BudgetEntryModule = {
         if (e.target.classList.contains('field-name') && e.target.tagName === 'SELECT') {
           const selectedVal = e.target.value;
           const manualInput = row.querySelector('.field-name-manual');
+          const cellContainer = row.querySelector('.emp-name-cell');
           if (selectedVal === '__manual__') {
             this.markDirty();
+            if (cellContainer) cellContainer.classList.add('is-manual-mode');
             if (manualInput) {
               manualInput.style.display = 'block';
               manualInput.focus();
             }
           } else {
+            if (cellContainer) cellContainer.classList.remove('is-manual-mode');
             if (manualInput) {
               manualInput.style.display = 'none';
               manualInput.value = '';
             }
+            if (selectedVal) {
+              const selOpt = e.target.options[e.target.selectedIndex];
+              if (selOpt) {
+                const loc = selOpt.dataset?.location;
+                const donor = selOpt.dataset?.donor;
+                const act = selOpt.dataset?.activity;
+                const cond = selOpt.dataset?.condition;
+                if (loc && row.querySelector('.field-location')) row.querySelector('.field-location').value = loc;
+                if (donor && row.querySelector('.field-donor')) row.querySelector('.field-donor').value = donor;
+                if (act && row.querySelector('.field-activity')) row.querySelector('.field-activity').value = act;
+                if (cond && row.querySelector('.field-condition')) row.querySelector('.field-condition').value = cond;
+              }
+            }
           }
+          this.saveFaRow(row, yearId, entity.id, dept.id);
+          return;
+        }
+
+        if (e.target.tagName === 'SELECT') {
+          this.markDirty();
           this.saveFaRow(row, yearId, entity.id, dept.id);
         }
       });
@@ -2055,6 +2082,8 @@ const BudgetEntryModule = {
         if (isLocked) return;
         const row = e.target.closest('tr');
         if (!row) return;
+
+        this.markDirty();
 
         // Auto-fill forward for month cells
         if (e.target.classList.contains('month-input')) {
@@ -2519,61 +2548,75 @@ const BudgetEntryModule = {
       };
 
       return `
-        <div class="card mb-lg">
-          <div class="card-header flex justify-between items-center">
+        <div class="card grid-kpi-banner flex items-center justify-between" style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.06), rgba(59, 130, 246, 0.06)); border-color: rgba(6, 182, 212, 0.2);">
+          <div class="flex items-center gap-md">
             <div>
-              <div class="card-title">All Other Costs — Chart of Accounts Overview</div>
-              <div class="card-subtitle">Showing all standard general ledger account lines &bull; Values auto-rollup from category entries & travel packages</div>
+              <div class="text-tertiary" style="font-size: 10px; text-transform: uppercase;">COA Accounts Overview</div>
+              <div class="kpi-val" style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary);">${coaRows.length} GL Account Lines &bull; ${coaRows.filter(r => r.itemCount > 0).length} Active Accounts</div>
+            </div>
+            <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-md);">
+              <div class="text-tertiary" style="font-size: 10px; text-transform: uppercase;">Total Other Costs Budget (${entity.currency})</div>
+              <div class="kpi-val" style="font-size: 1.15rem; font-weight: 700; color: var(--accent-primary);">${Utils.formatCurrency(totalRollupCost, entity.currency)}</div>
+              <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">
+                ${entity.currency !== 'USD' ? `≈ ${Utils.formatCurrency(Utils.convertToUSD(totalRollupCost, rate), 'USD')} <span class="text-tertiary" style="font-size: 10.5px;">(@ ${rate} ${entity.currency}/USD)</span>` : ''}
+              </div>
+            </div>
+            <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-md);">
+              <div class="text-tertiary" style="font-size: 10px; text-transform: uppercase;">Department</div>
+              <div style="font-size: 0.92rem; font-weight: 600; color: var(--text-secondary);">${Utils.getDeptName(dept, entity.deptPrefix)}</div>
             </div>
           </div>
-
-          <div class="table-container">
-            <table class="data-table ${this.isMonthsCollapsed() ? 'months-collapsed' : ''}" id="allAccountsTable">
-              <thead>
-                <tr>
-                  <th class="sticky-col-1">Parent Account</th>
-                  <th class="sticky-col-2">GL Account Description</th>
-                  <th>Ledger Code</th>
-                  <th>Category</th>
-                  <th>Entries</th>
-                  <th class="num month-group budget-year total-toggle-th" data-toggle-months title="${this.isMonthsCollapsed() ? 'Click to expand monthly columns (Jan–Dec)' : 'Click to collapse monthly columns (Jan–Dec)'}">Total CY-${budgetYear} <span class="months-toggle-arrow">${this.isMonthsCollapsed() ? '&#9654;' : '&#9664;'}</span></th>
-                  ${SEED_DATA.months.map(m => `<th class="num month-group budget-year">${m}-${budgetYear}</th>`).join('')}
-                  <th class="num font-bold">Total USD</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${coaRows.map((r, idx) => {
-                  const badge = catBadges[r.categoryKey] || catBadges.other;
-                  return `
-                    <tr class="coa-summary-row ${r.totalCY > 0 ? 'has-budget' : ''}">
-                      <td class="sticky-col-1 font-bold"><strong>${r.parentAccount}</strong></td>
-                      <td class="sticky-col-2">${r.glDescription}</td>
-                      <td><code>${r.ledgerCode}</code></td>
-                      <td><span class="badge ${badge.cls}" style="font-size: 11px;">${badge.label}</span></td>
-                      <td>
-                        ${r.itemCount > 0 ? `<span class="badge badge-primary font-bold" style="font-size: 11px;">${r.itemCount} item${r.itemCount > 1 ? 's' : ''}</span>` : `<span class="text-tertiary" style="font-size: 11px;">0 items</span>`}
-                      </td>
-                      <td class="num font-bold field-total-cy" style="color: ${r.totalCY > 0 ? 'var(--accent-primary)' : 'inherit'};">${Utils.formatCurrency(r.totalCY, entity.currency)}</td>
-                      ${SEED_DATA.months.map((m, mIdx) => `
-                        <td class="num month-col font-mono" style="${r.monthlyValues[mIdx] > 0 ? 'font-weight: 600;' : 'color: var(--text-tertiary);'}">${Utils.formatNumber(r.monthlyValues[mIdx])}</td>
-                      `).join('')}
-                      <td class="num font-bold" style="color: var(--accent-secondary); font-size: 12px;">≈ ${Utils.formatCurrency(Utils.convertToUSD(r.totalCY, rate), 'USD')}</td>
-                    </tr>
-                  `;
-                }).join('')}
-                <tr class="total-row">
-                  <td class="sticky-col-1 font-bold">TOTAL OTHER COSTS:</td>
-                  <td class="sticky-col-2 font-bold text-right" style="padding-right: 16px;">(${entity.currency})</td>
-                  <td colspan="3"></td>
-                  <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(totalRollupCost, entity.currency)}</td>
-                  ${SEED_DATA.months.map((m, idx) => `
-                    <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx])}</td>
-                  `).join('')}
-                  <td class="num font-bold" style="color: var(--accent-secondary); font-size: 1.05rem;">≈ ${Utils.formatCurrency(Utils.convertToUSD(totalRollupCost, rate), 'USD')}</td>
-                </tr>
-              </tbody>
-            </table>
+          <div>
+            <span class="badge badge-cyan" style="padding: 4px 10px; font-size: 11px;">📊 Auto-Rollup from Categories</span>
           </div>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table ${this.isMonthsCollapsed() ? 'months-collapsed' : ''}" id="allAccountsTable">
+            <thead>
+              <tr>
+                <th class="sticky-col-1">Parent Account</th>
+                <th class="sticky-col-2">GL Account Description</th>
+                <th>Ledger Code</th>
+                <th>Category</th>
+                <th>Entries</th>
+                <th class="num month-group budget-year total-toggle-th" data-toggle-months title="${this.isMonthsCollapsed() ? 'Click to expand monthly columns (Jan–Dec)' : 'Click to collapse monthly columns (Jan–Dec)'}">Total CY-${budgetYear} <span class="months-toggle-arrow">${this.isMonthsCollapsed() ? '&#9654;' : '&#9664;'}</span></th>
+                ${SEED_DATA.months.map(m => `<th class="num month-group budget-year">${m}-${budgetYear}</th>`).join('')}
+                <th class="num font-bold">Total USD</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${coaRows.map((r, idx) => {
+                const badge = catBadges[r.categoryKey] || catBadges.other;
+                return `
+                  <tr class="coa-summary-row ${r.totalCY > 0 ? 'has-budget' : ''}">
+                    <td class="sticky-col-1 font-bold"><strong>${r.parentAccount}</strong></td>
+                    <td class="sticky-col-2">${r.glDescription}</td>
+                    <td><code>${r.ledgerCode}</code></td>
+                    <td><span class="badge ${badge.cls}" style="font-size: 11px;">${badge.label}</span></td>
+                    <td>
+                      ${r.itemCount > 0 ? `<span class="badge badge-primary font-bold" style="font-size: 11px;">${r.itemCount} item${r.itemCount > 1 ? 's' : ''}</span>` : `<span class="text-tertiary" style="font-size: 11px;">0 items</span>`}
+                    </td>
+                    <td class="num font-bold field-total-cy" style="color: ${r.totalCY > 0 ? 'var(--accent-primary)' : 'inherit'};">${Utils.formatCurrency(r.totalCY, entity.currency)}</td>
+                    ${SEED_DATA.months.map((m, mIdx) => `
+                      <td class="num month-col font-mono" style="${r.monthlyValues[mIdx] > 0 ? 'font-weight: 600;' : 'color: var(--text-tertiary);'}">${Utils.formatNumber(r.monthlyValues[mIdx])}</td>
+                    `).join('')}
+                    <td class="num font-bold" style="color: var(--accent-secondary); font-size: 12px;">≈ ${Utils.formatCurrency(Utils.convertToUSD(r.totalCY, rate), 'USD')}</td>
+                  </tr>
+                `;
+              }).join('')}
+              <tr class="total-row">
+                <td class="sticky-col-1 font-bold">TOTAL OTHER COSTS:</td>
+                <td class="sticky-col-2 font-bold text-right" style="padding-right: 16px;">(${entity.currency})</td>
+                <td colspan="3"></td>
+                <td class="num font-bold field-total-cy" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(totalRollupCost, entity.currency)}</td>
+                ${SEED_DATA.months.map((m, idx) => `
+                  <td class="num month-col font-mono font-bold" style="color: var(--accent-primary);">${Utils.formatNumber(colMonthlySums[idx])}</td>
+                `).join('')}
+                <td class="num font-bold" style="color: var(--accent-secondary); font-size: 1.05rem;">≈ ${Utils.formatCurrency(Utils.convertToUSD(totalRollupCost, rate), 'USD')}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       `;
     }
@@ -5028,28 +5071,28 @@ const BudgetEntryModule = {
     const isPartialView = visibleLines.length < lines.length;
 
     container.innerHTML = `
-      <div class="card p-md mb-md flex items-center justify-between" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(6, 182, 212, 0.06)); border-color: rgba(16, 185, 129, 0.2);">
-        <div class="flex items-center gap-lg">
+      <div class="card grid-kpi-banner flex items-center justify-between" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(6, 182, 212, 0.06)); border-color: rgba(16, 185, 129, 0.2);">
+        <div class="flex items-center gap-md">
           <div>
-            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Total Dept Cost Lines</div>
-            <div id="bannerCount" style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary);">${visibleLines.length} Account Lines &bull; ${totalEntriesCount} Total Entries ${isPartialView ? `<span class="badge badge-subtle" style="font-size: 10px; vertical-align: middle;" title="Some cost lines are restricted from your role">🔒 ${lines.length - visibleLines.length} Restricted</span>` : ''}</div>
+            <div class="text-tertiary" style="font-size: 10px; text-transform: uppercase;">Total Dept Cost Lines</div>
+            <div id="bannerCount" class="kpi-val" style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary);">${visibleLines.length} Account Lines &bull; ${totalEntriesCount} Total Entries ${isPartialView ? `<span class="badge badge-subtle" style="font-size: 10px; vertical-align: middle;" title="Some cost lines are restricted from your role">🔒 ${lines.length - visibleLines.length} Restricted</span>` : ''}</div>
           </div>
-          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
-            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Total Dept Cost Budget (${displayCurrency})</div>
-            <div id="bannerTotal" style="font-size: 1.4rem; font-weight: 700; color: var(--success);">${Utils.formatCurrency(totalCost, displayCurrency)}</div>
-            <div id="bannerTotalUSD" style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); margin-top: 2px;">
-              ${!isAll && entity.currency !== 'USD' ? `≈ ${Utils.formatCurrency(Utils.convertToUSD(totalCost, rate), 'USD')} <span class="text-tertiary" style="font-size: 11px;">(@ ${rate} ${entity.currency}/USD)</span>` : isAll ? `<span class="text-tertiary" style="font-size: 11px;">🌍 Multi-Entity Consolidated USD Budget</span>` : ''}
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-md);">
+            <div class="text-tertiary" style="font-size: 10px; text-transform: uppercase;">Total Dept Cost Budget (${displayCurrency})</div>
+            <div id="bannerTotal" class="kpi-val" style="font-size: 1.15rem; font-weight: 700; color: var(--success);">${Utils.formatCurrency(totalCost, displayCurrency)}</div>
+            <div id="bannerTotalUSD" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">
+              ${!isAll && entity.currency !== 'USD' ? `≈ ${Utils.formatCurrency(Utils.convertToUSD(totalCost, rate), 'USD')} <span class="text-tertiary" style="font-size: 10.5px;">(@ ${rate} ${entity.currency}/USD)</span>` : isAll ? `<span class="text-tertiary" style="font-size: 10.5px;">🌍 Multi-Entity Consolidated USD Budget</span>` : ''}
             </div>
           </div>
-          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
-            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase;">Department</div>
-            <div style="font-size: 1rem; font-weight: 600; color: var(--text-secondary);">${deptDisplayName}</div>
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-md);">
+            <div class="text-tertiary" style="font-size: 10px; text-transform: uppercase;">Department</div>
+            <div style="font-size: 0.92rem; font-weight: 600; color: var(--text-secondary);">${deptDisplayName}</div>
           </div>
         </div>
-        <div class="flex gap-sm items-center">
-          <span class="badge badge-emerald" style="padding: 6px 12px; font-size: 12px;">🔗 Auto-Linked to Input Sheets</span>
+        <div class="flex gap-xs items-center">
+          <span class="badge badge-emerald" style="padding: 4px 10px; font-size: 11px;">🔗 Auto-Linked</span>
           ${!isLocked && (typeof Auth === 'undefined' || Auth.hasPermission('edit', { category: 'prior-period', entityId: entity.id, deptId: dept.id })) ? `
-            <button class="btn btn-secondary btn-sm" onclick="ConfigModule.managePriorPeriodCosts('${yearId}', '${entity.id}', '${dept.id}')" title="Directly update prior period costs in application">📊 Edit Prior Period</button>
+            <button class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 11px;" onclick="ConfigModule.managePriorPeriodCosts('${yearId}', '${entity.id}', '${dept.id}')" title="Directly update prior period costs in application">📊 Prior Period</button>
           ` : ''}
         </div>
       </div>
@@ -5273,6 +5316,17 @@ const BudgetEntryModule = {
       newRecord.name = '';
       newRecord.employeeCode = '';
       newRecord.department = Utils.getDeptName(this._dept, this._entity?.deptPrefix) || '';
+    } else if (this.activeTab === 'fixed-assets') {
+      newRecord.assetType = '';
+      newRecord.model = '';
+      newRecord.employeeName = '';
+      newRecord.name = '';
+      newRecord.isManual = false;
+      newRecord.location = '';
+      newRecord.donor = '';
+      newRecord.activity = '';
+      newRecord.conditionArea = '';
+      newRecord.remarks = '';
     } else if (this.activeTab === 'other-costs' || this.activeTab === 'non-payroll') {
       newRecord.subGroup = 'Operational Costs';
       newRecord.parentAccount = 'Other Expenses';

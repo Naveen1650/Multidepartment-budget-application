@@ -23,25 +23,11 @@ const DashboardModule = {
   },
 
   async _renderInner(container) {
-    const years = await db.getAll(STORES.budgetYears);
-    const departments = Utils.sortDepartments(await db.getAll(STORES.departments));
+    const years = (await db.getAll(STORES.budgetYears)) || [];
+    const rawDepts = (await db.getAll(STORES.departments)) || [];
+    const departments = Utils.sortDepartments(rawDepts);
 
-    let activeYearObj = null;
-    if (App.selectedYear) {
-      activeYearObj = years.find(y => String(y.id) === String(App.selectedYear) || String(y.year) === String(App.selectedYear));
-    }
-    if (!activeYearObj && years.length > 0) {
-      activeYearObj = years[0];
-      App.selectedYear = activeYearObj.id;
-    }
-
-    const yearId = activeYearObj ? activeYearObj.id : (App.selectedYear || '2026');
-    const yearLabel = activeYearObj ? `CY-${activeYearObj.year}` : 'CY-2026';
-
-    const rawEntities = await db.getActiveEntitiesForYear(yearId);
-    const entities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
-
-    // No budget year configured yet — show setup prompt
+    // No budget year configured yet — show setup prompt immediately
     if (years.length === 0) {
       container.innerHTML = `
         <div class="empty-state" style="padding: 60px 20px; text-align: center;">
@@ -55,6 +41,21 @@ const DashboardModule = {
       `;
       return;
     }
+
+    let activeYearObj = null;
+    if (App.selectedYear) {
+      activeYearObj = years.find(y => String(y.id) === String(App.selectedYear) || String(y.year) === String(App.selectedYear));
+    }
+    if (!activeYearObj && years.length > 0) {
+      activeYearObj = years[0];
+      App.selectedYear = activeYearObj.id;
+    }
+
+    const yearId = activeYearObj ? activeYearObj.id : (App.selectedYear || '2026');
+    const yearLabel = activeYearObj ? `CY-${activeYearObj.year}` : 'CY-2026';
+
+    const rawEntities = (await db.getActiveEntitiesForYear(yearId)) || [];
+    const entities = typeof Auth !== 'undefined' ? Auth.filterAccessibleEntities(rawEntities) : rawEntities;
 
     // Apply stored country box arrangement if present
     let orderedEntities = [...entities];

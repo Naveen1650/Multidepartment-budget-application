@@ -117,7 +117,7 @@ const App = {
 
     // Year selector
     const yearSelect = Utils.$('#globalYearSelect');
-    const years = await db.getAll(STORES.budgetYears);
+    const years = (await db.getAll(STORES.budgetYears)) || [];
     
     if (years.length === 0) {
       const currentYear = Utils.getCurrentYear();
@@ -285,120 +285,142 @@ const App = {
     const content = Utils.$('#pageContent');
     const currentUser = typeof Auth !== 'undefined' ? Auth.getCurrentUser() : null;
 
-    // Check page-level permissions
-    if (typeof Auth !== 'undefined' && currentUser && !currentUser.isAdmin && currentUser.roleId !== 'role-admin') {
-      if (this.currentPage === 'reports' && !Auth.hasPermission('view', { category: 'reports' })) {
-        content.innerHTML = `
-          <div class="empty-state" style="padding: 60px 20px;">
-            <div class="empty-icon" style="font-size: 3rem; margin-bottom: 12px;">🔒</div>
-            <h3 style="margin-bottom: 8px;">Access Denied</h3>
-            <p class="text-secondary" style="margin-bottom: 16px;">Your active role (${currentUser.roleName}) does not have permission to view Consolidated Financial Reports.</p>
-            <button class="btn btn-secondary" onclick="App.navigateTo('dashboard')">← Return to Dashboard</button>
-          </div>
-        `;
-        return;
-      }
-
-      if (this.currentPage === 'config-employees') {
-        const canViewEmployees = Auth.hasPermission('view', { category: 'config' }) || Auth.hasPermission('view', { category: 'salaries' }) || Auth.hasPermission('view', { category: 'other-staff' });
-        if (!canViewEmployees) {
+    try {
+      // Check page-level permissions
+      if (typeof Auth !== 'undefined' && currentUser && !currentUser.isAdmin && currentUser.roleId !== 'role-admin') {
+        if (this.currentPage === 'reports' && !Auth.hasPermission('view', { category: 'reports' })) {
           content.innerHTML = `
             <div class="empty-state" style="padding: 60px 20px;">
               <div class="empty-icon" style="font-size: 3rem; margin-bottom: 12px;">🔒</div>
               <h3 style="margin-bottom: 8px;">Access Denied</h3>
-              <p class="text-secondary" style="margin-bottom: 16px;">Your active role (${currentUser.roleName}) does not have permission to access Employees Master.</p>
+              <p class="text-secondary" style="margin-bottom: 16px;">Your active role (${currentUser.roleName}) does not have permission to view Consolidated Financial Reports.</p>
               <button class="btn btn-secondary" onclick="App.navigateTo('dashboard')">← Return to Dashboard</button>
             </div>
           `;
           return;
         }
-      } else if (this.currentPage.startsWith('config-') && !Auth.hasPermission('view', { category: 'config' })) {
+
+        if (this.currentPage === 'config-employees') {
+          const canViewEmployees = Auth.hasPermission('view', { category: 'config' }) || Auth.hasPermission('view', { category: 'salaries' }) || Auth.hasPermission('view', { category: 'other-staff' });
+          if (!canViewEmployees) {
+            content.innerHTML = `
+              <div class="empty-state" style="padding: 60px 20px;">
+                <div class="empty-icon" style="font-size: 3rem; margin-bottom: 12px;">🔒</div>
+                <h3 style="margin-bottom: 8px;">Access Denied</h3>
+                <p class="text-secondary" style="margin-bottom: 16px;">Your active role (${currentUser.roleName}) does not have permission to access Employees Master.</p>
+                <button class="btn btn-secondary" onclick="App.navigateTo('dashboard')">← Return to Dashboard</button>
+              </div>
+            `;
+            return;
+          }
+        } else if (this.currentPage.startsWith('config-') && !Auth.hasPermission('view', { category: 'config' })) {
+          content.innerHTML = `
+            <div class="empty-state" style="padding: 60px 20px;">
+              <div class="empty-icon" style="font-size: 3rem; margin-bottom: 12px;">🔒</div>
+              <h3 style="margin-bottom: 8px;">Access Denied</h3>
+              <p class="text-secondary" style="margin-bottom: 16px;">Your active role (${currentUser.roleName}) does not have permission to access System Configuration.</p>
+              <button class="btn btn-secondary" onclick="App.navigateTo('dashboard')">← Return to Dashboard</button>
+            </div>
+          `;
+          return;
+        }
+      }
+
+      switch (this.currentPage) {
+        case 'dashboard':
+          await DashboardModule.render(content);
+          break;
+        case 'budget-entry':
+          await BudgetEntryModule.render(content);
+          break;
+        case 'reports':
+          await ReportsModule.render(content);
+          break;
+        case 'config-entities':
+          await ConfigModule.renderEntities(content);
+          break;
+        case 'config-departments':
+          await ConfigModule.renderDepartments(content);
+          break;
+        case 'config-budget-year':
+          await ConfigModule.renderBudgetYear(content);
+          break;
+        case 'config-dimensions':
+          await ConfigModule.renderDimensions(content);
+          break;
+        case 'config-coa':
+          await ConfigModule.renderChartOfAccounts(content);
+          break;
+        case 'config-travel-rates':
+          await ConfigModule.renderTravelRates(content);
+          break;
+        case 'config-employees':
+          await ConfigModule.renderEmployeesMaster(content);
+          break;
+        case 'config-imp-rates':
+          await ConfigModule.renderImpUnitRates(content);
+          break;
+        case 'config-roles':
+          await ConfigModule.renderRoles(content);
+          break;
+        case 'config-line-permissions':
+          await ConfigModule.renderLinePermissions(content);
+          break;
+        case 'config-users':
+          await ConfigModule.renderUsers(content);
+          break;
+        case 'config-audit':
+          await ConfigModule.renderAuditLogs(content);
+          break;
+        case 'config-cloud-sync':
+          await ConfigModule.renderCloudSync(content);
+          break;
+        case 'excel-import':
+          await ExcelIOModule.render(content);
+          break;
+        default:
+          content.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-icon">🚧</div>
+              <h3>Page Not Found</h3>
+              <p>The page "${this.currentPage}" doesn't exist yet.</p>
+            </div>
+          `;
+      }
+
+      // Initialize drag-to-resize column handles on all tables
+      if (typeof Utils !== 'undefined' && Utils.TableResizer) {
+        Utils.TableResizer.init(content);
+      }
+
+      // Refresh cloud sync badge on navbar
+      if (typeof CloudSyncModule !== 'undefined') {
+        CloudSyncModule.updateNavbarBadge();
+      }
+
+      // Refresh notification badge on every page render
+      await this.updateNotificationBadge();
+    } catch (err) {
+      console.error(`[App] Error rendering page "${this.currentPage}":`, err);
+      if (content) {
         content.innerHTML = `
-          <div class="empty-state" style="padding: 60px 20px;">
-            <div class="empty-icon" style="font-size: 3rem; margin-bottom: 12px;">🔒</div>
-            <h3 style="margin-bottom: 8px;">Access Denied</h3>
-            <p class="text-secondary" style="margin-bottom: 16px;">Your active role (${currentUser.roleName}) does not have permission to access System Configuration.</p>
-            <button class="btn btn-secondary" onclick="App.navigateTo('dashboard')">← Return to Dashboard</button>
+          <div class="empty-state" style="padding: 60px 20px; max-width: 600px; margin: 40px auto; text-align: center;">
+            <div class="empty-icon" style="font-size: 3.5rem; margin-bottom: 16px;">⚠️</div>
+            <h3 style="margin-bottom: 8px; color: var(--danger, #ef4444);">Page Load Error</h3>
+            <p class="text-secondary" style="margin-bottom: 12px; font-size: 14px;">
+              An unexpected error occurred while loading the <strong>${this.currentPage}</strong> view.
+            </p>
+            <div style="background: var(--bg-tertiary, #1f2937); color: var(--text-muted, #9ca3af); padding: 12px; border-radius: 6px; font-family: monospace; font-size: 12px; text-align: left; margin-bottom: 20px; overflow-x: auto; max-height: 140px;">
+              ${Utils.escapeHtml ? Utils.escapeHtml(err.message || String(err)) : (err.message || String(err))}
+            </div>
+            <div class="flex gap-sm justify-center">
+              <button class="btn btn-primary" onclick="App.renderCurrentPage()">↺ Retry</button>
+              <button class="btn btn-secondary" onclick="App.navigateTo('dashboard')">← Return to Dashboard</button>
+            </div>
           </div>
         `;
-        return;
       }
     }
-
-    switch (this.currentPage) {
-      case 'dashboard':
-        await DashboardModule.render(content);
-        break;
-      case 'budget-entry':
-        await BudgetEntryModule.render(content);
-        break;
-      case 'reports':
-        await ReportsModule.render(content);
-        break;
-      case 'config-entities':
-        await ConfigModule.renderEntities(content);
-        break;
-      case 'config-departments':
-        await ConfigModule.renderDepartments(content);
-        break;
-      case 'config-budget-year':
-        await ConfigModule.renderBudgetYear(content);
-        break;
-      case 'config-dimensions':
-        await ConfigModule.renderDimensions(content);
-        break;
-      case 'config-coa':
-        await ConfigModule.renderChartOfAccounts(content);
-        break;
-      case 'config-travel-rates':
-        await ConfigModule.renderTravelRates(content);
-        break;
-      case 'config-employees':
-        await ConfigModule.renderEmployeesMaster(content);
-        break;
-      case 'config-imp-rates':
-        await ConfigModule.renderImpUnitRates(content);
-        break;
-      case 'config-roles':
-        await ConfigModule.renderRoles(content);
-        break;
-      case 'config-line-permissions':
-        await ConfigModule.renderLinePermissions(content);
-        break;
-      case 'config-users':
-        await ConfigModule.renderUsers(content);
-        break;
-      case 'config-audit':
-        await ConfigModule.renderAuditLogs(content);
-        break;
-      case 'config-cloud-sync':
-        await ConfigModule.renderCloudSync(content);
-        break;
-      case 'excel-import':
-        await ExcelIOModule.render(content);
-        break;
-      default:
-        content.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-icon">🚧</div>
-            <h3>Page Not Found</h3>
-            <p>The page "${this.currentPage}" doesn't exist yet.</p>
-          </div>
-        `;
-    }
-
-    // Initialize drag-to-resize column handles on all tables
-    if (typeof Utils !== 'undefined' && Utils.TableResizer) {
-      Utils.TableResizer.init(content);
-    }
-
-    // Refresh cloud sync badge on navbar
-    if (typeof CloudSyncModule !== 'undefined') {
-      CloudSyncModule.updateNavbarBadge();
-    }
-
-    // Refresh notification badge on every page render
-    await this.updateNotificationBadge();
   },
 
   // ─── Notification System (Tagging & Action Items) ───
