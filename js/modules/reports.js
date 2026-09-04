@@ -1001,12 +1001,15 @@ const ReportsModule = {
       const savedBasisMap = {};
       const savedRemarksMap = {};
       savedTotalCostRecords.forEach(r => {
-        if (r.ledgerCode) {
-          savedBasisMap[r.ledgerCode] = r.basisOfExpense || '';
-          savedRemarksMap[r.ledgerCode] = r.remarks || '';
-        } else if (r.glDescription) {
-          savedBasisMap[r.glDescription] = r.basisOfExpense || '';
-          savedRemarksMap[r.glDescription] = r.remarks || '';
+        const k1 = r.ledgerCode ? Utils.cleanStr(r.ledgerCode) : '';
+        const k2 = r.glDescription ? Utils.cleanStr(r.glDescription) : '';
+        if (k1) {
+          savedBasisMap[k1] = r.basisOfExpense || '';
+          savedRemarksMap[k1] = r.remarks || '';
+        }
+        if (k2) {
+          savedBasisMap[k2] = r.basisOfExpense || '';
+          savedRemarksMap[k2] = r.remarks || '';
         }
       });
 
@@ -1116,11 +1119,6 @@ const ReportsModule = {
           if (bases.length > 0) {
             basis = bases.join('; ');
           }
-
-          if (!remarks) {
-            const rems = matchingOther.map(o => o.remarks).filter(Boolean);
-            if (rems.length > 0) remarks = rems.join('; ');
-          }
         }
 
         const savedBasis = savedBasisMap[account.ledgerCode] || savedBasisMap[account.glDescription];
@@ -1176,7 +1174,7 @@ const ReportsModule = {
             linkedSource: cMeta.label,
             sourceIcon: cMeta.icon,
             basisOfExpense: o.basisOfExpense || '',
-            remarks: o.remarks || '',
+            remarks: savedRemarksMap[Utils.cleanStr(o.ledgerCode)] || savedRemarksMap[Utils.cleanStr(o.glDescription)] || '',
             monthlyValues: months,
             totalCY: total,
             priorCost

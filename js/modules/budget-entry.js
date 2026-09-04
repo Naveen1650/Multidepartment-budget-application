@@ -1604,18 +1604,21 @@ const BudgetEntryModule = {
   },
 
   async saveTotalCostRow(row, yearId, entityId, deptId) {
-    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId)) {
+    if (typeof Auth !== 'undefined' && !Auth.isYearEditable(yearId, entityId)) {
       console.warn(`[BudgetEntry] Blocked saveTotalCostRow: Budget cycle CY-${yearId} is locked.`);
       return;
     }
 
-    const ledgerCode = row.dataset.ledger || '';
-    const glDescription = row.dataset.gldesc || '';
-    const basisOfExpense = row.querySelector('.field-basis')?.value || '';
+    const ledgerCode = row.dataset.ledger && row.dataset.ledger !== 'undefined' ? row.dataset.ledger.trim() : '';
+    const glDescription = row.dataset.gldesc && row.dataset.gldesc !== 'undefined' ? row.dataset.gldesc.trim() : '';
+    const basisOfExpense = row.querySelector('.field-basis')?.value?.trim() || '';
     const remarks = row.querySelector('.field-remarks')?.value || '';
 
     const existing = await db.getBudgetData(STORES.totalCostSheet, yearId, entityId, deptId);
-    let record = existing.find(r => (r.ledgerCode && r.ledgerCode === ledgerCode) || (r.glDescription && r.glDescription === glDescription));
+    let record = existing.find(r => 
+      (ledgerCode && r.ledgerCode && Utils.cleanStr(r.ledgerCode) === Utils.cleanStr(ledgerCode)) ||
+      (glDescription && r.glDescription && Utils.cleanStr(r.glDescription) === Utils.cleanStr(glDescription))
+    );
 
     if (record) {
       record.basisOfExpense = basisOfExpense;
@@ -4819,12 +4822,23 @@ const BudgetEntryModule = {
       savedTotalCostRecords.forEach(r => {
         const k1 = r.ledgerCode ? Utils.cleanStr(r.ledgerCode) : '';
         const k2 = r.glDescription ? Utils.cleanStr(r.glDescription) : '';
-        if (k1) {
-          savedBasisMap[k1] = (savedBasisMap[k1] ? savedBasisMap[k1] + '; ' : '') + (r.basisOfExpense || '');
-          savedRemarksMap[k1] = (savedRemarksMap[k1] ? savedRemarksMap[k1] + '; ' : '') + (r.remarks || '');
-        } else if (k2) {
-          savedBasisMap[k2] = (savedBasisMap[k2] ? savedBasisMap[k2] + '; ' : '') + (r.basisOfExpense || '');
-          savedRemarksMap[k2] = (savedRemarksMap[k2] ? savedRemarksMap[k2] + '; ' : '') + (r.remarks || '');
+        const rem = (r.remarks || '').trim();
+        const basis = (r.basisOfExpense || '').trim();
+
+        if (isAll) {
+          if (k1 && rem) savedRemarksMap[k1] = savedRemarksMap[k1] ? `${savedRemarksMap[k1]}; ${rem}` : rem;
+          if (k2 && rem) savedRemarksMap[k2] = savedRemarksMap[k2] ? `${savedRemarksMap[k2]}; ${rem}` : rem;
+          if (k1 && basis) savedBasisMap[k1] = savedBasisMap[k1] ? `${savedBasisMap[k1]}; ${basis}` : basis;
+          if (k2 && basis) savedBasisMap[k2] = savedBasisMap[k2] ? `${savedBasisMap[k2]}; ${basis}` : basis;
+        } else {
+          if (k1) {
+            savedRemarksMap[k1] = rem;
+            savedBasisMap[k1] = basis;
+          }
+          if (k2) {
+            savedRemarksMap[k2] = rem;
+            savedBasisMap[k2] = basis;
+          }
         }
       });
     }
@@ -4924,10 +4938,6 @@ const BudgetEntryModule = {
 
         rollup = sumMonths(matchingOther);
         entryCount = matchingOther.length;
-        if (!remarks) {
-          const distinctOtherRemarks = Array.from(new Set(matchingOther.map(m => m.remarks).filter(Boolean)));
-          if (distinctOtherRemarks.length > 0) remarks = distinctOtherRemarks.join('; ');
-        }
       }
 
       return {
@@ -4972,6 +4982,9 @@ const BudgetEntryModule = {
         other: { label: 'Other Operating Costs', icon: '📑' }
       };
       const cMeta = catLabels[cg.categoryKey] || catLabels.other;
+      const cgLedger = Utils.cleanStr(cg.ledgerCode);
+      const cgGl = Utils.cleanStr(cg.glDescription);
+      const cgRemarks = savedRemarksMap[cgLedger] || savedRemarksMap[cgGl] || '';
       lines.push({
         subGroup: 'Direct Cost',
         parentAccount: cg.parentAccount,
@@ -4980,7 +4993,7 @@ const BudgetEntryModule = {
         linkedSource: cMeta.label,
         sourceIcon: cMeta.icon,
         entryCount: cg.rows.length,
-        remarks: cg.rows.map(r => r.remarks).filter(Boolean).join('; '),
+        remarks: cgRemarks,
         monthlyValues: rollup.monthlyValues,
         totalCY: rollup.totalCY
       });
@@ -5132,7 +5145,7 @@ const BudgetEntryModule = {
               }
 
               return `
-                <tr data-ledger="${r.ledgerCode}" data-gldesc="${r.glDescription}">
+                <tr data-ledger="${r.ledgerCode || ''}" data-gldesc="${Utils.escapeHtml(r.glDescription || '')}">
                   <td class="sticky-col-1 font-bold"><strong>${r.parentAccount || ''}</strong></td>
                   <td class="sticky-col-2 font-medium">${r.glDescription || ''}</td>
                   <td><code>${r.ledgerCode || ''}</code></td>
@@ -5186,13 +5199,15 @@ const BudgetEntryModule = {
 
     const table = container.querySelector('#totalCostTable');
     if (table) {
-      table.addEventListener('change', (e) => {
+      const handleRemarksSave = (e) => {
         if (isLocked) return;
-        if (e.target.classList.contains('field-remarks')) {
+        if (e.target && e.target.classList && e.target.classList.contains('field-remarks')) {
           const row = e.target.closest('tr');
           if (row) this.saveTotalCostRow(row, yearId, entity.id, dept.id);
         }
-      });
+      };
+      table.addEventListener('change', handleRemarksSave);
+      table.addEventListener('blur', handleRemarksSave, true);
     }
   },
 

@@ -2868,6 +2868,22 @@ const ExcelIOModule = {
         if (p.glDescription) priorMap[Utils.cleanStr(p.glDescription)] = p.priorCost || 0;
       });
 
+      const savedTotalCostRecords = await db.getBudgetData(STORES.totalCostSheet, yearId, entity.id, dept.id);
+      const savedBasisMap = {};
+      const savedRemarksMap = {};
+      savedTotalCostRecords.forEach(r => {
+        const k1 = r.ledgerCode ? Utils.cleanStr(r.ledgerCode) : '';
+        const k2 = r.glDescription ? Utils.cleanStr(r.glDescription) : '';
+        if (k1) {
+          savedBasisMap[k1] = r.basisOfExpense || '';
+          savedRemarksMap[k1] = r.remarks || '';
+        }
+        if (k2) {
+          savedBasisMap[k2] = r.basisOfExpense || '';
+          savedRemarksMap[k2] = r.remarks || '';
+        }
+      });
+
       coa.forEach(account => {
         const targetCat = typeof Auth !== 'undefined' ? Auth.getCategoryForLineItem(account) : null;
         if (typeof Auth !== 'undefined' && targetCat && !Auth.hasPermission('view', { category: targetCat, ledgerCode: account.ledgerCode, glDescription: account.glDescription, parentAccount: account.parentAccount, entityId: entity.id, deptId: dept.id })) {
@@ -2902,7 +2918,9 @@ const ExcelIOModule = {
 
         const priorCost = priorMap[accLedgerClean] || priorMap[accGlClean] || 0;
         const totalUSD = Utils.convertToUSD(rollup.totalCY, rate);
-        rows.push([account.parentAccount, account.glDescription, account.ledgerCode, linkedSource, '', rollup.totalCY, totalUSD, ...rollup.monthlyValues, priorCost, '']);
+        const basis = savedBasisMap[accLedgerClean] || savedBasisMap[accGlClean] || '';
+        const remarks = savedRemarksMap[accLedgerClean] || savedRemarksMap[accGlClean] || '';
+        rows.push([account.parentAccount, account.glDescription, account.ledgerCode, linkedSource, basis, rollup.totalCY, totalUSD, ...rollup.monthlyValues, priorCost, remarks]);
       });
 
       const ws = XLSX.utils.aoa_to_sheet(rows);
@@ -2998,15 +3016,19 @@ const ExcelIOModule = {
             return { monthlyValues: months, totalCY: total };
           };
 
+          const savedTotalCostRecords = await db.getBudgetData(STORES.totalCostSheet, yearId, e.id, d.id);
           const savedBasisMap = {};
           const savedRemarksMap = {};
-          otherCostRows.forEach(r => {
-            if (r.ledgerCode) {
-              savedBasisMap[r.ledgerCode] = r.basisOfExpense || '';
-              savedRemarksMap[r.ledgerCode] = r.remarks || '';
-            } else if (r.glDescription) {
-              savedBasisMap[r.glDescription] = r.basisOfExpense || '';
-              savedRemarksMap[r.glDescription] = r.remarks || '';
+          savedTotalCostRecords.forEach(r => {
+            const k1 = r.ledgerCode ? Utils.cleanStr(r.ledgerCode) : '';
+            const k2 = r.glDescription ? Utils.cleanStr(r.glDescription) : '';
+            if (k1) {
+              savedBasisMap[k1] = r.basisOfExpense || '';
+              savedRemarksMap[k1] = r.remarks || '';
+            }
+            if (k2) {
+              savedBasisMap[k2] = r.basisOfExpense || '';
+              savedRemarksMap[k2] = r.remarks || '';
             }
           });
 
@@ -3018,12 +3040,11 @@ const ExcelIOModule = {
 
             let rollup = { monthlyValues: Array(12).fill(0), totalCY: 0 };
             let linkedSource = '';
-            let basis = savedBasisMap[account.ledgerCode] || savedBasisMap[account.glDescription] || '';
-            let remarks = savedRemarksMap[account.ledgerCode] || savedRemarksMap[account.glDescription] || '';
-
             const accGlClean = Utils.cleanStr(account.glDescription);
             const accLedgerClean = Utils.cleanStr(account.ledgerCode);
             const accParentClean = Utils.cleanStr(account.parentAccount);
+            let basis = savedBasisMap[accLedgerClean] || savedBasisMap[accGlClean] || '';
+            let remarks = savedRemarksMap[accLedgerClean] || savedRemarksMap[accGlClean] || '';
 
             if (accGlClean.includes('salariesandwages') || accLedgerClean.startsWith('911') || accParentClean.includes('salariesandwages')) {
               linkedSource = 'Payroll — Salaries & Wages';
