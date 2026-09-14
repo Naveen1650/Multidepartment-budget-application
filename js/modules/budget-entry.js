@@ -214,7 +214,7 @@ const BudgetEntryModule = {
                 ${activeDepts.map(d => {
                   const codePrefix = selectedEntity.deptPrefix || 'GEN';
                   const deptCode = d.codeTemplate ? d.codeTemplate.replace('{CC}', codePrefix) : d.id.toUpperCase();
-                  return `<option value="${d.id}" title="${d.name}" ${d.id === this.currentDeptId ? 'selected' : ''}>${isAllEntities ? `${deptCode} — ${d.name}` : deptCode}</option>`;
+                  return `<option value="${d.id}" title="${deptCode} — ${d.name}" ${d.id === this.currentDeptId ? 'selected' : ''}>${deptCode}</option>`;
                 }).join('')}
               </select>
             </div>
@@ -5044,7 +5044,7 @@ const BudgetEntryModule = {
     if (isAll && isAllDepts) {
       deptDisplayName = 'All Departments (Consolidated Organization-Wide)';
     } else if (isAll) {
-      deptDisplayName = `${dept.name || dept.id.toUpperCase()} (All Entities Consolidated)`;
+      deptDisplayName = `${dept.codeTemplate || dept.name || dept.id.toUpperCase()} (All Entities Consolidated)`;
     } else if (isAllDepts) {
       deptDisplayName = 'All Departments (Consolidated)';
     }

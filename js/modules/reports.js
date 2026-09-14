@@ -1634,7 +1634,7 @@ const ReportsModule = {
       filteredItems.forEach(item => {
         let val;
         if (dimKey === 'dept') {
-          val = String(item.deptName || item.deptShort || 'General Department').trim();
+          val = String(item.deptShort || item.deptName || 'General Department').trim();
         } else if (dimKey === '5d') {
           val = 'Consolidated 5D Master Budget';
         } else {
@@ -2008,6 +2008,9 @@ const ReportsModule = {
     if (!this.groupWiseFilter) {
       this.groupWiseFilter = 'all'; // all | country | global
     }
+    if (!this.groupWiseDeptGroupFilter) {
+      this.groupWiseDeptGroupFilter = 'all'; // all | PDD | PD | M&E | OPS | RMM | CP | GP | I&L | C&I | PRG EXP
+    }
     if (!this.groupWiseSearchQuery) {
       this.groupWiseSearchQuery = '';
     }
@@ -2323,6 +2326,7 @@ const ReportsModule = {
 
     // Filter by search query if any
     const searchQ = (this.groupWiseSearchQuery || '').toLowerCase().trim();
+    const deptGroupFilter = this.groupWiseDeptGroupFilter || 'all';
 
     const isMonthsCollapsed = this.isMonthsCollapsed();
 
@@ -2358,21 +2362,47 @@ const ReportsModule = {
 
       <!-- Toolbar -->
       <div class="tree-toolbar">
-        <div class="flex items-center gap-sm" style="flex-wrap: wrap;">
-          <label class="form-label" style="margin: 0; font-weight: 600; font-size: 12px;">Scope Filter:</label>
-          <div class="btn-group" id="groupScopeFilterGroup">
-            <button class="btn btn-sm ${this.groupWiseFilter === 'all' ? 'btn-primary' : 'btn-secondary'}" data-scope="all">🌐 All Groups</button>
-            <button class="btn btn-sm ${this.groupWiseFilter === 'country' ? 'btn-primary' : 'btn-secondary'}" data-scope="country">🏢 Country Wise (IN, INDO, BD, NP, US)</button>
-            <button class="btn btn-sm ${this.groupWiseFilter === 'global' ? 'btn-primary' : 'btn-secondary'}" data-scope="global">📱 DP & GL Shared Groups</button>
+        <div class="tree-toolbar-filters">
+          <div class="flex items-center gap-xs">
+            <span class="tree-toolbar-label">Scope:</span>
+            <div class="btn-group" id="groupScopeFilterGroup">
+              <button class="btn btn-sm ${this.groupWiseFilter === 'all' ? 'btn-primary' : 'btn-secondary'}" data-scope="all" title="View all Country and Shared Groups">🌐 All Groups</button>
+              <button class="btn btn-sm ${this.groupWiseFilter === 'country' ? 'btn-primary' : 'btn-secondary'}" data-scope="country" title="Filter to Country Groups (IN, INDO, BD, NP, US)">🏢 Countries</button>
+              <button class="btn btn-sm ${this.groupWiseFilter === 'global' ? 'btn-primary' : 'btn-secondary'}" data-scope="global" title="Filter to Digital Product & Global Shared Groups">📱 DP & GL</button>
+            </div>
           </div>
-          <input type="text" class="form-input form-input-sm" id="groupWiseSearchInput" placeholder="🔍 Filter departments..." value="${this.groupWiseSearchQuery || ''}" style="max-width: 220px; font-size: 12px;">
+
+          <div class="tree-toolbar-divider"></div>
+
+          <div class="flex items-center gap-xs">
+            <span class="tree-toolbar-label">Dept Group:</span>
+            <select id="groupWiseDeptGroupSelect" class="form-select form-select-sm" style="font-size: 12px; height: 31px; min-width: 175px; font-weight: 600;">
+              <option value="all" ${deptGroupFilter === 'all' ? 'selected' : ''}>📁 All Dept Groups</option>
+              <option value="PDD" ${deptGroupFilter === 'PDD' ? 'selected' : ''}>🎨 PDD (Design & Dev)</option>
+              <option value="PD" ${deptGroupFilter === 'PD' ? 'selected' : ''}>🚀 PD (Program Delivery)</option>
+              <option value="M&E" ${deptGroupFilter === 'M&E' ? 'selected' : ''}>📊 M&E (Monitoring & Eval)</option>
+              <option value="OPS" ${deptGroupFilter === 'OPS' ? 'selected' : ''}>⚙️ OPS (Operations & Support)</option>
+              <option value="RMM" ${deptGroupFilter === 'RMM' ? 'selected' : ''}>📣 RMM (Resource Mobilization)</option>
+              <option value="CP" ${deptGroupFilter === 'CP' ? 'selected' : ''}>📱 CP (Country Product)</option>
+              <option value="GP" ${deptGroupFilter === 'GP' ? 'selected' : ''}>🌐 GP (Global Product)</option>
+              <option value="I&L" ${deptGroupFilter === 'I&L' ? 'selected' : ''}>💡 I&L (Innovation & Learning)</option>
+              <option value="C&I" ${deptGroupFilter === 'C&I' ? 'selected' : ''}>📢 C&I (Comms & Influence)</option>
+              <option value="PRG EXP" ${deptGroupFilter === 'PRG EXP' ? 'selected' : ''}>🌍 PRG EXP (Program Exp)</option>
+            </select>
+          </div>
+
+          <div class="tree-toolbar-divider"></div>
+
+          <div>
+            <input type="text" class="form-input form-input-sm" id="groupWiseSearchInput" placeholder="🔍 Search dept code..." value="${this.groupWiseSearchQuery || ''}" style="width: 165px; font-size: 12px; height: 31px;">
+          </div>
         </div>
 
-        <div class="flex items-center gap-xs">
+        <div class="tree-toolbar-actions">
           <button class="btn btn-ghost btn-sm" id="expandAllGroupsBtn" title="Expand all groups and subgroups">📂 Expand All</button>
           <button class="btn btn-ghost btn-sm" id="collapseAllGroupsBtn" title="Collapse all groups">📁 Collapse All</button>
-          <button class="btn btn-secondary btn-sm" id="defaultViewGroupsBtn" title="Reset to default: Countries open, DP & GL collapsed">🔄 Default (Collapse DP & GL)</button>
-          <button class="btn btn-secondary btn-sm flex items-center gap-xs" onclick="ExcelIOModule.exportReport('group-wise')" title="Download report in Excel">
+          <button class="btn btn-secondary btn-sm" id="defaultViewGroupsBtn" title="Reset to default: Countries open, DP & GL collapsed">🔄 Default</button>
+          <button class="btn btn-primary btn-sm flex items-center gap-xs" onclick="ExcelIOModule.exportReport('group-wise')" title="Download comprehensive report in Excel with full department names and details">
             <span>📥</span> Export Excel
           </button>
         </div>
@@ -2398,19 +2428,21 @@ const ReportsModule = {
           <tbody>
             ${visibleGroupKeys.map(grpKey => {
               const grp = tree[grpKey];
-              const isGrpExpanded = !!this._groupWiseTreeState[grpKey];
               const subgroups = Object.values(grp.subgroups).sort((a, b) => (a.order || 99) - (b.order || 99));
 
-              // Filter by search query if present
+              // Filter by Dept Group and Search Query
               const matchingSubgroups = subgroups.filter(sub => {
+                if (deptGroupFilter !== 'all' && sub.key !== deptGroupFilter) return false;
                 if (!searchQ) return true;
                 if (sub.key.toLowerCase().includes(searchQ) || sub.label.toLowerCase().includes(searchQ)) return true;
                 return Object.values(sub.departments).some(d => d.deptCode.toLowerCase().includes(searchQ) || d.deptName.toLowerCase().includes(searchQ));
               });
 
-              if (searchQ && matchingSubgroups.length === 0 && !grpKey.toLowerCase().includes(searchQ) && !grp.name.toLowerCase().includes(searchQ)) {
+              if ((deptGroupFilter !== 'all' || searchQ) && matchingSubgroups.length === 0) {
                 return '';
               }
+
+              const isGrpExpanded = (deptGroupFilter !== 'all' || searchQ) ? true : !!this._groupWiseTreeState[grpKey];
 
               return `
                 <!-- ═══ LEVEL 1: GROUP ROW (${grpKey}) ═══ -->
@@ -2436,7 +2468,7 @@ const ReportsModule = {
                 ${matchingSubgroups.map(sub => {
                   const subKey = sub.key;
                   const stateKey = `${grpKey}__${subKey}`;
-                  const isSubExpanded = searchQ ? true : !!this._groupWiseSubgroupState[stateKey];
+                  const isSubExpanded = (deptGroupFilter !== 'all' || searchQ) ? true : !!this._groupWiseSubgroupState[stateKey];
                   const depts = Object.values(sub.departments).sort((a, b) => a.deptCode.localeCompare(b.deptCode));
 
                   const matchingDepts = depts.filter(d => {
@@ -2470,8 +2502,8 @@ const ReportsModule = {
                         <td class="sticky-col-1">
                           <div class="tree-indent-2 flex items-center gap-xs">
                             <span style="color: var(--text-tertiary); font-size: 11px;">↳</span>
-                            <a href="javascript:void(0)" onclick="DashboardModule.goToDeptBudget('${d.primaryEntityId}', '${d.deptId}')" style="color: var(--accent-primary); font-weight: 600; text-decoration: none;" title="Open Department Budget Entry for CY-${budgetYear}">
-                              <code>${d.deptCode}</code> ${d.deptName} ↗
+                            <a href="javascript:void(0)" onclick="DashboardModule.goToDeptBudget('${d.primaryEntityId}', '${d.deptId}')" style="text-decoration: none;" title="${d.deptCode} — ${d.deptName} (Click to open Department Budget)">
+                              <span class="dept-code-pill">${d.deptCode}</span> ↗
                             </a>
                             ${d.entities.length > 1 ? `<span class="badge badge-subtle" style="font-size: 10px; padding: 1px 5px;" title="Clubbed across entities: ${d.entities.join(', ')}">${d.entities.join('+')}</span>` : ''}
                           </div>
@@ -2628,6 +2660,22 @@ const ReportsModule = {
         this.renderGroupWiseReport(container, yearId, yearObj, entities, departments);
       });
     });
+
+    // Toolbar Dept Group select filter
+    const deptGroupSelect = container.querySelector('#groupWiseDeptGroupSelect');
+    if (deptGroupSelect) {
+      deptGroupSelect.addEventListener('change', (e) => {
+        this.groupWiseDeptGroupFilter = e.target.value;
+        if (this.groupWiseDeptGroupFilter !== 'all') {
+          // Auto-expand all parent groups and the selected subgroup
+          Object.keys(GROUP_CONFIG).forEach(k => {
+            this._groupWiseTreeState[k] = true;
+            this._groupWiseSubgroupState[`${k}__${this.groupWiseDeptGroupFilter}`] = true;
+          });
+        }
+        this.renderGroupWiseReport(container, yearId, yearObj, entities, departments);
+      });
+    }
 
     // Toolbar search filter input
     const searchInput = container.querySelector('#groupWiseSearchInput');

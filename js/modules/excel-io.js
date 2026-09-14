@@ -4156,14 +4156,23 @@ const ExcelIOModule = {
         grandTotalUSD += grp.totals.totalUSD;
       });
 
+      const activeScope = typeof ReportsModule !== 'undefined' ? (ReportsModule.groupWiseFilter || 'all') : 'all';
+      const activeDeptGroup = typeof ReportsModule !== 'undefined' ? (ReportsModule.groupWiseDeptGroupFilter || 'all') : 'all';
+      const filterNotes = [];
+      if (activeScope === 'country') filterNotes.push('Scope: Country Groups (IN, INDO, BD, NP, US)');
+      else if (activeScope === 'global') filterNotes.push('Scope: Digital Product & Global Shared Groups');
+      if (activeDeptGroup !== 'all') filterNotes.push(`Dept Group: ${activeDeptGroup}`);
+
       const rows = [
         [`Noora Health — Group-Wise Hierarchical Budget Report`, `CY-${budgetYear}`],
         ['Consolidated by Organizational Group (Country Groups & Shared DP/GL) and Function Subgroup in USD ($)'],
-        [],
+        filterNotes.length > 0 ? [`Filters Applied: ${filterNotes.join(' | ')}`] : [],
         [
           'Organizational Hierarchy (Group / Function / Department)',
           'Hierarchy Level',
-          'Code',
+          'Dept Code',
+          'Department Name / Description (Full)',
+          'Entity / Scope',
           'Salaries & Wages (USD)',
           'Other Staff & Benefits (USD)',
           'EHA Consultants (USD)',
@@ -4172,16 +4181,29 @@ const ExcelIOModule = {
           `Total Budget CY-${budgetYear} (USD)`,
           ...SEED_DATA.months.map(m => `${m}-${budgetYear} (USD)`)
         ]
-      ];
+      ].filter(r => r.length > 0);
 
-      const sortedGroupKeys = Object.keys(tree).sort((a, b) => (GROUP_CONFIG[a]?.order || 99) - (GROUP_CONFIG[b]?.order || 99));
+      let sortedGroupKeys = Object.keys(tree).sort((a, b) => (GROUP_CONFIG[a]?.order || 99) - (GROUP_CONFIG[b]?.order || 99));
+      if (activeScope === 'country') {
+        sortedGroupKeys = sortedGroupKeys.filter(k => ['IN', 'INDO', 'BD', 'NP', 'US'].includes(k));
+      } else if (activeScope === 'global') {
+        sortedGroupKeys = sortedGroupKeys.filter(k => ['DP', 'GL', 'GEN'].includes(k));
+      }
 
       sortedGroupKeys.forEach(grpKey => {
         const grp = tree[grpKey];
+        let subgroups = Object.values(grp.subgroups).sort((a, b) => (a.order || 99) - (b.order || 99));
+        if (activeDeptGroup !== 'all') {
+          subgroups = subgroups.filter(sub => sub.key === activeDeptGroup);
+        }
+        if (subgroups.length === 0) return;
+
         rows.push([
-          `📁 [${grpKey}] ${grp.name} (${grp.entities})`,
+          `📁 [${grpKey}] ${grp.name}`,
           'Level 1: Group',
           grpKey,
+          grp.name,
+          grp.entities,
           grp.totals.salaries,
           grp.totals.otherStaff,
           grp.totals.eha,
@@ -4191,12 +4213,13 @@ const ExcelIOModule = {
           ...grp.totals.monthlyUSD
         ]);
 
-        const subgroups = Object.values(grp.subgroups).sort((a, b) => (a.order || 99) - (b.order || 99));
         subgroups.forEach(sub => {
           rows.push([
             `   📂 [${sub.key}] ${sub.label}`,
             'Level 2: Function Subgroup',
             sub.key,
+            sub.label,
+            grp.entities,
             sub.totals.salaries,
             sub.totals.otherStaff,
             sub.totals.eha,
@@ -4209,9 +4232,11 @@ const ExcelIOModule = {
           const depts = Object.values(sub.departments).sort((a, b) => a.deptCode.localeCompare(b.deptCode));
           depts.forEach(d => {
             rows.push([
-              `      ↳ ${d.deptCode} — ${d.deptName}`,
+              `      ↳ ${d.deptCode}`,
               'Level 3: Department',
               d.deptCode,
+              d.deptName,
+              d.entities.join(', ') || grp.entities,
               d.totals.salaries,
               d.totals.otherStaff,
               d.totals.eha,
@@ -4227,6 +4252,8 @@ const ExcelIOModule = {
             `   SUBTOTAL: ${sub.key} (${sub.label})`,
             'Subgroup Subtotal',
             sub.key,
+            sub.label,
+            'Subtotal Rollup',
             sub.totals.salaries,
             sub.totals.otherStaff,
             sub.totals.eha,
@@ -4242,6 +4269,8 @@ const ExcelIOModule = {
           `TOTAL FOR GROUP: ${grpKey} (${grp.name})`,
           'Group Total',
           grpKey,
+          grp.name,
+          grp.entities,
           grp.totals.salaries,
           grp.totals.otherStaff,
           grp.totals.eha,
@@ -4260,6 +4289,8 @@ const ExcelIOModule = {
         'ORGANIZATION CONSOLIDATED GRAND TOTAL',
         'Grand Total',
         'ALL-GROUPS',
+        'Consolidated Rollup across all Groups',
+        'All Entities',
         Object.values(tree).reduce((s, g) => s + g.totals.salaries, 0),
         Object.values(tree).reduce((s, g) => s + g.totals.otherStaff, 0),
         Object.values(tree).reduce((s, g) => s + g.totals.eha, 0),
@@ -4271,6 +4302,59 @@ const ExcelIOModule = {
 
       const ws = XLSX.utils.aoa_to_sheet(rows);
       XLSX.utils.book_append_sheet(wb, ws, 'Group-Wise Summary');
+
+      // Add Flat Tabular Department Full Details Sheet with complete department metadata
+      const detailRows = [
+        [`Noora Health — Department Full Details Report`, `CY-${budgetYear}`],
+        ['Complete extraction of all active departments with full codes, full descriptions, functional groups, and monthly budgets in USD ($)'],
+        filterNotes.length > 0 ? [`Filters Applied: ${filterNotes.join(' | ')}`] : [],
+        [
+          'Group Code',
+          'Group Name',
+          'Dept Group Code',
+          'Dept Group Label',
+          'Department Code',
+          'Department Name (Full)',
+          'Entities',
+          'Salaries & Wages (USD)',
+          'Other Staff & Benefits (USD)',
+          'EHA Consultants (USD)',
+          'Fixed Assets (USD)',
+          'Other Operating Costs (USD)',
+          `Total Budget CY-${budgetYear} (USD)`,
+          ...SEED_DATA.months.map(m => `${m}-${budgetYear} (USD)`)
+        ]
+      ].filter(r => r.length > 0);
+
+      const allSortedGroupKeys = Object.keys(tree).sort((a, b) => (GROUP_CONFIG[a]?.order || 99) - (GROUP_CONFIG[b]?.order || 99));
+      allSortedGroupKeys.forEach(grpKey => {
+        const grp = tree[grpKey];
+        const subgroups = Object.values(grp.subgroups).sort((a, b) => (a.order || 99) - (b.order || 99));
+        subgroups.forEach(sub => {
+          const depts = Object.values(sub.departments).sort((a, b) => a.deptCode.localeCompare(b.deptCode));
+          depts.forEach(d => {
+            detailRows.push([
+              grpKey,
+              grp.name,
+              sub.key,
+              sub.label,
+              d.deptCode,
+              d.deptName,
+              d.entities.join(', '),
+              d.totals.salaries,
+              d.totals.otherStaff,
+              d.totals.eha,
+              d.totals.fixedAssets,
+              d.totals.otherCosts,
+              d.totals.totalUSD,
+              ...d.totals.monthlyUSD
+            ]);
+          });
+        });
+      });
+
+      const wsDetails = XLSX.utils.aoa_to_sheet(detailRows);
+      XLSX.utils.book_append_sheet(wb, wsDetails, 'Department Full Details');
     };
 
     // Route to appropriate generators based on export type
