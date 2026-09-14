@@ -62,6 +62,9 @@ const ReportsModule = {
 
       <!-- Report Tabs -->
       <div class="tabs mb-lg" id="reportTabs">
+        <button class="tab ${this.activeTab === 'group-wise' ? 'active' : ''}" data-tab="group-wise">
+          📑 Group-Wise Reports
+        </button>
         <button class="tab ${this.activeTab === 'global-usd' ? 'active' : ''}" data-tab="global-usd">
           🌍 Global USD Consolidated
         </button>
@@ -79,6 +82,26 @@ const ReportsModule = {
       <!-- Report Content Area -->
       <div id="reportContainer"></div>
     `;
+
+    // Export report listeners
+    const exportReportBtn = container.querySelector('#exportReportBtn');
+    if (exportReportBtn) {
+      exportReportBtn.addEventListener('click', () => {
+        if (typeof ExcelIOModule !== 'undefined') {
+          ExcelIOModule.exportReport(this.activeTab);
+        }
+      });
+    }
+
+    const fullBookBtn = container.querySelector('#exportFullBookBtn');
+    if (fullBookBtn) {
+      fullBookBtn.style.display = this.activeTab === 'global-usd' ? 'inline-flex' : 'none';
+      fullBookBtn.addEventListener('click', () => {
+        if (typeof ExcelIOModule !== 'undefined') {
+          ExcelIOModule.exportFullGlobalBudgetBook();
+        }
+      });
+    }
 
     // Year change listener inside reports
     const reportYearSelect = container.querySelector('#reportYearSelect');
@@ -122,9 +145,9 @@ const ReportsModule = {
         container.querySelectorAll('#reportTabs .tab').forEach(tab => tab.classList.remove('active'));
         t.classList.add('active');
         this.activeTab = t.dataset.tab;
-        const fullBookBtn = container.querySelector('#exportFullBookBtn');
-        if (fullBookBtn) {
-          fullBookBtn.style.display = this.activeTab === 'global-usd' ? 'inline-flex' : 'none';
+        const fbBtn = container.querySelector('#exportFullBookBtn');
+        if (fbBtn) {
+          fbBtn.style.display = this.activeTab === 'global-usd' ? 'inline-flex' : 'none';
         }
         this.renderReportContent(container.querySelector('#reportContainer'), activeYearObj.id, activeYearObj, entities, departments);
       });
@@ -134,7 +157,9 @@ const ReportsModule = {
   },
 
   async renderReportContent(container, yearId, yearObj, entities, departments) {
-    if (this.activeTab === 'global-usd') {
+    if (this.activeTab === 'group-wise') {
+      await this.renderGroupWiseReport(container, yearId, yearObj, entities, departments);
+    } else if (this.activeTab === 'global-usd') {
       await this.renderGlobalUSDReport(container, yearId, yearObj, entities);
     } else if (this.activeTab === 'india-consolidated') {
       await this.renderIndiaReport(container, yearId, yearObj, entities);
@@ -1956,6 +1981,662 @@ const ReportsModule = {
     };
 
     await updateView();
+  },
+
+  // ─── Group-Wise Hierarchical Report ───
+  // 3-Level Collapsible Hierarchy:
+  // Level 1: Top Group (Country: IN, INDO, BD, NP, US; Shared/Global: DP, GL)
+  // Level 2: Function Subgroup (PDD, PD, M&E, OPS, RMM, CP, GP, I&L, C&I, PRG EXP)
+  // Level 3: Department Names & Codes with Cost Category Breakdowns & Monthly columns
+  async renderGroupWiseReport(container, yearId, yearObj, entities, departments) {
+    if (!this._groupWiseTreeState) {
+      // Default state: Countries expanded at Level 1, DP & GL collapsed as requested
+      this._groupWiseTreeState = {
+        'IN': true,
+        'INDO': true,
+        'BD': true,
+        'NP': true,
+        'US': true,
+        'DP': false,
+        'GL': false,
+        'GEN': false
+      };
+    }
+    if (!this._groupWiseSubgroupState) {
+      this._groupWiseSubgroupState = {};
+    }
+    if (!this.groupWiseFilter) {
+      this.groupWiseFilter = 'all'; // all | country | global
+    }
+    if (!this.groupWiseSearchQuery) {
+      this.groupWiseSearchQuery = '';
+    }
+
+    const budgetYear = yearObj?.year || 2026;
+    const rates = yearObj?.conversionRates || Utils.getConversionRates(yearObj);
+
+    const GROUP_CONFIG = {
+      'IN': { name: 'India', flag: '🇮🇳', entities: 'NHIPL + YAIF', currency: 'INR', order: 1, type: 'country', badgeClass: 'badge-emerald' },
+      'INDO': { name: 'Indonesia', flag: '🇮🇩', entities: 'NH Indo', currency: 'IDR', order: 2, type: 'country', badgeClass: 'badge-cyan' },
+      'BD': { name: 'Bangladesh', flag: '🇧🇩', entities: 'NHBD', currency: 'BDT', order: 3, type: 'country', badgeClass: 'badge-info' },
+      'NP': { name: 'Nepal', flag: '🇳🇵', entities: 'NH Nepal', currency: 'NPR', order: 4, type: 'country', badgeClass: 'badge-primary' },
+      'US': { name: 'United States', flag: '🇺🇸', entities: 'Noora US (HQ)', currency: 'USD', order: 5, type: 'country', badgeClass: 'badge-subtle' },
+      'DP': { name: 'Digital Product', flag: '📱', entities: 'Digital Product Shared', currency: 'USD', order: 6, type: 'global', badgeClass: 'badge-purple' },
+      'GL': { name: 'Global Shared', flag: '🌍', entities: 'Global Centralized', currency: 'USD', order: 7, type: 'global', badgeClass: 'badge-violet' },
+      'GEN': { name: 'General / Cross-Cutting', flag: '🏷️', entities: 'Cross-Entity Shared', currency: 'USD', order: 8, type: 'global', badgeClass: 'badge-subtle' }
+    };
+
+    const SUBGROUP_CONFIG = {
+      'PDD': { label: 'PDD — Product Design & Development', badgeClass: 'badge-cyan', icon: '🎨', order: 1 },
+      'PD': { label: 'PD — Program Delivery', badgeClass: 'badge-emerald', icon: '🚀', order: 2 },
+      'PDEL': { label: 'PD — Program Delivery', badgeClass: 'badge-emerald', icon: '🚀', order: 2 },
+      'M&E': { label: 'M&E — Monitoring & Evaluation', badgeClass: 'badge-violet', icon: '📊', order: 3 },
+      'OPS': { label: 'OPS — Operations & Support', badgeClass: 'badge-amber', icon: '⚙️', order: 4 },
+      'RMM': { label: 'RMM — Resource Mobilization & Marketing', badgeClass: 'badge-primary', icon: '📣', order: 5 },
+      'CP': { label: 'CP — Country Product', badgeClass: 'badge-info', icon: '📱', order: 1 },
+      'GP': { label: 'GP — Global Product', badgeClass: 'badge-purple', icon: '🌐', order: 2 },
+      'I&L': { label: 'I&L — Innovation & Learning', badgeClass: 'badge-success', icon: '💡', order: 1 },
+      'C&I': { label: 'C&I — Comms & Influence', badgeClass: 'badge-warning', icon: '📢', order: 2 },
+      'PRG EXP': { label: 'PRG EXP — Program Expansion', badgeClass: 'badge-secondary', icon: '🌍', order: 3 },
+      'GEN': { label: 'GEN — General / Cross-Cutting', badgeClass: 'badge-subtle', icon: '🏷️', order: 1 }
+    };
+
+    const parseDeptHierarchy = (dept, countryPrefix) => {
+      const scope = (dept.scope || 'country').toLowerCase();
+      let groupKey = '';
+      let subgroupKey = '';
+      let deptShortCode = '';
+
+      if (scope === 'country') {
+        groupKey = countryPrefix || 'IN';
+        deptShortCode = (dept.codeTemplate || dept.id || '').replace('{CC}', groupKey);
+        const upper = deptShortCode.toUpperCase();
+        if (upper.includes('-PDD-') || upper.includes('PDD')) {
+          subgroupKey = 'PDD';
+        } else if (upper.includes('-PDEL-') || upper.includes('-PD-') || upper.includes('PDEL')) {
+          subgroupKey = 'PD';
+        } else if (upper.includes('-M&E-') || upper.includes('M&E') || upper.includes('ME-')) {
+          subgroupKey = 'M&E';
+        } else if (upper.includes('-OPS-') || upper.includes('OPS')) {
+          subgroupKey = 'OPS';
+        } else if (upper.includes('-RMM') || upper.includes('RMM')) {
+          subgroupKey = 'RMM';
+        } else {
+          subgroupKey = 'OPS';
+        }
+      } else if (scope.startsWith('dp')) {
+        groupKey = 'DP';
+        deptShortCode = dept.codeTemplate || dept.id;
+        const upper = deptShortCode.toUpperCase();
+        if (scope === 'dp-cp' || upper.includes('-CP-') || upper.includes('DP-CP')) {
+          subgroupKey = 'CP';
+        } else if (scope === 'dp-gp' || upper.includes('-GP-') || upper.includes('DP-GP')) {
+          subgroupKey = 'GP';
+        } else {
+          subgroupKey = 'CP';
+        }
+      } else if (scope === 'gl') {
+        groupKey = 'GL';
+        deptShortCode = dept.codeTemplate || dept.id;
+        const upper = deptShortCode.toUpperCase();
+        if (upper.includes('I&L') || upper.includes('I & L')) {
+          subgroupKey = 'I&L';
+        } else if (upper.includes('C&I') || upper.includes('C & I')) {
+          subgroupKey = 'C&I';
+        } else if (upper.includes('OPS')) {
+          subgroupKey = 'OPS';
+        } else if (upper.includes('PRG EXP') || upper.includes('EXP')) {
+          subgroupKey = 'PRG EXP';
+        } else if (upper.includes('RMM')) {
+          subgroupKey = 'RMM';
+        } else {
+          subgroupKey = 'OPS';
+        }
+      } else {
+        groupKey = 'GEN';
+        deptShortCode = dept.codeTemplate || dept.name;
+        subgroupKey = 'GEN';
+      }
+
+      return { groupKey, subgroupKey, deptShortCode };
+    };
+
+    // Category permissions check
+    const canViewSalaries = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'salaries' });
+    const canViewOtherStaff = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'other-staff' });
+    const canViewGratuity = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'gratuity' });
+    const canViewEha = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'eha' });
+    const canViewFixedAssets = typeof Auth === 'undefined' || Auth.hasPermission('view', { category: 'fixed-assets' });
+
+    // Load budget records per entity
+    const entityBudgetData = {};
+    for (const e of entities) {
+      const payroll = (canViewSalaries || canViewOtherStaff || canViewGratuity) ? await db.getEntityBudgetData(STORES.payrollPersonnel, yearId, e.id) : [];
+      const eha = canViewEha ? await db.getEntityBudgetData(STORES.payrollEHA, yearId, e.id) : [];
+      const fixedAssets = canViewFixedAssets ? await db.getEntityBudgetData(STORES.payrollFixedAsset, yearId, e.id) : [];
+      const nonPayroll = await db.getEntityBudgetData(STORES.nonPayrollCost, yearId, e.id);
+      entityBudgetData[e.id] = { payroll, eha, fixedAssets, nonPayroll, rate: rates?.[e.currency] || 1.0 };
+    }
+
+    const calcDeptNumbers = (targetDeptId, targetEntityId, rate) => {
+      const eData = entityBudgetData[targetEntityId];
+      if (!eData) return { salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0) };
+
+      const payrollRows = eData.payroll.filter(p => p.deptId === targetDeptId);
+      const salariesRows = canViewSalaries ? payrollRows.filter(p => !p.subCategory || p.subCategory === 'salaries-wages') : [];
+      const otherStaffRows = (canViewOtherStaff || canViewGratuity) ? payrollRows.filter(p => {
+        if (p.subCategory === 'other-staff-expenses' && !canViewOtherStaff) return false;
+        if (p.subCategory === 'gratuity-bonus' && !canViewGratuity) return false;
+        return p.subCategory === 'other-staff-expenses' || p.subCategory === 'gratuity-bonus';
+      }) : [];
+
+      const ehaRows = canViewEha ? eData.eha.filter(p => p.deptId === targetDeptId) : [];
+      const fixedAssetRows = canViewFixedAssets ? eData.fixedAssets.filter(p => p.deptId === targetDeptId) : [];
+      const nonPayrollRows = eData.nonPayroll.filter(r => {
+        if (r.deptId !== targetDeptId) return false;
+        const targetCat = typeof Auth !== 'undefined' ? Auth.getCategoryForLineItem(r) : 'other-costs';
+        return typeof Auth === 'undefined' || Auth.hasPermission('view', { category: targetCat, ledgerCode: r.ledgerCode, glDescription: r.glDescription, parentAccount: r.parentAccount, entityId: targetEntityId, deptId: targetDeptId });
+      });
+
+      const sumField = (rows) => rows.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
+      const salariesLocal = sumField(salariesRows);
+      const otherStaffLocal = sumField(otherStaffRows);
+      const ehaLocal = sumField(ehaRows);
+      const fixedAssetsLocal = sumField(fixedAssetRows);
+      const otherCostsLocal = sumField(nonPayrollRows);
+
+      const totalLocal = salariesLocal + otherStaffLocal + ehaLocal + fixedAssetsLocal + otherCostsLocal;
+      const totalUSD = totalLocal / rate;
+
+      const monthlyUSD = Array(12).fill(0);
+      [...salariesRows, ...otherStaffRows, ...ehaRows, ...fixedAssetRows, ...nonPayrollRows].forEach(r => {
+        if (r.monthlyValues) {
+          Object.entries(r.monthlyValues).forEach(([mIdx, val]) => {
+            const num = Utils.parseNumber(val);
+            if (num) monthlyUSD[mIdx] += (num / rate);
+          });
+        }
+      });
+
+      return {
+        salaries: salariesLocal / rate,
+        otherStaff: otherStaffLocal / rate,
+        eha: ehaLocal / rate,
+        fixedAssets: fixedAssetsLocal / rate,
+        otherCosts: otherCostsLocal / rate,
+        totalLocal,
+        totalUSD,
+        monthlyUSD
+      };
+    };
+
+    // Build the 3-level tree
+    const tree = {};
+    Object.keys(GROUP_CONFIG).forEach(gKey => {
+      tree[gKey] = {
+        key: gKey,
+        ...GROUP_CONFIG[gKey],
+        subgroups: {},
+        totals: { salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0) }
+      };
+    });
+
+    // 1. Process Country Departments per Entity
+    for (const ent of entities) {
+      const prefix = ent.deptPrefix || 'IN';
+      const grpKey = prefix;
+      if (!tree[grpKey]) continue;
+
+      const entityConfigs = await db.getEntityDeptConfigForYear(yearId, ent.id);
+      let entityDepts = departments.filter(d => d.scope === 'country');
+      if (entityConfigs && entityConfigs.length > 0) {
+        const activeIds = new Set(entityConfigs.filter(c => c.isActive !== false && c.is_active !== false).map(c => c.deptId || c.dept_id));
+        entityDepts = entityDepts.filter(d => activeIds.has(d.id));
+      }
+
+      for (const d of entityDepts) {
+        const { subgroupKey, deptShortCode } = parseDeptHierarchy(d, prefix);
+        if (!tree[grpKey].subgroups[subgroupKey]) {
+          tree[grpKey].subgroups[subgroupKey] = {
+            key: subgroupKey,
+            ...(SUBGROUP_CONFIG[subgroupKey] || { label: subgroupKey, icon: '📁', badgeClass: 'badge-subtle', order: 99 }),
+            departments: {},
+            totals: { salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0) }
+          };
+        }
+
+        const sub = tree[grpKey].subgroups[subgroupKey];
+        if (!sub.departments[d.id]) {
+          sub.departments[d.id] = {
+            deptId: d.id,
+            deptCode: deptShortCode,
+            deptName: d.name,
+            primaryEntityId: ent.id,
+            entities: [ent.shortName],
+            totals: { salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0) }
+          };
+        } else {
+          if (!sub.departments[d.id].entities.includes(ent.shortName)) {
+            sub.departments[d.id].entities.push(ent.shortName);
+          }
+        }
+
+        const nums = calcDeptNumbers(d.id, ent.id, rates?.[ent.currency] || 1.0);
+        const deptEntry = sub.departments[d.id];
+        deptEntry.totals.salaries += nums.salaries;
+        deptEntry.totals.otherStaff += nums.otherStaff;
+        deptEntry.totals.eha += nums.eha;
+        deptEntry.totals.fixedAssets += nums.fixedAssets;
+        deptEntry.totals.otherCosts += nums.otherCosts;
+        deptEntry.totals.totalUSD += nums.totalUSD;
+        deptEntry.totals.totalLocal += nums.totalLocal;
+        nums.monthlyUSD.forEach((v, i) => deptEntry.totals.monthlyUSD[i] += v);
+      }
+    }
+
+    // 2. Process DP, GL, and General Departments across all entities
+    const nonCountryDepts = departments.filter(d => d.scope !== 'country');
+    for (const d of nonCountryDepts) {
+      const { groupKey, subgroupKey, deptShortCode } = parseDeptHierarchy(d, 'GLOBAL');
+      if (!tree[groupKey]) continue;
+
+      if (!tree[groupKey].subgroups[subgroupKey]) {
+        tree[groupKey].subgroups[subgroupKey] = {
+          key: subgroupKey,
+          ...(SUBGROUP_CONFIG[subgroupKey] || { label: subgroupKey, icon: '📁', badgeClass: 'badge-subtle', order: 99 }),
+          departments: {},
+          totals: { salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0) }
+        };
+      }
+
+      const sub = tree[groupKey].subgroups[subgroupKey];
+      if (!sub.departments[d.id]) {
+        sub.departments[d.id] = {
+          deptId: d.id,
+          deptCode: deptShortCode,
+          deptName: d.name,
+          primaryEntityId: entities[0]?.id || 'noora-us',
+          entities: [],
+          totals: { salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0) }
+        };
+      }
+
+      for (const ent of entities) {
+        const nums = calcDeptNumbers(d.id, ent.id, rates?.[ent.currency] || 1.0);
+        if (nums.totalUSD > 0 || nums.totalLocal > 0) {
+          if (!sub.departments[d.id].entities.includes(ent.shortName)) {
+            sub.departments[d.id].entities.push(ent.shortName);
+          }
+          const deptEntry = sub.departments[d.id];
+          deptEntry.totals.salaries += nums.salaries;
+          deptEntry.totals.otherStaff += nums.otherStaff;
+          deptEntry.totals.eha += nums.eha;
+          deptEntry.totals.fixedAssets += nums.fixedAssets;
+          deptEntry.totals.otherCosts += nums.otherCosts;
+          deptEntry.totals.totalUSD += nums.totalUSD;
+          deptEntry.totals.totalLocal += nums.totalLocal;
+          nums.monthlyUSD.forEach((v, i) => deptEntry.totals.monthlyUSD[i] += v);
+        }
+      }
+    }
+
+    // 3. Roll up Subgroup and Group Totals
+    let grandTotalUSD = 0;
+    let countryTotalUSD = 0;
+    let globalTotalUSD = 0;
+    let activeDeptCount = 0;
+
+    Object.values(tree).forEach(grp => {
+      Object.values(grp.subgroups).forEach(sub => {
+        Object.values(sub.departments).forEach(d => {
+          sub.totals.salaries += d.totals.salaries;
+          sub.totals.otherStaff += d.totals.otherStaff;
+          sub.totals.eha += d.totals.eha;
+          sub.totals.fixedAssets += d.totals.fixedAssets;
+          sub.totals.otherCosts += d.totals.otherCosts;
+          sub.totals.totalUSD += d.totals.totalUSD;
+          d.totals.monthlyUSD.forEach((v, i) => sub.totals.monthlyUSD[i] += v);
+          if (d.totals.totalUSD > 0) activeDeptCount++;
+        });
+
+        grp.totals.salaries += sub.totals.salaries;
+        grp.totals.otherStaff += sub.totals.otherStaff;
+        grp.totals.eha += sub.totals.eha;
+        grp.totals.fixedAssets += sub.totals.fixedAssets;
+        grp.totals.otherCosts += sub.totals.otherCosts;
+        grp.totals.totalUSD += sub.totals.totalUSD;
+        sub.totals.monthlyUSD.forEach((v, i) => grp.totals.monthlyUSD[i] += v);
+      });
+
+      grandTotalUSD += grp.totals.totalUSD;
+      if (grp.type === 'country') countryTotalUSD += grp.totals.totalUSD;
+      else globalTotalUSD += grp.totals.totalUSD;
+    });
+
+    // Filter groups by user scope preference
+    let visibleGroupKeys = Object.keys(tree).sort((a, b) => (GROUP_CONFIG[a]?.order || 99) - (GROUP_CONFIG[b]?.order || 99));
+    if (this.groupWiseFilter === 'country') {
+      visibleGroupKeys = visibleGroupKeys.filter(k => GROUP_CONFIG[k]?.type === 'country');
+    } else if (this.groupWiseFilter === 'global') {
+      visibleGroupKeys = visibleGroupKeys.filter(k => GROUP_CONFIG[k]?.type === 'global');
+    }
+
+    // Filter by search query if any
+    const searchQ = (this.groupWiseSearchQuery || '').toLowerCase().trim();
+
+    const isMonthsCollapsed = this.isMonthsCollapsed();
+
+    container.innerHTML = `
+      <!-- KPI Banner -->
+      <div class="card p-md mb-md flex items-center justify-between" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(124, 58, 237, 0.06)); border: 1px solid rgba(37, 99, 235, 0.2); flex-wrap: wrap; gap: 14px;">
+        <div class="flex items-center gap-xl" style="flex-wrap: wrap;">
+          <div>
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Global Total Budget</div>
+            <div style="font-size: 1.45rem; font-weight: 800; color: var(--accent-primary);">${Utils.formatCurrency(grandTotalUSD, 'USD')}</div>
+            <div style="font-size: 11px; color: var(--text-tertiary);">CY-${budgetYear} Consolidated Rollup</div>
+          </div>
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Country Groups (IN, INDO, BD, NP, US)</div>
+            <div style="font-size: 1.25rem; font-weight: 700; color: var(--success);">${Utils.formatCurrency(countryTotalUSD, 'USD')}</div>
+            <div style="font-size: 11px; color: var(--text-tertiary);">${grandTotalUSD > 0 ? ((countryTotalUSD / grandTotalUSD) * 100).toFixed(1) : 0}% of Total Budget</div>
+          </div>
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Shared & Global (DP & GL)</div>
+            <div style="font-size: 1.25rem; font-weight: 700; color: var(--accent-secondary);">${Utils.formatCurrency(globalTotalUSD, 'USD')}</div>
+            <div style="font-size: 11px; color: var(--text-tertiary);">${grandTotalUSD > 0 ? ((globalTotalUSD / grandTotalUSD) * 100).toFixed(1) : 0}% of Total Budget</div>
+          </div>
+          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Budgeted Departments</div>
+            <div style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary);">${activeDeptCount} Active</div>
+            <div style="font-size: 11px; color: var(--text-tertiary);">${departments.length} Master Templates</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-xs">
+          <span class="badge badge-emerald" style="padding: 6px 12px; font-size: 11.5px; font-weight: 600;">📊 3-Level Group Hierarchy</span>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="tree-toolbar">
+        <div class="flex items-center gap-sm" style="flex-wrap: wrap;">
+          <label class="form-label" style="margin: 0; font-weight: 600; font-size: 12px;">Scope Filter:</label>
+          <div class="btn-group" id="groupScopeFilterGroup">
+            <button class="btn btn-sm ${this.groupWiseFilter === 'all' ? 'btn-primary' : 'btn-secondary'}" data-scope="all">🌐 All Groups</button>
+            <button class="btn btn-sm ${this.groupWiseFilter === 'country' ? 'btn-primary' : 'btn-secondary'}" data-scope="country">🏢 Country Wise (IN, INDO, BD, NP, US)</button>
+            <button class="btn btn-sm ${this.groupWiseFilter === 'global' ? 'btn-primary' : 'btn-secondary'}" data-scope="global">📱 DP & GL Shared Groups</button>
+          </div>
+          <input type="text" class="form-input form-input-sm" id="groupWiseSearchInput" placeholder="🔍 Filter departments..." value="${this.groupWiseSearchQuery || ''}" style="max-width: 220px; font-size: 12px;">
+        </div>
+
+        <div class="flex items-center gap-xs">
+          <button class="btn btn-ghost btn-sm" id="expandAllGroupsBtn" title="Expand all groups and subgroups">📂 Expand All</button>
+          <button class="btn btn-ghost btn-sm" id="collapseAllGroupsBtn" title="Collapse all groups">📁 Collapse All</button>
+          <button class="btn btn-secondary btn-sm" id="defaultViewGroupsBtn" title="Reset to default: Countries open, DP & GL collapsed">🔄 Default (Collapse DP & GL)</button>
+          <button class="btn btn-secondary btn-sm flex items-center gap-xs" onclick="ExcelIOModule.exportReport('group-wise')" title="Download report in Excel">
+            <span>📥</span> Export Excel
+          </button>
+        </div>
+      </div>
+
+      <!-- Hierarchical Table Container -->
+      <div class="table-container">
+        <table class="data-table tree-table ${isMonthsCollapsed ? 'months-collapsed' : ''}" id="groupWiseTable">
+          <thead>
+            <tr>
+              <th class="sticky-col-1" style="min-width: 380px;">Organizational Group / Function / Department</th>
+              <th class="num">Salaries & Wages</th>
+              <th class="num">Other Staff & Benefits</th>
+              <th class="num">EHA Consultants</th>
+              <th class="num">Fixed Assets</th>
+              <th class="num">Other Costs</th>
+              <th class="num font-bold total-toggle-th month-group" data-toggle-months title="${isMonthsCollapsed ? 'Click to expand monthly columns (Jan–Dec)' : 'Click to collapse monthly columns (Jan–Dec)'}">
+                Total CY-${budgetYear} (USD $) <span class="months-toggle-arrow">${isMonthsCollapsed ? '&#9654;' : '&#9664;'}</span>
+              </th>
+              ${SEED_DATA.months.map(m => `<th class="num month-group">${m}-${budgetYear}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${visibleGroupKeys.map(grpKey => {
+              const grp = tree[grpKey];
+              const isGrpExpanded = !!this._groupWiseTreeState[grpKey];
+              const subgroups = Object.values(grp.subgroups).sort((a, b) => (a.order || 99) - (b.order || 99));
+
+              // Filter by search query if present
+              const matchingSubgroups = subgroups.filter(sub => {
+                if (!searchQ) return true;
+                if (sub.key.toLowerCase().includes(searchQ) || sub.label.toLowerCase().includes(searchQ)) return true;
+                return Object.values(sub.departments).some(d => d.deptCode.toLowerCase().includes(searchQ) || d.deptName.toLowerCase().includes(searchQ));
+              });
+
+              if (searchQ && matchingSubgroups.length === 0 && !grpKey.toLowerCase().includes(searchQ) && !grp.name.toLowerCase().includes(searchQ)) {
+                return '';
+              }
+
+              return `
+                <!-- ═══ LEVEL 1: GROUP ROW (${grpKey}) ═══ -->
+                <tr class="tree-row-group" data-group-id="${grpKey}" data-level="1" title="Click to ${isGrpExpanded ? 'collapse' : 'expand'} group">
+                  <td class="sticky-col-1">
+                    <div class="flex items-center">
+                      <span class="tree-caret ${isGrpExpanded ? 'open' : ''}">▶</span>
+                      <span class="tree-badge-group ${grp.badgeClass}">${grp.flag} ${grpKey}</span>
+                      <strong style="margin-left: 8px; font-size: 13.5px;">${grp.name}</strong>
+                      <span class="text-tertiary" style="margin-left: 6px; font-size: 11.5px; font-weight: 500;">(${grp.entities})</span>
+                    </div>
+                  </td>
+                  <td class="num font-bold">${Utils.formatCurrency(grp.totals.salaries, 'USD')}</td>
+                  <td class="num font-bold">${Utils.formatCurrency(grp.totals.otherStaff, 'USD')}</td>
+                  <td class="num font-bold">${Utils.formatCurrency(grp.totals.eha, 'USD')}</td>
+                  <td class="num font-bold">${Utils.formatCurrency(grp.totals.fixedAssets, 'USD')}</td>
+                  <td class="num font-bold">${Utils.formatCurrency(grp.totals.otherCosts, 'USD')}</td>
+                  <td class="num font-bold" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(grp.totals.totalUSD, 'USD')}</td>
+                  ${grp.totals.monthlyUSD.map(v => `<td class="num month-col font-mono font-bold">${Utils.formatCurrency(v, 'USD')}</td>`).join('')}
+                </tr>
+
+                <!-- ═══ LEVEL 2: SUBGROUP ROWS ═══ -->
+                ${matchingSubgroups.map(sub => {
+                  const subKey = sub.key;
+                  const stateKey = `${grpKey}__${subKey}`;
+                  const isSubExpanded = searchQ ? true : !!this._groupWiseSubgroupState[stateKey];
+                  const depts = Object.values(sub.departments).sort((a, b) => a.deptCode.localeCompare(b.deptCode));
+
+                  const matchingDepts = depts.filter(d => {
+                    if (!searchQ) return true;
+                    return d.deptCode.toLowerCase().includes(searchQ) || d.deptName.toLowerCase().includes(searchQ) || subKey.toLowerCase().includes(searchQ);
+                  });
+
+                  return `
+                    <!-- Level 2 Row -->
+                    <tr class="tree-row-subgroup ${isGrpExpanded ? '' : 'tree-row-hidden'}" data-group-id="${grpKey}" data-subgroup-id="${subKey}" data-level="2" title="Click to ${isSubExpanded ? 'collapse' : 'expand'} subgroup">
+                      <td class="sticky-col-1">
+                        <div class="tree-indent-1 flex items-center">
+                          <span class="tree-caret ${isSubExpanded ? 'open' : ''}">▶</span>
+                          <span class="tree-badge-subgroup">${subKey}</span>
+                          <span style="margin-left: 8px; font-weight: 600;">${sub.icon} ${sub.label}</span>
+                          <span class="badge badge-subtle" style="margin-left: 6px; font-size: 10.5px;">${matchingDepts.length} Depts</span>
+                        </div>
+                      </td>
+                      <td class="num font-medium">${Utils.formatCurrency(sub.totals.salaries, 'USD')}</td>
+                      <td class="num font-medium">${Utils.formatCurrency(sub.totals.otherStaff, 'USD')}</td>
+                      <td class="num font-medium">${Utils.formatCurrency(sub.totals.eha, 'USD')}</td>
+                      <td class="num font-medium">${Utils.formatCurrency(sub.totals.fixedAssets, 'USD')}</td>
+                      <td class="num font-medium">${Utils.formatCurrency(sub.totals.otherCosts, 'USD')}</td>
+                      <td class="num font-bold">${Utils.formatCurrency(sub.totals.totalUSD, 'USD')}</td>
+                      ${sub.totals.monthlyUSD.map(v => `<td class="num month-col font-mono">${Utils.formatCurrency(v, 'USD')}</td>`).join('')}
+                    </tr>
+
+                    <!-- ═══ LEVEL 3: DEPARTMENT ROWS ═══ -->
+                    ${matchingDepts.map(d => `
+                      <tr class="tree-row-dept ${(isGrpExpanded && isSubExpanded) ? '' : 'tree-row-hidden'}" data-group-id="${grpKey}" data-subgroup-id="${subKey}" data-dept-id="${d.deptId}" data-level="3">
+                        <td class="sticky-col-1">
+                          <div class="tree-indent-2 flex items-center gap-xs">
+                            <span style="color: var(--text-tertiary); font-size: 11px;">↳</span>
+                            <a href="javascript:void(0)" onclick="DashboardModule.goToDeptBudget('${d.primaryEntityId}', '${d.deptId}')" style="color: var(--accent-primary); font-weight: 600; text-decoration: none;" title="Open Department Budget Entry for CY-${budgetYear}">
+                              <code>${d.deptCode}</code> ${d.deptName} ↗
+                            </a>
+                            ${d.entities.length > 1 ? `<span class="badge badge-subtle" style="font-size: 10px; padding: 1px 5px;" title="Clubbed across entities: ${d.entities.join(', ')}">${d.entities.join('+')}</span>` : ''}
+                          </div>
+                        </td>
+                        <td class="num font-mono">${d.totals.salaries > 0 ? Utils.formatCurrency(d.totals.salaries, 'USD') : '—'}</td>
+                        <td class="num font-mono">${d.totals.otherStaff > 0 ? Utils.formatCurrency(d.totals.otherStaff, 'USD') : '—'}</td>
+                        <td class="num font-mono">${d.totals.eha > 0 ? Utils.formatCurrency(d.totals.eha, 'USD') : '—'}</td>
+                        <td class="num font-mono">${d.totals.fixedAssets > 0 ? Utils.formatCurrency(d.totals.fixedAssets, 'USD') : '—'}</td>
+                        <td class="num font-mono">${d.totals.otherCosts > 0 ? Utils.formatCurrency(d.totals.otherCosts, 'USD') : '—'}</td>
+                        <td class="num font-bold font-mono" style="${d.totals.totalUSD > 0 ? 'color: var(--accent-primary);' : 'color: var(--text-tertiary);'}">
+                          ${d.totals.totalUSD > 0 ? Utils.formatCurrency(d.totals.totalUSD, 'USD') : '—'}
+                        </td>
+                        ${d.totals.monthlyUSD.map(v => `
+                          <td class="num month-col font-mono" style="${v > 0 ? 'font-weight: 600;' : 'color: var(--text-tertiary);'}">
+                            ${v > 0 ? Utils.formatCurrency(v, 'USD') : '—'}
+                          </td>
+                        `).join('')}
+                      </tr>
+                    `).join('')}
+                  `;
+                }).join('')}
+              `;
+            }).join('')}
+
+            <!-- ═══ GRAND ORGANIZATION TOTAL ROW ═══ -->
+            <tr class="tree-row-grand-total total-row">
+              <td class="sticky-col-1 font-bold" style="font-size: 14px;">
+                <div class="flex items-center gap-xs">
+                  <span>🌐</span> <span>ORGANIZATION CONSOLIDATED GRAND TOTAL</span>
+                </div>
+              </td>
+              <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(Object.values(tree).reduce((s, g) => s + g.totals.salaries, 0), 'USD')}</td>
+              <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(Object.values(tree).reduce((s, g) => s + g.totals.otherStaff, 0), 'USD')}</td>
+              <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(Object.values(tree).reduce((s, g) => s + g.totals.eha, 0), 'USD')}</td>
+              <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(Object.values(tree).reduce((s, g) => s + g.totals.fixedAssets, 0), 'USD')}</td>
+              <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(Object.values(tree).reduce((s, g) => s + g.totals.otherCosts, 0), 'USD')}</td>
+              <td class="num font-bold" style="color: var(--accent-primary); font-size: 1.15rem;">
+                ${Utils.formatCurrency(grandTotalUSD, 'USD')}
+              </td>
+              ${(() => {
+                const grandMonthly = Array(12).fill(0);
+                Object.values(tree).forEach(g => g.totals.monthlyUSD.forEach((v, i) => grandMonthly[i] += v));
+                return grandMonthly.map(v => `<td class="num month-col font-mono font-bold" style="color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(v, 'USD')}</td>`).join('');
+              })()}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    // ─── Attach Interactive Event Listeners ───
+    const table = container.querySelector('#groupWiseTable');
+
+    // Delegated click handler for Level 1 and Level 2 rows
+    if (table) {
+      table.addEventListener('click', (e) => {
+        // If clicked on link or monthly toggle header, ignore
+        if (e.target.closest('a') || e.target.closest('[data-toggle-months]')) return;
+
+        // Level 1 Row Click (Group)
+        const rowL1 = e.target.closest('.tree-row-group');
+        if (rowL1) {
+          const grpKey = rowL1.dataset.groupId;
+          if (!grpKey) return;
+          const isExpanding = !this._groupWiseTreeState[grpKey];
+          this._groupWiseTreeState[grpKey] = isExpanding;
+
+          const caret = rowL1.querySelector('.tree-caret');
+          if (caret) caret.classList.toggle('open', isExpanding);
+
+          const l2Rows = table.querySelectorAll(`.tree-row-subgroup[data-group-id="${grpKey}"]`);
+          const l3Rows = table.querySelectorAll(`.tree-row-dept[data-group-id="${grpKey}"]`);
+
+          if (isExpanding) {
+            l2Rows.forEach(r => r.classList.remove('tree-row-hidden'));
+            l2Rows.forEach(r => {
+              const subKey = r.dataset.subgroupId;
+              const subStateKey = `${grpKey}__${subKey}`;
+              if (this._groupWiseSubgroupState[subStateKey]) {
+                table.querySelectorAll(`.tree-row-dept[data-group-id="${grpKey}"][data-subgroup-id="${subKey}"]`).forEach(d => d.classList.remove('tree-row-hidden'));
+              }
+            });
+          } else {
+            l2Rows.forEach(r => r.classList.add('tree-row-hidden'));
+            l3Rows.forEach(r => r.classList.add('tree-row-hidden'));
+          }
+          return;
+        }
+
+        // Level 2 Row Click (Subgroup)
+        const rowL2 = e.target.closest('.tree-row-subgroup');
+        if (rowL2) {
+          const grpKey = rowL2.dataset.groupId;
+          const subKey = rowL2.dataset.subgroupId;
+          const stateKey = `${grpKey}__${subKey}`;
+          const isExpanding = !this._groupWiseSubgroupState[stateKey];
+          this._groupWiseSubgroupState[stateKey] = isExpanding;
+
+          const caret = rowL2.querySelector('.tree-caret');
+          if (caret) caret.classList.toggle('open', isExpanding);
+
+          const l3Rows = table.querySelectorAll(`.tree-row-dept[data-group-id="${grpKey}"][data-subgroup-id="${subKey}"]`);
+          l3Rows.forEach(r => r.classList.toggle('tree-row-hidden', !isExpanding));
+        }
+      });
+    }
+
+    // Toolbar buttons: Expand All
+    container.querySelector('#expandAllGroupsBtn')?.addEventListener('click', () => {
+      Object.keys(GROUP_CONFIG).forEach(k => {
+        this._groupWiseTreeState[k] = true;
+      });
+      table?.querySelectorAll('.tree-row-group .tree-caret').forEach(c => c.classList.add('open'));
+      table?.querySelectorAll('.tree-row-subgroup').forEach(r => {
+        r.classList.remove('tree-row-hidden');
+        const grpKey = r.dataset.groupId;
+        const subKey = r.dataset.subgroupId;
+        this._groupWiseSubgroupState[`${grpKey}__${subKey}`] = true;
+        r.querySelector('.tree-caret')?.classList.add('open');
+      });
+      table?.querySelectorAll('.tree-row-dept').forEach(r => r.classList.remove('tree-row-hidden'));
+    });
+
+    // Toolbar buttons: Collapse All
+    container.querySelector('#collapseAllGroupsBtn')?.addEventListener('click', () => {
+      Object.keys(GROUP_CONFIG).forEach(k => {
+        this._groupWiseTreeState[k] = false;
+      });
+      table?.querySelectorAll('.tree-caret').forEach(c => c.classList.remove('open'));
+      table?.querySelectorAll('.tree-row-subgroup').forEach(r => r.classList.add('tree-row-hidden'));
+      table?.querySelectorAll('.tree-row-dept').forEach(r => r.classList.add('tree-row-hidden'));
+    });
+
+    // Toolbar buttons: Default View (Countries open, DP & GL collapsed)
+    container.querySelector('#defaultViewGroupsBtn')?.addEventListener('click', () => {
+      this._groupWiseTreeState = {
+        'IN': true,
+        'INDO': true,
+        'BD': true,
+        'NP': true,
+        'US': true,
+        'DP': false,
+        'GL': false,
+        'GEN': false
+      };
+      this._groupWiseSubgroupState = {};
+      this.renderGroupWiseReport(container, yearId, yearObj, entities, departments);
+    });
+
+    // Toolbar scope filter buttons
+    container.querySelectorAll('#groupScopeFilterGroup button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.groupWiseFilter = btn.dataset.scope;
+        this.renderGroupWiseReport(container, yearId, yearObj, entities, departments);
+      });
+    });
+
+    // Toolbar search filter input
+    const searchInput = container.querySelector('#groupWiseSearchInput');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        this.groupWiseSearchQuery = e.target.value;
+        this.renderGroupWiseReport(container, yearId, yearObj, entities, departments);
+      });
+    }
   }
 };
 

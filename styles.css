@@ -2930,3 +2930,122 @@ tr.exp-breakdown-row td {
   height: 100%;
   overflow: auto;
 }
+
+/* ─── Hierarchical Group-Wise Report Styles ─── */
+.tree-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tree-table th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #f8fafc;
+}
+
+.tree-row-group {
+  background: #f1f5f9;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+  border-top: 2px solid var(--border-default);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tree-row-group:hover {
+  background: #e2e8f0;
+}
+
+.tree-row-subgroup {
+  background: #f8fafc;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+  border-bottom: 1px dashed var(--border-subtle);
+}
+
+.tree-row-subgroup:hover {
+  background: #edf2f7;
+}
+
+.tree-row-dept {
+  background: #ffffff;
+  transition: background-color 0.15s ease;
+}
+
+.tree-row-dept:hover {
+  background: #f1f5f9;
+}
+
+.tree-row-grand-total {
+  background: #f0fdf4 !important;
+  border-top: 3px double var(--accent-success) !important;
+  border-bottom: 2px solid var(--accent-success) !important;
+  font-weight: 800;
+}
+
+.tree-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.tree-caret.open {
+  transform: rotate(90deg);
+  color: var(--accent-primary);
+}
+
+.tree-indent-1 {
+  padding-left: 28px !important;
+}
+
+.tree-indent-2 {
+  padding-left: 52px !important;
+}
+
+.tree-row-hidden {
+  display: none !important;
+}
+
+.tree-badge-group {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tree-badge-subgroup {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(99, 102, 241, 0.08);
+  color: #4f46e5;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.tree-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+

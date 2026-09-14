@@ -3894,8 +3894,391 @@ const ExcelIOModule = {
       XLSX.utils.book_append_sheet(wb, ws, sheetTitle.slice(0, 31));
     };
 
+    // Helper: Add Group-Wise Hierarchical Summary Sheet (Country Groups + DP/GL)
+    const addGroupWiseReportSheet = async () => {
+      const GROUP_CONFIG = {
+        'IN': { name: 'India', flag: '🇮🇳', entities: 'NHIPL + YAIF', currency: 'INR', order: 1 },
+        'INDO': { name: 'Indonesia', flag: '🇮🇩', entities: 'NH Indo', currency: 'IDR', order: 2 },
+        'BD': { name: 'Bangladesh', flag: '🇧🇩', entities: 'NHBD', currency: 'BDT', order: 3 },
+        'NP': { name: 'Nepal', flag: '🇳🇵', entities: 'NH Nepal', currency: 'NPR', order: 4 },
+        'US': { name: 'United States', flag: '🇺🇸', entities: 'Noora US (HQ)', currency: 'USD', order: 5 },
+        'DP': { name: 'Digital Product', flag: '📱', entities: 'Digital Product Shared', currency: 'USD', order: 6 },
+        'GL': { name: 'Global Shared', flag: '🌍', entities: 'Global Centralized', currency: 'USD', order: 7 },
+        'GEN': { name: 'General / Cross-Cutting', flag: '🏷️', entities: 'Cross-Entity Shared', currency: 'USD', order: 8 }
+      };
+
+      const SUBGROUP_CONFIG = {
+        'PDD': { label: 'PDD — Product Design & Development', order: 1 },
+        'PD': { label: 'PD — Program Delivery', order: 2 },
+        'PDEL': { label: 'PD — Program Delivery', order: 2 },
+        'M&E': { label: 'M&E — Monitoring & Evaluation', order: 3 },
+        'OPS': { label: 'OPS — Operations & Support', order: 4 },
+        'RMM': { label: 'RMM — Resource Mobilization & Marketing', order: 5 },
+        'CP': { label: 'CP — Country Product', order: 1 },
+        'GP': { label: 'GP — Global Product', order: 2 },
+        'I&L': { label: 'I&L — Innovation & Learning', order: 1 },
+        'C&I': { label: 'C&I — Comms & Influence', order: 2 },
+        'PRG EXP': { label: 'PRG EXP — Program Expansion', order: 3 },
+        'GEN': { label: 'GEN — General / Cross-Cutting', order: 1 }
+      };
+
+      const parseDeptHierarchy = (dept, countryPrefix) => {
+        const scope = (dept.scope || 'country').toLowerCase();
+        let groupKey = '';
+        let subgroupKey = '';
+        let deptShortCode = '';
+
+        if (scope === 'country') {
+          groupKey = countryPrefix || 'IN';
+          deptShortCode = (dept.codeTemplate || dept.id || '').replace('{CC}', groupKey);
+          const upper = deptShortCode.toUpperCase();
+          if (upper.includes('-PDD-') || upper.includes('PDD')) subgroupKey = 'PDD';
+          else if (upper.includes('-PDEL-') || upper.includes('-PD-') || upper.includes('PDEL')) subgroupKey = 'PD';
+          else if (upper.includes('-M&E-') || upper.includes('M&E') || upper.includes('ME-')) subgroupKey = 'M&E';
+          else if (upper.includes('-OPS-') || upper.includes('OPS')) subgroupKey = 'OPS';
+          else if (upper.includes('-RMM') || upper.includes('RMM')) subgroupKey = 'RMM';
+          else subgroupKey = 'OPS';
+        } else if (scope.startsWith('dp')) {
+          groupKey = 'DP';
+          deptShortCode = dept.codeTemplate || dept.id;
+          const upper = deptShortCode.toUpperCase();
+          if (scope === 'dp-cp' || upper.includes('-CP-') || upper.includes('DP-CP')) subgroupKey = 'CP';
+          else if (scope === 'dp-gp' || upper.includes('-GP-') || upper.includes('DP-GP')) subgroupKey = 'GP';
+          else subgroupKey = 'CP';
+        } else if (scope === 'gl') {
+          groupKey = 'GL';
+          deptShortCode = dept.codeTemplate || dept.id;
+          const upper = deptShortCode.toUpperCase();
+          if (upper.includes('I&L') || upper.includes('I & L')) subgroupKey = 'I&L';
+          else if (upper.includes('C&I') || upper.includes('C & I')) subgroupKey = 'C&I';
+          else if (upper.includes('OPS')) subgroupKey = 'OPS';
+          else if (upper.includes('PRG EXP') || upper.includes('EXP')) subgroupKey = 'PRG EXP';
+          else if (upper.includes('RMM')) subgroupKey = 'RMM';
+          else subgroupKey = 'OPS';
+        } else {
+          groupKey = 'GEN';
+          deptShortCode = dept.codeTemplate || dept.name;
+          subgroupKey = 'GEN';
+        }
+
+        return { groupKey, subgroupKey, deptShortCode };
+      };
+
+      const entityBudgetData = {};
+      for (const e of entities) {
+        const payroll = (canViewSalaries || canViewOtherStaff || canViewGratuity) ? await db.getEntityBudgetData(STORES.payrollPersonnel, yearId, e.id) : [];
+        const eha = canViewEha ? await db.getEntityBudgetData(STORES.payrollEHA, yearId, e.id) : [];
+        const fixedAssets = canViewFixedAssets ? await db.getEntityBudgetData(STORES.payrollFixedAsset, yearId, e.id) : [];
+        const nonPayroll = await db.getEntityBudgetData(STORES.nonPayrollCost, yearId, e.id);
+        entityBudgetData[e.id] = { payroll, eha, fixedAssets, nonPayroll, rate: activeYearObj.conversionRates?.[e.currency] || 1.0 };
+      }
+
+      const calcDeptNumbers = (targetDeptId, targetEntityId, rate) => {
+        const eData = entityBudgetData[targetEntityId];
+        if (!eData) return { salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0) };
+
+        const payrollRows = eData.payroll.filter(p => p.deptId === targetDeptId);
+        const salariesRows = canViewSalaries ? payrollRows.filter(p => !p.subCategory || p.subCategory === 'salaries-wages') : [];
+        const otherStaffRows = (canViewOtherStaff || canViewGratuity) ? payrollRows.filter(p => {
+          if (p.subCategory === 'other-staff-expenses' && !canViewOtherStaff) return false;
+          if (p.subCategory === 'gratuity-bonus' && !canViewGratuity) return false;
+          return p.subCategory === 'other-staff-expenses' || p.subCategory === 'gratuity-bonus';
+        }) : [];
+
+        const ehaRows = canViewEha ? eData.eha.filter(p => p.deptId === targetDeptId) : [];
+        const fixedAssetRows = canViewFixedAssets ? eData.fixedAssets.filter(p => p.deptId === targetDeptId) : [];
+        const nonPayrollRows = eData.nonPayroll.filter(r => {
+          if (r.deptId !== targetDeptId) return false;
+          const targetCat = typeof Auth !== 'undefined' ? Auth.getCategoryForLineItem(r) : 'other-costs';
+          return typeof Auth === 'undefined' || Auth.hasPermission('view', { category: targetCat, ledgerCode: r.ledgerCode, glDescription: r.glDescription, parentAccount: r.parentAccount, entityId: targetEntityId, deptId: targetDeptId });
+        });
+
+        const sumField = (rows) => rows.reduce((sum, r) => sum + (Utils.parseNumber(r.totalCY) || 0), 0);
+        const salariesLocal = sumField(salariesRows);
+        const otherStaffLocal = sumField(otherStaffRows);
+        const ehaLocal = sumField(ehaRows);
+        const fixedAssetsLocal = sumField(fixedAssetRows);
+        const otherCostsLocal = sumField(nonPayrollRows);
+
+        const totalLocal = salariesLocal + otherStaffLocal + ehaLocal + fixedAssetsLocal + otherCostsLocal;
+        const totalUSD = totalLocal / rate;
+
+        const monthlyUSD = Array(12).fill(0);
+        [...salariesRows, ...otherStaffRows, ...ehaRows, ...fixedAssetRows, ...nonPayrollRows].forEach(r => {
+          if (r.monthlyValues) {
+            Object.entries(r.monthlyValues).forEach(([mIdx, val]) => {
+              const num = Utils.parseNumber(val);
+              if (num) monthlyUSD[mIdx] += (num / rate);
+            });
+          }
+        });
+
+        return {
+          salaries: salariesLocal / rate,
+          otherStaff: otherStaffLocal / rate,
+          eha: ehaLocal / rate,
+          fixedAssets: fixedAssetsLocal / rate,
+          otherCosts: otherCostsLocal / rate,
+          totalLocal,
+          totalUSD,
+          monthlyUSD
+        };
+      };
+
+      const tree = {};
+      Object.keys(GROUP_CONFIG).forEach(gKey => {
+        tree[gKey] = {
+          key: gKey,
+          ...GROUP_CONFIG[gKey],
+          subgroups: {},
+          totals: { salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0) }
+        };
+      });
+
+      for (const ent of entities) {
+        const prefix = ent.deptPrefix || 'IN';
+        const grpKey = prefix;
+        if (!tree[grpKey]) continue;
+
+        const entityConfigs = await db.getEntityDeptConfigForYear(yearId, ent.id);
+        let entityDepts = departments.filter(d => d.scope === 'country');
+        if (entityConfigs && entityConfigs.length > 0) {
+          const activeIds = new Set(entityConfigs.filter(c => c.isActive !== false && c.is_active !== false).map(c => c.deptId || c.dept_id));
+          entityDepts = entityDepts.filter(d => activeIds.has(d.id));
+        }
+
+        for (const d of entityDepts) {
+          const { subgroupKey, deptShortCode } = parseDeptHierarchy(d, prefix);
+          if (!tree[grpKey].subgroups[subgroupKey]) {
+            tree[grpKey].subgroups[subgroupKey] = {
+              key: subgroupKey,
+              ...(SUBGROUP_CONFIG[subgroupKey] || { label: subgroupKey, order: 99 }),
+              departments: {},
+              totals: { salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0) }
+            };
+          }
+
+          const sub = tree[grpKey].subgroups[subgroupKey];
+          if (!sub.departments[d.id]) {
+            sub.departments[d.id] = {
+              deptId: d.id,
+              deptCode: deptShortCode,
+              deptName: d.name,
+              primaryEntityId: ent.id,
+              entities: [ent.shortName],
+              totals: { salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0) }
+            };
+          } else {
+            if (!sub.departments[d.id].entities.includes(ent.shortName)) {
+              sub.departments[d.id].entities.push(ent.shortName);
+            }
+          }
+
+          const nums = calcDeptNumbers(d.id, ent.id, activeYearObj.conversionRates?.[ent.currency] || 1.0);
+          const deptEntry = sub.departments[d.id];
+          deptEntry.totals.salaries += nums.salaries;
+          deptEntry.totals.otherStaff += nums.otherStaff;
+          deptEntry.totals.eha += nums.eha;
+          deptEntry.totals.fixedAssets += nums.fixedAssets;
+          deptEntry.totals.otherCosts += nums.otherCosts;
+          deptEntry.totals.totalUSD += nums.totalUSD;
+          deptEntry.totals.totalLocal += nums.totalLocal;
+          nums.monthlyUSD.forEach((v, i) => deptEntry.totals.monthlyUSD[i] += v);
+        }
+      }
+
+      const nonCountryDepts = departments.filter(d => d.scope !== 'country');
+      for (const d of nonCountryDepts) {
+        const { groupKey, subgroupKey, deptShortCode } = parseDeptHierarchy(d, 'GLOBAL');
+        if (!tree[groupKey]) continue;
+
+        if (!tree[groupKey].subgroups[subgroupKey]) {
+          tree[groupKey].subgroups[subgroupKey] = {
+            key: subgroupKey,
+            ...(SUBGROUP_CONFIG[subgroupKey] || { label: subgroupKey, order: 99 }),
+            departments: {},
+            totals: { salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0) }
+          };
+        }
+
+        const sub = tree[groupKey].subgroups[subgroupKey];
+        if (!sub.departments[d.id]) {
+          sub.departments[d.id] = {
+            deptId: d.id,
+            deptCode: deptShortCode,
+            deptName: d.name,
+            primaryEntityId: entities[0]?.id || 'noora-us',
+            entities: [],
+            totals: { salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0) }
+          };
+        }
+
+        for (const ent of entities) {
+          const nums = calcDeptNumbers(d.id, ent.id, activeYearObj.conversionRates?.[ent.currency] || 1.0);
+          if (nums.totalUSD > 0 || nums.totalLocal > 0) {
+            if (!sub.departments[d.id].entities.includes(ent.shortName)) {
+              sub.departments[d.id].entities.push(ent.shortName);
+            }
+            const deptEntry = sub.departments[d.id];
+            deptEntry.totals.salaries += nums.salaries;
+            deptEntry.totals.otherStaff += nums.otherStaff;
+            deptEntry.totals.eha += nums.eha;
+            deptEntry.totals.fixedAssets += nums.fixedAssets;
+            deptEntry.totals.otherCosts += nums.otherCosts;
+            deptEntry.totals.totalUSD += nums.totalUSD;
+            deptEntry.totals.totalLocal += nums.totalLocal;
+            nums.monthlyUSD.forEach((v, i) => deptEntry.totals.monthlyUSD[i] += v);
+          }
+        }
+      }
+
+      // Rollup totals
+      let grandTotalUSD = 0;
+      Object.values(tree).forEach(grp => {
+        Object.values(grp.subgroups).forEach(sub => {
+          Object.values(sub.departments).forEach(d => {
+            sub.totals.salaries += d.totals.salaries;
+            sub.totals.otherStaff += d.totals.otherStaff;
+            sub.totals.eha += d.totals.eha;
+            sub.totals.fixedAssets += d.totals.fixedAssets;
+            sub.totals.otherCosts += d.totals.otherCosts;
+            sub.totals.totalUSD += d.totals.totalUSD;
+            d.totals.monthlyUSD.forEach((v, i) => sub.totals.monthlyUSD[i] += v);
+          });
+          grp.totals.salaries += sub.totals.salaries;
+          grp.totals.otherStaff += sub.totals.otherStaff;
+          grp.totals.eha += sub.totals.eha;
+          grp.totals.fixedAssets += sub.totals.fixedAssets;
+          grp.totals.otherCosts += sub.totals.otherCosts;
+          grp.totals.totalUSD += sub.totals.totalUSD;
+          sub.totals.monthlyUSD.forEach((v, i) => grp.totals.monthlyUSD[i] += v);
+        });
+        grandTotalUSD += grp.totals.totalUSD;
+      });
+
+      const rows = [
+        [`Noora Health — Group-Wise Hierarchical Budget Report`, `CY-${budgetYear}`],
+        ['Consolidated by Organizational Group (Country Groups & Shared DP/GL) and Function Subgroup in USD ($)'],
+        [],
+        [
+          'Organizational Hierarchy (Group / Function / Department)',
+          'Hierarchy Level',
+          'Code',
+          'Salaries & Wages (USD)',
+          'Other Staff & Benefits (USD)',
+          'EHA Consultants (USD)',
+          'Fixed Assets (USD)',
+          'Other Operating Costs (USD)',
+          `Total Budget CY-${budgetYear} (USD)`,
+          ...SEED_DATA.months.map(m => `${m}-${budgetYear} (USD)`)
+        ]
+      ];
+
+      const sortedGroupKeys = Object.keys(tree).sort((a, b) => (GROUP_CONFIG[a]?.order || 99) - (GROUP_CONFIG[b]?.order || 99));
+
+      sortedGroupKeys.forEach(grpKey => {
+        const grp = tree[grpKey];
+        rows.push([
+          `📁 [${grpKey}] ${grp.name} (${grp.entities})`,
+          'Level 1: Group',
+          grpKey,
+          grp.totals.salaries,
+          grp.totals.otherStaff,
+          grp.totals.eha,
+          grp.totals.fixedAssets,
+          grp.totals.otherCosts,
+          grp.totals.totalUSD,
+          ...grp.totals.monthlyUSD
+        ]);
+
+        const subgroups = Object.values(grp.subgroups).sort((a, b) => (a.order || 99) - (b.order || 99));
+        subgroups.forEach(sub => {
+          rows.push([
+            `   📂 [${sub.key}] ${sub.label}`,
+            'Level 2: Function Subgroup',
+            sub.key,
+            sub.totals.salaries,
+            sub.totals.otherStaff,
+            sub.totals.eha,
+            sub.totals.fixedAssets,
+            sub.totals.otherCosts,
+            sub.totals.totalUSD,
+            ...sub.totals.monthlyUSD
+          ]);
+
+          const depts = Object.values(sub.departments).sort((a, b) => a.deptCode.localeCompare(b.deptCode));
+          depts.forEach(d => {
+            rows.push([
+              `      ↳ ${d.deptCode} — ${d.deptName}`,
+              'Level 3: Department',
+              d.deptCode,
+              d.totals.salaries,
+              d.totals.otherStaff,
+              d.totals.eha,
+              d.totals.fixedAssets,
+              d.totals.otherCosts,
+              d.totals.totalUSD,
+              ...d.totals.monthlyUSD
+            ]);
+          });
+
+          // Subgroup subtotal
+          rows.push([
+            `   SUBTOTAL: ${sub.key} (${sub.label})`,
+            'Subgroup Subtotal',
+            sub.key,
+            sub.totals.salaries,
+            sub.totals.otherStaff,
+            sub.totals.eha,
+            sub.totals.fixedAssets,
+            sub.totals.otherCosts,
+            sub.totals.totalUSD,
+            ...sub.totals.monthlyUSD
+          ]);
+        });
+
+        // Group subtotal
+        rows.push([
+          `TOTAL FOR GROUP: ${grpKey} (${grp.name})`,
+          'Group Total',
+          grpKey,
+          grp.totals.salaries,
+          grp.totals.otherStaff,
+          grp.totals.eha,
+          grp.totals.fixedAssets,
+          grp.totals.otherCosts,
+          grp.totals.totalUSD,
+          ...grp.totals.monthlyUSD
+        ]);
+        rows.push([]); // blank separator
+      });
+
+      // Master grand total
+      const grandMonthly = Array(12).fill(0);
+      Object.values(tree).forEach(g => g.totals.monthlyUSD.forEach((v, i) => grandMonthly[i] += v));
+      rows.push([
+        'ORGANIZATION CONSOLIDATED GRAND TOTAL',
+        'Grand Total',
+        'ALL-GROUPS',
+        Object.values(tree).reduce((s, g) => s + g.totals.salaries, 0),
+        Object.values(tree).reduce((s, g) => s + g.totals.otherStaff, 0),
+        Object.values(tree).reduce((s, g) => s + g.totals.eha, 0),
+        Object.values(tree).reduce((s, g) => s + g.totals.fixedAssets, 0),
+        Object.values(tree).reduce((s, g) => s + g.totals.otherCosts, 0),
+        grandTotalUSD,
+        ...grandMonthly
+      ]);
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Group-Wise Summary');
+    };
+
     // Route to appropriate generators based on export type
-    if (type === 'global-usd') {
+    if (type === 'group-wise') {
+      await addGroupWiseReportSheet();
+      await addGlobalSummarySheet();
+      await add5DMasterMatrixSheet(entities, '5D Master Consolidated');
+    } else if (type === 'global-usd') {
       await addGlobalSummarySheet();
       await addGlobalLineItemsSheet();
       await addEntityByDepartmentSheet(entities, null, 'By Department');
