@@ -5,10 +5,14 @@
 // ============================================================
 
 const ReportsModule = {
-  activeTab: 'global-usd', // global-usd | india-consolidated | entity-summary | dept-summary
+  activeTab: 'group-wise', // group-wise | global-usd | india-consolidated | entity-summary | dept-summary
   globalSubTab: 'summary', // summary | line-items
   indiaSubTab: 'summary',  // summary | line-items
   entitySubTab: 'summary', // summary | line-items
+  groupWiseFilter: 'all', // all | country | global
+  groupWiseDeptGroupFilter: 'all',
+  groupWiseCountryFilter: 'all',
+  groupWiseSearchQuery: '',
 
   isMonthsCollapsed() {
     if (typeof localStorage !== 'undefined') {
@@ -51,7 +55,7 @@ const ReportsModule = {
               ${years.map(y => `<option value="${y.id}" ${String(y.id) === String(activeYearObj.id) ? 'selected' : ''}>CY-${y.year}</option>`).join('')}
             </select>
           </div>
-          <button class="btn btn-secondary btn-sm flex items-center gap-xs" id="exportReportBtn">
+          <button class="btn btn-secondary btn-sm flex items-center gap-xs" id="exportReportBtn" style="${this.activeTab === 'group-wise' ? 'display:none;' : ''}">
             <span>📥</span> Export Excel
           </button>
           <button class="btn btn-primary btn-sm flex items-center gap-xs" id="exportFullBookBtn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
@@ -63,7 +67,7 @@ const ReportsModule = {
       <!-- Report Tabs -->
       <div class="tabs mb-lg" id="reportTabs">
         <button class="tab ${this.activeTab === 'group-wise' ? 'active' : ''}" data-tab="group-wise">
-          📑 Group-Wise Reports
+          🌍 Multi-Country & Functional Group Reports
         </button>
         <button class="tab ${this.activeTab === 'global-usd' ? 'active' : ''}" data-tab="global-usd">
           🌍 Global USD Consolidated
@@ -86,6 +90,7 @@ const ReportsModule = {
     // Export report listeners
     const exportReportBtn = container.querySelector('#exportReportBtn');
     if (exportReportBtn) {
+      exportReportBtn.style.display = this.activeTab === 'group-wise' ? 'none' : 'inline-flex';
       exportReportBtn.addEventListener('click', () => {
         if (typeof ExcelIOModule !== 'undefined') {
           ExcelIOModule.exportReport(this.activeTab);
@@ -148,6 +153,10 @@ const ReportsModule = {
         const fbBtn = container.querySelector('#exportFullBookBtn');
         if (fbBtn) {
           fbBtn.style.display = this.activeTab === 'global-usd' ? 'inline-flex' : 'none';
+        }
+        const expBtn = container.querySelector('#exportReportBtn');
+        if (expBtn) {
+          expBtn.style.display = this.activeTab === 'group-wise' ? 'none' : 'inline-flex';
         }
         this.renderReportContent(container.querySelector('#reportContainer'), activeYearObj.id, activeYearObj, entities, departments);
       });
@@ -2123,7 +2132,19 @@ const ReportsModule = {
 
     const calcDeptNumbers = (targetDeptId, targetEntityId, rate) => {
       const eData = entityBudgetData[targetEntityId];
-      if (!eData) return { salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0) };
+      if (!eData) {
+        return {
+          salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0,
+          totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0),
+          categoryMonthly: {
+            salaries: Array(12).fill(0),
+            otherStaff: Array(12).fill(0),
+            eha: Array(12).fill(0),
+            fixedAssets: Array(12).fill(0),
+            otherCosts: Array(12).fill(0)
+          }
+        };
+      }
 
       const payrollRows = eData.payroll.filter(p => p.deptId === targetDeptId);
       const salariesRows = canViewSalaries ? payrollRows.filter(p => !p.subCategory || p.subCategory === 'salaries-wages') : [];
@@ -2151,15 +2172,29 @@ const ReportsModule = {
       const totalLocal = salariesLocal + otherStaffLocal + ehaLocal + fixedAssetsLocal + otherCostsLocal;
       const totalUSD = totalLocal / rate;
 
+      const calcMonthly = (rows) => {
+        const m = Array(12).fill(0);
+        rows.forEach(r => {
+          if (r.monthlyValues) {
+            Object.entries(r.monthlyValues).forEach(([mIdx, val]) => {
+              const num = Utils.parseNumber(val);
+              if (num) m[Number(mIdx)] += (num / rate);
+            });
+          }
+        });
+        return m;
+      };
+
+      const salariesMonthly = calcMonthly(salariesRows);
+      const otherStaffMonthly = calcMonthly(otherStaffRows);
+      const ehaMonthly = calcMonthly(ehaRows);
+      const fixedAssetsMonthly = calcMonthly(fixedAssetRows);
+      const otherCostsMonthly = calcMonthly(nonPayrollRows);
+
       const monthlyUSD = Array(12).fill(0);
-      [...salariesRows, ...otherStaffRows, ...ehaRows, ...fixedAssetRows, ...nonPayrollRows].forEach(r => {
-        if (r.monthlyValues) {
-          Object.entries(r.monthlyValues).forEach(([mIdx, val]) => {
-            const num = Utils.parseNumber(val);
-            if (num) monthlyUSD[mIdx] += (num / rate);
-          });
-        }
-      });
+      for (let i = 0; i < 12; i++) {
+        monthlyUSD[i] = salariesMonthly[i] + otherStaffMonthly[i] + ehaMonthly[i] + fixedAssetsMonthly[i] + otherCostsMonthly[i];
+      }
 
       return {
         salaries: salariesLocal / rate,
@@ -2169,7 +2204,14 @@ const ReportsModule = {
         otherCosts: otherCostsLocal / rate,
         totalLocal,
         totalUSD,
-        monthlyUSD
+        monthlyUSD,
+        categoryMonthly: {
+          salaries: salariesMonthly,
+          otherStaff: otherStaffMonthly,
+          eha: ehaMonthly,
+          fixedAssets: fixedAssetsMonthly,
+          otherCosts: otherCostsMonthly
+        }
       };
     };
 
@@ -2180,7 +2222,16 @@ const ReportsModule = {
         key: gKey,
         ...GROUP_CONFIG[gKey],
         subgroups: {},
-        totals: { salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0) }
+        totals: {
+          salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0),
+          categoryMonthly: {
+            salaries: Array(12).fill(0),
+            otherStaff: Array(12).fill(0),
+            eha: Array(12).fill(0),
+            fixedAssets: Array(12).fill(0),
+            otherCosts: Array(12).fill(0)
+          }
+        }
       };
     });
 
@@ -2204,7 +2255,16 @@ const ReportsModule = {
             key: subgroupKey,
             ...(SUBGROUP_CONFIG[subgroupKey] || { label: subgroupKey, icon: '📁', badgeClass: 'badge-subtle', order: 99 }),
             departments: {},
-            totals: { salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0) }
+            totals: {
+              salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0),
+              categoryMonthly: {
+                salaries: Array(12).fill(0),
+                otherStaff: Array(12).fill(0),
+                eha: Array(12).fill(0),
+                fixedAssets: Array(12).fill(0),
+                otherCosts: Array(12).fill(0)
+              }
+            }
           };
         }
 
@@ -2216,7 +2276,16 @@ const ReportsModule = {
             deptName: d.name,
             primaryEntityId: ent.id,
             entities: [ent.shortName],
-            totals: { salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0) }
+            totals: {
+              salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0),
+              categoryMonthly: {
+                salaries: Array(12).fill(0),
+                otherStaff: Array(12).fill(0),
+                eha: Array(12).fill(0),
+                fixedAssets: Array(12).fill(0),
+                otherCosts: Array(12).fill(0)
+              }
+            }
           };
         } else {
           if (!sub.departments[d.id].entities.includes(ent.shortName)) {
@@ -2234,6 +2303,9 @@ const ReportsModule = {
         deptEntry.totals.totalUSD += nums.totalUSD;
         deptEntry.totals.totalLocal += nums.totalLocal;
         nums.monthlyUSD.forEach((v, i) => deptEntry.totals.monthlyUSD[i] += v);
+        ['salaries', 'otherStaff', 'eha', 'fixedAssets', 'otherCosts'].forEach(cat => {
+          nums.categoryMonthly[cat].forEach((v, i) => deptEntry.totals.categoryMonthly[cat][i] += v);
+        });
       }
     }
 
@@ -2248,7 +2320,16 @@ const ReportsModule = {
           key: subgroupKey,
           ...(SUBGROUP_CONFIG[subgroupKey] || { label: subgroupKey, icon: '📁', badgeClass: 'badge-subtle', order: 99 }),
           departments: {},
-          totals: { salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0) }
+          totals: {
+            salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0),
+            categoryMonthly: {
+              salaries: Array(12).fill(0),
+              otherStaff: Array(12).fill(0),
+              eha: Array(12).fill(0),
+              fixedAssets: Array(12).fill(0),
+              otherCosts: Array(12).fill(0)
+            }
+          }
         };
       }
 
@@ -2260,7 +2341,16 @@ const ReportsModule = {
           deptName: d.name,
           primaryEntityId: entities[0]?.id || 'noora-us',
           entities: [],
-          totals: { salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0) }
+          totals: {
+            salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0),
+            categoryMonthly: {
+              salaries: Array(12).fill(0),
+              otherStaff: Array(12).fill(0),
+              eha: Array(12).fill(0),
+              fixedAssets: Array(12).fill(0),
+              otherCosts: Array(12).fill(0)
+            }
+          }
         };
       }
 
@@ -2279,6 +2369,9 @@ const ReportsModule = {
           deptEntry.totals.totalUSD += nums.totalUSD;
           deptEntry.totals.totalLocal += nums.totalLocal;
           nums.monthlyUSD.forEach((v, i) => deptEntry.totals.monthlyUSD[i] += v);
+          ['salaries', 'otherStaff', 'eha', 'fixedAssets', 'otherCosts'].forEach(cat => {
+            nums.categoryMonthly[cat].forEach((v, i) => deptEntry.totals.categoryMonthly[cat][i] += v);
+          });
         }
       }
     }
@@ -2299,6 +2392,9 @@ const ReportsModule = {
           sub.totals.otherCosts += d.totals.otherCosts;
           sub.totals.totalUSD += d.totals.totalUSD;
           d.totals.monthlyUSD.forEach((v, i) => sub.totals.monthlyUSD[i] += v);
+          ['salaries', 'otherStaff', 'eha', 'fixedAssets', 'otherCosts'].forEach(cat => {
+            d.totals.categoryMonthly[cat].forEach((v, i) => sub.totals.categoryMonthly[cat][i] += v);
+          });
           if (d.totals.totalUSD > 0) activeDeptCount++;
         });
 
@@ -2309,6 +2405,9 @@ const ReportsModule = {
         grp.totals.otherCosts += sub.totals.otherCosts;
         grp.totals.totalUSD += sub.totals.totalUSD;
         sub.totals.monthlyUSD.forEach((v, i) => grp.totals.monthlyUSD[i] += v);
+        ['salaries', 'otherStaff', 'eha', 'fixedAssets', 'otherCosts'].forEach(cat => {
+          sub.totals.categoryMonthly[cat].forEach((v, i) => grp.totals.categoryMonthly[cat][i] += v);
+        });
       });
 
       grandTotalUSD += grp.totals.totalUSD;
@@ -2316,9 +2415,12 @@ const ReportsModule = {
       else globalTotalUSD += grp.totals.totalUSD;
     });
 
-    // Filter groups by user scope preference
+    // Filter groups by Country or user scope preference
     let visibleGroupKeys = Object.keys(tree).sort((a, b) => (GROUP_CONFIG[a]?.order || 99) - (GROUP_CONFIG[b]?.order || 99));
-    if (this.groupWiseFilter === 'country') {
+    const countryFilter = this.groupWiseCountryFilter || 'all';
+    if (countryFilter !== 'all') {
+      visibleGroupKeys = visibleGroupKeys.filter(k => k === countryFilter);
+    } else if (this.groupWiseFilter === 'country') {
       visibleGroupKeys = visibleGroupKeys.filter(k => GROUP_CONFIG[k]?.type === 'country');
     } else if (this.groupWiseFilter === 'global') {
       visibleGroupKeys = visibleGroupKeys.filter(k => GROUP_CONFIG[k]?.type === 'global');
@@ -2363,6 +2465,23 @@ const ReportsModule = {
       <!-- Toolbar -->
       <div class="tree-toolbar">
         <div class="tree-toolbar-filters">
+          <!-- Country Filter Dropdown -->
+          <div class="flex items-center gap-xs">
+            <span class="tree-toolbar-label">Country:</span>
+            <select id="groupWiseCountrySelect" class="form-select form-select-sm" style="font-size: 12px; height: 31px; min-width: 155px; font-weight: 600;">
+              <option value="all" ${countryFilter === 'all' ? 'selected' : ''}>🌍 All Countries</option>
+              <option value="IN" ${countryFilter === 'IN' ? 'selected' : ''}>🇮🇳 India (IN)</option>
+              <option value="INDO" ${countryFilter === 'INDO' ? 'selected' : ''}>🇮🇩 Indonesia (INDO)</option>
+              <option value="BD" ${countryFilter === 'BD' ? 'selected' : ''}>🇧🇩 Bangladesh (BD)</option>
+              <option value="NP" ${countryFilter === 'NP' ? 'selected' : ''}>🇳🇵 Nepal (NP)</option>
+              <option value="US" ${countryFilter === 'US' ? 'selected' : ''}>🇺🇸 United States (US)</option>
+              <option value="DP" ${countryFilter === 'DP' ? 'selected' : ''}>📱 Digital Product (DP)</option>
+              <option value="GL" ${countryFilter === 'GL' ? 'selected' : ''}>🌍 Global Shared (GL)</option>
+            </select>
+          </div>
+
+          <div class="tree-toolbar-divider"></div>
+
           <div class="flex items-center gap-xs">
             <span class="tree-toolbar-label">Scope:</span>
             <div class="btn-group" id="groupScopeFilterGroup">
@@ -2402,7 +2521,7 @@ const ReportsModule = {
           <button class="btn btn-ghost btn-sm" id="expandAllGroupsBtn" title="Expand all groups and subgroups">📂 Expand All</button>
           <button class="btn btn-ghost btn-sm" id="collapseAllGroupsBtn" title="Collapse all groups">📁 Collapse All</button>
           <button class="btn btn-secondary btn-sm" id="defaultViewGroupsBtn" title="Reset to default: Countries open, DP & GL collapsed">🔄 Default</button>
-          <button class="btn btn-primary btn-sm flex items-center gap-xs" onclick="ExcelIOModule.exportReport('group-wise')" title="Download comprehensive report in Excel with full department names and details">
+          <button class="btn btn-primary btn-sm flex items-center gap-xs" id="groupWiseExportExcelBtn" onclick="ExcelIOModule.exportReport('group-wise')" title="Download filtered multi-country and functional group reports in row-wise month-by-month Excel format">
             <span>📥</span> Export Excel
           </button>
         </div>
@@ -2653,10 +2772,33 @@ const ReportsModule = {
       this.renderGroupWiseReport(container, yearId, yearObj, entities, departments);
     });
 
+    // Toolbar Country select filter
+    const countrySelect = container.querySelector('#groupWiseCountrySelect');
+    if (countrySelect) {
+      countrySelect.addEventListener('change', (e) => {
+        this.groupWiseCountryFilter = e.target.value;
+        if (this.groupWiseCountryFilter !== 'all') {
+          // Auto expand selected country group so user immediately sees subgroups and departments
+          this._groupWiseTreeState[this.groupWiseCountryFilter] = true;
+          const cfg = GROUP_CONFIG[this.groupWiseCountryFilter];
+          if (cfg && this.groupWiseFilter !== 'all' && cfg.type !== this.groupWiseFilter) {
+            this.groupWiseFilter = 'all';
+          }
+        }
+        this.renderGroupWiseReport(container, yearId, yearObj, entities, departments);
+      });
+    }
+
     // Toolbar scope filter buttons
     container.querySelectorAll('#groupScopeFilterGroup button').forEach(btn => {
       btn.addEventListener('click', () => {
         this.groupWiseFilter = btn.dataset.scope;
+        if (this.groupWiseCountryFilter !== 'all') {
+          const cfg = GROUP_CONFIG[this.groupWiseCountryFilter];
+          if (cfg && this.groupWiseFilter !== 'all' && cfg.type !== this.groupWiseFilter) {
+            this.groupWiseCountryFilter = 'all';
+          }
+        }
         this.renderGroupWiseReport(container, yearId, yearObj, entities, departments);
       });
     });
