@@ -13,6 +13,7 @@ const ReportsModule = {
   groupWiseDeptGroupFilter: 'all',
   groupWiseCountryFilter: 'all',
   groupWiseSearchQuery: '',
+  groupWiseCurrencyMode: null, // null (selection gate) | 'local' | 'usd'
 
   isMonthsCollapsed() {
     if (typeof localStorage !== 'undefined') {
@@ -2027,6 +2028,84 @@ const ReportsModule = {
     const budgetYear = yearObj?.year || 2026;
     const rates = yearObj?.conversionRates || Utils.getConversionRates(yearObj);
 
+    // ═══ CURRENCY SELECTION GATE ═══
+    // User must select either Local Currency or Foreign Currency (USD) before viewing or downloading the report
+    if (!this.groupWiseCurrencyMode) {
+      container.innerHTML = `
+        <div class="currency-gate-container">
+          <div class="currency-gate-card-wrapper">
+            <div class="currency-gate-header text-center">
+              <span class="badge badge-primary mb-xs" style="font-size: 11px; padding: 4px 10px; font-weight:700;">Select Reporting Currency</span>
+              <h2 style="font-size: 1.65rem; font-weight: 800; margin-top: 6px; margin-bottom: 8px; color: var(--text-primary);">Choose Currency Mode to View Report</h2>
+              <p style="color: var(--text-tertiary); max-width: 620px; margin: 0 auto; font-size: 13.5px; line-height: 1.5;">
+                Please select your reporting currency preference for <strong>CY-${budgetYear} Multi-Country &amp; Functional Group Reports</strong>. The report table and Excel export will generate strictly in your chosen currency mode.
+              </p>
+            </div>
+
+            <div class="currency-gate-grid">
+              <!-- Option 1: Local Currency -->
+              <div class="currency-gate-card" data-currency="local" tabindex="0">
+                <div class="currency-gate-icon">💵</div>
+                <div class="currency-gate-badge">Native Entities</div>
+                <h3 class="currency-gate-title">Local Currency</h3>
+                <p class="currency-gate-desc">
+                  View and download department budgets in their native operational currencies with month-by-month cash flows:
+                </p>
+                <div class="currency-gate-tags">
+                  <span class="currency-tag">🇮🇳 INR (₹)</span>
+                  <span class="currency-tag">🇮🇩 IDR (Rp)</span>
+                  <span class="currency-tag">🇧🇩 BDT (৳)</span>
+                  <span class="currency-tag">🇳🇵 NPR (₨)</span>
+                  <span class="currency-tag">🇺🇸 USD ($)</span>
+                </div>
+                <div class="currency-gate-action">
+                  <button type="button" class="btn btn-primary w-full" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); font-weight:700;">
+                    💵 View in Local Currency &rarr;
+                  </button>
+                </div>
+              </div>
+
+              <!-- Option 2: Foreign Currency (USD) -->
+              <div class="currency-gate-card" data-currency="usd" tabindex="0">
+                <div class="currency-gate-icon">🌐</div>
+                <div class="currency-gate-badge">Consolidated USD</div>
+                <h3 class="currency-gate-title">Foreign Currency (USD $)</h3>
+                <p class="currency-gate-desc">
+                  View and download department budgets uniformly converted to United States Dollars (USD $) using approved exchange rates.
+                </p>
+                <div class="currency-gate-tags">
+                  <span class="currency-tag">🌍 Global Standardization</span>
+                  <span class="currency-tag">📊 Multi-Country Rollup</span>
+                </div>
+                <div class="currency-gate-action">
+                  <button type="button" class="btn btn-primary w-full" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); font-weight:700;">
+                    🌐 View in USD ($) &rarr;
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      container.querySelectorAll('.currency-gate-card').forEach(card => {
+        const selectMode = () => {
+          this.groupWiseCurrencyMode = card.dataset.currency;
+          this.renderGroupWiseReport(container, yearId, yearObj, entities, departments);
+        };
+        card.addEventListener('click', selectMode);
+        card.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            selectMode();
+          }
+        });
+      });
+      return;
+    }
+
+    const isLocal = this.groupWiseCurrencyMode === 'local';
+
     const GROUP_CONFIG = {
       'IN': { name: 'India', flag: '🇮🇳', entities: 'NHIPL + YAIF', currency: 'INR', order: 1, type: 'country', badgeClass: 'badge-emerald' },
       'INDO': { name: 'Indonesia', flag: '🇮🇩', entities: 'NH Indo', currency: 'IDR', order: 2, type: 'country', badgeClass: 'badge-cyan' },
@@ -2135,8 +2214,16 @@ const ReportsModule = {
       if (!eData) {
         return {
           salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0,
-          totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0),
+          salariesLocal: 0, otherStaffLocal: 0, ehaLocal: 0, fixedAssetsLocal: 0, otherCostsLocal: 0,
+          totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0), monthlyLocal: Array(12).fill(0),
           categoryMonthly: {
+            salaries: Array(12).fill(0),
+            otherStaff: Array(12).fill(0),
+            eha: Array(12).fill(0),
+            fixedAssets: Array(12).fill(0),
+            otherCosts: Array(12).fill(0)
+          },
+          categoryMonthlyLocal: {
             salaries: Array(12).fill(0),
             otherStaff: Array(12).fill(0),
             eha: Array(12).fill(0),
@@ -2173,16 +2260,21 @@ const ReportsModule = {
       const totalUSD = totalLocal / rate;
 
       const calcMonthly = (rows) => {
-        const m = Array(12).fill(0);
+        const mLocal = Array(12).fill(0);
+        const mUSD = Array(12).fill(0);
         rows.forEach(r => {
           if (r.monthlyValues) {
             Object.entries(r.monthlyValues).forEach(([mIdx, val]) => {
               const num = Utils.parseNumber(val);
-              if (num) m[Number(mIdx)] += (num / rate);
+              if (num) {
+                const idx = Number(mIdx);
+                mLocal[idx] += num;
+                mUSD[idx] += (num / rate);
+              }
             });
           }
         });
-        return m;
+        return { mLocal, mUSD };
       };
 
       const salariesMonthly = calcMonthly(salariesRows);
@@ -2192,8 +2284,10 @@ const ReportsModule = {
       const otherCostsMonthly = calcMonthly(nonPayrollRows);
 
       const monthlyUSD = Array(12).fill(0);
+      const monthlyLocal = Array(12).fill(0);
       for (let i = 0; i < 12; i++) {
-        monthlyUSD[i] = salariesMonthly[i] + otherStaffMonthly[i] + ehaMonthly[i] + fixedAssetsMonthly[i] + otherCostsMonthly[i];
+        monthlyUSD[i] = salariesMonthly.mUSD[i] + otherStaffMonthly.mUSD[i] + ehaMonthly.mUSD[i] + fixedAssetsMonthly.mUSD[i] + otherCostsMonthly.mUSD[i];
+        monthlyLocal[i] = salariesMonthly.mLocal[i] + otherStaffMonthly.mLocal[i] + ehaMonthly.mLocal[i] + fixedAssetsMonthly.mLocal[i] + otherCostsMonthly.mLocal[i];
       }
 
       return {
@@ -2202,15 +2296,28 @@ const ReportsModule = {
         eha: ehaLocal / rate,
         fixedAssets: fixedAssetsLocal / rate,
         otherCosts: otherCostsLocal / rate,
+        salariesLocal,
+        otherStaffLocal,
+        ehaLocal,
+        fixedAssetsLocal,
+        otherCostsLocal,
         totalLocal,
         totalUSD,
         monthlyUSD,
+        monthlyLocal,
         categoryMonthly: {
-          salaries: salariesMonthly,
-          otherStaff: otherStaffMonthly,
-          eha: ehaMonthly,
-          fixedAssets: fixedAssetsMonthly,
-          otherCosts: otherCostsMonthly
+          salaries: salariesMonthly.mUSD,
+          otherStaff: otherStaffMonthly.mUSD,
+          eha: ehaMonthly.mUSD,
+          fixedAssets: fixedAssetsMonthly.mUSD,
+          otherCosts: otherCostsMonthly.mUSD
+        },
+        categoryMonthlyLocal: {
+          salaries: salariesMonthly.mLocal,
+          otherStaff: otherStaffMonthly.mLocal,
+          eha: ehaMonthly.mLocal,
+          fixedAssets: fixedAssetsMonthly.mLocal,
+          otherCosts: otherCostsMonthly.mLocal
         }
       };
     };
@@ -2224,12 +2331,12 @@ const ReportsModule = {
         subgroups: {},
         totals: {
           salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0),
+          salariesLocal: 0, otherStaffLocal: 0, ehaLocal: 0, fixedAssetsLocal: 0, otherCostsLocal: 0, totalLocal: 0, monthlyLocal: Array(12).fill(0),
           categoryMonthly: {
-            salaries: Array(12).fill(0),
-            otherStaff: Array(12).fill(0),
-            eha: Array(12).fill(0),
-            fixedAssets: Array(12).fill(0),
-            otherCosts: Array(12).fill(0)
+            salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
+          },
+          categoryMonthlyLocal: {
+            salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
           }
         }
       };
@@ -2257,12 +2364,12 @@ const ReportsModule = {
             departments: {},
             totals: {
               salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0),
+              salariesLocal: 0, otherStaffLocal: 0, ehaLocal: 0, fixedAssetsLocal: 0, otherCostsLocal: 0, totalLocal: 0, monthlyLocal: Array(12).fill(0),
               categoryMonthly: {
-                salaries: Array(12).fill(0),
-                otherStaff: Array(12).fill(0),
-                eha: Array(12).fill(0),
-                fixedAssets: Array(12).fill(0),
-                otherCosts: Array(12).fill(0)
+                salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
+              },
+              categoryMonthlyLocal: {
+                salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
               }
             }
           };
@@ -2277,13 +2384,14 @@ const ReportsModule = {
             primaryEntityId: ent.id,
             entities: [ent.shortName],
             totals: {
-              salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0),
+              salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalLocal: 0, totalUSD: 0,
+              monthlyUSD: Array(12).fill(0), monthlyLocal: Array(12).fill(0),
+              salariesLocal: 0, otherStaffLocal: 0, ehaLocal: 0, fixedAssetsLocal: 0, otherCostsLocal: 0,
               categoryMonthly: {
-                salaries: Array(12).fill(0),
-                otherStaff: Array(12).fill(0),
-                eha: Array(12).fill(0),
-                fixedAssets: Array(12).fill(0),
-                otherCosts: Array(12).fill(0)
+                salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
+              },
+              categoryMonthlyLocal: {
+                salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
               }
             }
           };
@@ -2301,10 +2409,20 @@ const ReportsModule = {
         deptEntry.totals.fixedAssets += nums.fixedAssets;
         deptEntry.totals.otherCosts += nums.otherCosts;
         deptEntry.totals.totalUSD += nums.totalUSD;
+
+        deptEntry.totals.salariesLocal += nums.salariesLocal;
+        deptEntry.totals.otherStaffLocal += nums.otherStaffLocal;
+        deptEntry.totals.ehaLocal += nums.ehaLocal;
+        deptEntry.totals.fixedAssetsLocal += nums.fixedAssetsLocal;
+        deptEntry.totals.otherCostsLocal += nums.otherCostsLocal;
         deptEntry.totals.totalLocal += nums.totalLocal;
+
         nums.monthlyUSD.forEach((v, i) => deptEntry.totals.monthlyUSD[i] += v);
+        nums.monthlyLocal.forEach((v, i) => deptEntry.totals.monthlyLocal[i] += v);
+
         ['salaries', 'otherStaff', 'eha', 'fixedAssets', 'otherCosts'].forEach(cat => {
           nums.categoryMonthly[cat].forEach((v, i) => deptEntry.totals.categoryMonthly[cat][i] += v);
+          nums.categoryMonthlyLocal[cat].forEach((v, i) => deptEntry.totals.categoryMonthlyLocal[cat][i] += v);
         });
       }
     }
@@ -2322,12 +2440,12 @@ const ReportsModule = {
           departments: {},
           totals: {
             salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0),
+            salariesLocal: 0, otherStaffLocal: 0, ehaLocal: 0, fixedAssetsLocal: 0, otherCostsLocal: 0, totalLocal: 0, monthlyLocal: Array(12).fill(0),
             categoryMonthly: {
-              salaries: Array(12).fill(0),
-              otherStaff: Array(12).fill(0),
-              eha: Array(12).fill(0),
-              fixedAssets: Array(12).fill(0),
-              otherCosts: Array(12).fill(0)
+              salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
+            },
+            categoryMonthlyLocal: {
+              salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
             }
           }
         };
@@ -2342,13 +2460,14 @@ const ReportsModule = {
           primaryEntityId: entities[0]?.id || 'noora-us',
           entities: [],
           totals: {
-            salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0),
+            salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalLocal: 0, totalUSD: 0,
+            monthlyUSD: Array(12).fill(0), monthlyLocal: Array(12).fill(0),
+            salariesLocal: 0, otherStaffLocal: 0, ehaLocal: 0, fixedAssetsLocal: 0, otherCostsLocal: 0,
             categoryMonthly: {
-              salaries: Array(12).fill(0),
-              otherStaff: Array(12).fill(0),
-              eha: Array(12).fill(0),
-              fixedAssets: Array(12).fill(0),
-              otherCosts: Array(12).fill(0)
+              salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
+            },
+            categoryMonthlyLocal: {
+              salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
             }
           }
         };
@@ -2367,10 +2486,20 @@ const ReportsModule = {
           deptEntry.totals.fixedAssets += nums.fixedAssets;
           deptEntry.totals.otherCosts += nums.otherCosts;
           deptEntry.totals.totalUSD += nums.totalUSD;
+
+          deptEntry.totals.salariesLocal += nums.salariesLocal;
+          deptEntry.totals.otherStaffLocal += nums.otherStaffLocal;
+          deptEntry.totals.ehaLocal += nums.ehaLocal;
+          deptEntry.totals.fixedAssetsLocal += nums.fixedAssetsLocal;
+          deptEntry.totals.otherCostsLocal += nums.otherCostsLocal;
           deptEntry.totals.totalLocal += nums.totalLocal;
+
           nums.monthlyUSD.forEach((v, i) => deptEntry.totals.monthlyUSD[i] += v);
+          nums.monthlyLocal.forEach((v, i) => deptEntry.totals.monthlyLocal[i] += v);
+
           ['salaries', 'otherStaff', 'eha', 'fixedAssets', 'otherCosts'].forEach(cat => {
             nums.categoryMonthly[cat].forEach((v, i) => deptEntry.totals.categoryMonthly[cat][i] += v);
+            nums.categoryMonthlyLocal[cat].forEach((v, i) => deptEntry.totals.categoryMonthlyLocal[cat][i] += v);
           });
         }
       }
@@ -2391,11 +2520,22 @@ const ReportsModule = {
           sub.totals.fixedAssets += d.totals.fixedAssets;
           sub.totals.otherCosts += d.totals.otherCosts;
           sub.totals.totalUSD += d.totals.totalUSD;
+
+          sub.totals.salariesLocal += d.totals.salariesLocal;
+          sub.totals.otherStaffLocal += d.totals.otherStaffLocal;
+          sub.totals.ehaLocal += d.totals.ehaLocal;
+          sub.totals.fixedAssetsLocal += d.totals.fixedAssetsLocal;
+          sub.totals.otherCostsLocal += d.totals.otherCostsLocal;
+          sub.totals.totalLocal += d.totals.totalLocal;
+
           d.totals.monthlyUSD.forEach((v, i) => sub.totals.monthlyUSD[i] += v);
+          d.totals.monthlyLocal.forEach((v, i) => sub.totals.monthlyLocal[i] += v);
+
           ['salaries', 'otherStaff', 'eha', 'fixedAssets', 'otherCosts'].forEach(cat => {
             d.totals.categoryMonthly[cat].forEach((v, i) => sub.totals.categoryMonthly[cat][i] += v);
+            d.totals.categoryMonthlyLocal[cat].forEach((v, i) => sub.totals.categoryMonthlyLocal[cat][i] += v);
           });
-          if (d.totals.totalUSD > 0) activeDeptCount++;
+          if (d.totals.totalUSD > 0 || d.totals.totalLocal > 0) activeDeptCount++;
         });
 
         grp.totals.salaries += sub.totals.salaries;
@@ -2404,9 +2544,20 @@ const ReportsModule = {
         grp.totals.fixedAssets += sub.totals.fixedAssets;
         grp.totals.otherCosts += sub.totals.otherCosts;
         grp.totals.totalUSD += sub.totals.totalUSD;
+
+        grp.totals.salariesLocal += sub.totals.salariesLocal;
+        grp.totals.otherStaffLocal += sub.totals.otherStaffLocal;
+        grp.totals.ehaLocal += sub.totals.ehaLocal;
+        grp.totals.fixedAssetsLocal += sub.totals.fixedAssetsLocal;
+        grp.totals.otherCostsLocal += sub.totals.otherCostsLocal;
+        grp.totals.totalLocal += sub.totals.totalLocal;
+
         sub.totals.monthlyUSD.forEach((v, i) => grp.totals.monthlyUSD[i] += v);
+        sub.totals.monthlyLocal.forEach((v, i) => grp.totals.monthlyLocal[i] += v);
+
         ['salaries', 'otherStaff', 'eha', 'fixedAssets', 'otherCosts'].forEach(cat => {
           sub.totals.categoryMonthly[cat].forEach((v, i) => grp.totals.categoryMonthly[cat][i] += v);
+          sub.totals.categoryMonthlyLocal[cat].forEach((v, i) => grp.totals.categoryMonthlyLocal[cat][i] += v);
         });
       });
 
@@ -2432,24 +2583,34 @@ const ReportsModule = {
 
     const isMonthsCollapsed = this.isMonthsCollapsed();
 
+    // Amount formatter helper for local vs USD display
+    const formatAmount = (usdVal, localVal, curCode) => {
+      if (isLocal) {
+        return Utils.formatCurrency(localVal || 0, curCode || 'INR');
+      } else {
+        return Utils.formatCurrency(usdVal || 0, 'USD');
+      }
+    };
+
     container.innerHTML = `
       <!-- KPI Banner -->
       <div class="card p-md mb-md flex items-center justify-between" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(124, 58, 237, 0.06)); border: 1px solid rgba(37, 99, 235, 0.2); flex-wrap: wrap; gap: 14px;">
         <div class="flex items-center gap-xl" style="flex-wrap: wrap;">
           <div>
-            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Global Total Budget</div>
-            <div style="font-size: 1.45rem; font-weight: 800; color: var(--accent-primary);">${Utils.formatCurrency(grandTotalUSD, 'USD')}</div>
-            <div style="font-size: 11px; color: var(--text-tertiary);">CY-${budgetYear} Consolidated Rollup</div>
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">
+              ${(isLocal && countryFilter !== 'all') ? `${GROUP_CONFIG[countryFilter]?.name || countryFilter} Total Budget (${GROUP_CONFIG[countryFilter]?.currency})` : 'Global Total Budget (USD)'}
+            </div>
+            <div style="font-size: 1.45rem; font-weight: 800; color: var(--accent-primary);">
+              ${(isLocal && countryFilter !== 'all') ? Utils.formatCurrency(tree[countryFilter]?.totals.totalLocal || 0, GROUP_CONFIG[countryFilter]?.currency) : Utils.formatCurrency(grandTotalUSD, 'USD')}
+            </div>
+            <div style="font-size: 11px; color: var(--text-tertiary);">CY-${budgetYear} ${isLocal ? 'Local Currency View' : 'Consolidated Rollup'}</div>
           </div>
           <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
-            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Country Groups (IN, INDO, BD, NP, US)</div>
-            <div style="font-size: 1.25rem; font-weight: 700; color: var(--success);">${Utils.formatCurrency(countryTotalUSD, 'USD')}</div>
-            <div style="font-size: 11px; color: var(--text-tertiary);">${grandTotalUSD > 0 ? ((countryTotalUSD / grandTotalUSD) * 100).toFixed(1) : 0}% of Total Budget</div>
-          </div>
-          <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
-            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Shared & Global (DP & GL)</div>
-            <div style="font-size: 1.25rem; font-weight: 700; color: var(--accent-secondary);">${Utils.formatCurrency(globalTotalUSD, 'USD')}</div>
-            <div style="font-size: 11px; color: var(--text-tertiary);">${grandTotalUSD > 0 ? ((globalTotalUSD / grandTotalUSD) * 100).toFixed(1) : 0}% of Total Budget</div>
+            <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Reporting Currency Mode</div>
+            <div style="font-size: 1.25rem; font-weight: 700; color: ${isLocal ? 'var(--success)' : 'var(--accent-primary)'};">
+              ${isLocal ? '💵 Local Currency' : '🌐 Foreign (USD $)'}
+            </div>
+            <div style="font-size: 11px; color: var(--text-tertiary);">${isLocal ? (countryFilter !== 'all' ? `Currency: ${GROUP_CONFIG[countryFilter]?.currency}` : 'Native entity currencies') : 'Converted to USD ($)'}</div>
           </div>
           <div style="border-left: 1px solid var(--border-subtle); padding-left: var(--space-lg);">
             <div class="text-tertiary" style="font-size: var(--font-size-xs); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Budgeted Departments</div>
@@ -2458,13 +2619,26 @@ const ReportsModule = {
           </div>
         </div>
         <div class="flex items-center gap-xs">
-          <span class="badge badge-emerald" style="padding: 6px 12px; font-size: 11.5px; font-weight: 600;">📊 3-Level Group Hierarchy</span>
+          <span class="badge ${isLocal ? 'badge-emerald' : 'badge-primary'}" style="padding: 6px 12px; font-size: 11.5px; font-weight: 600;">
+            ${isLocal ? '💵 Local Currency Active' : '🌐 Foreign USD ($) Active'}
+          </span>
         </div>
       </div>
 
       <!-- Toolbar -->
       <div class="tree-toolbar">
         <div class="tree-toolbar-filters">
+          <!-- Currency Mode Switcher -->
+          <div class="flex items-center gap-xs">
+            <span class="tree-toolbar-label">Currency:</span>
+            <div class="btn-group" id="groupCurrencyModeGroup">
+              <button class="btn btn-sm ${isLocal ? 'btn-primary' : 'btn-secondary'}" data-currency="local" title="View figures in native entity currency (INR, IDR, BDT, NPR, USD)">💵 Local</button>
+              <button class="btn btn-sm ${!isLocal ? 'btn-primary' : 'btn-secondary'}" data-currency="usd" title="View figures converted to USD ($)">🌐 Foreign (USD)</button>
+            </div>
+          </div>
+
+          <div class="tree-toolbar-divider"></div>
+
           <!-- Country Filter Dropdown -->
           <div class="flex items-center gap-xs">
             <span class="tree-toolbar-label">Country:</span>
@@ -2487,7 +2661,7 @@ const ReportsModule = {
             <div class="btn-group" id="groupScopeFilterGroup">
               <button class="btn btn-sm ${this.groupWiseFilter === 'all' ? 'btn-primary' : 'btn-secondary'}" data-scope="all" title="View all Country and Shared Groups">🌐 All Groups</button>
               <button class="btn btn-sm ${this.groupWiseFilter === 'country' ? 'btn-primary' : 'btn-secondary'}" data-scope="country" title="Filter to Country Groups (IN, INDO, BD, NP, US)">🏢 Countries</button>
-              <button class="btn btn-sm ${this.groupWiseFilter === 'global' ? 'btn-primary' : 'btn-secondary'}" data-scope="global" title="Filter to Digital Product & Global Shared Groups">📱 DP & GL</button>
+              <button class="btn btn-sm ${this.groupWiseFilter === 'global' ? 'btn-primary' : 'btn-secondary'}" data-scope="global" title="Filter to Digital Product &amp; Global Shared Groups">📱 DP &amp; GL</button>
             </div>
           </div>
 
@@ -2497,15 +2671,15 @@ const ReportsModule = {
             <span class="tree-toolbar-label">Dept Group:</span>
             <select id="groupWiseDeptGroupSelect" class="form-select form-select-sm" style="font-size: 12px; height: 31px; min-width: 175px; font-weight: 600;">
               <option value="all" ${deptGroupFilter === 'all' ? 'selected' : ''}>📁 All Dept Groups</option>
-              <option value="PDD" ${deptGroupFilter === 'PDD' ? 'selected' : ''}>🎨 PDD (Design & Dev)</option>
+              <option value="PDD" ${deptGroupFilter === 'PDD' ? 'selected' : ''}>🎨 PDD (Design &amp; Dev)</option>
               <option value="PD" ${deptGroupFilter === 'PD' ? 'selected' : ''}>🚀 PD (Program Delivery)</option>
-              <option value="M&E" ${deptGroupFilter === 'M&E' ? 'selected' : ''}>📊 M&E (Monitoring & Eval)</option>
-              <option value="OPS" ${deptGroupFilter === 'OPS' ? 'selected' : ''}>⚙️ OPS (Operations & Support)</option>
+              <option value="M&amp;E" ${deptGroupFilter === 'M&amp;E' ? 'selected' : ''}>📊 M&amp;E (Monitoring &amp; Eval)</option>
+              <option value="OPS" ${deptGroupFilter === 'OPS' ? 'selected' : ''}>⚙️ OPS (Operations &amp; Support)</option>
               <option value="RMM" ${deptGroupFilter === 'RMM' ? 'selected' : ''}>📣 RMM (Resource Mobilization)</option>
               <option value="CP" ${deptGroupFilter === 'CP' ? 'selected' : ''}>📱 CP (Country Product)</option>
               <option value="GP" ${deptGroupFilter === 'GP' ? 'selected' : ''}>🌐 GP (Global Product)</option>
-              <option value="I&L" ${deptGroupFilter === 'I&L' ? 'selected' : ''}>💡 I&L (Innovation & Learning)</option>
-              <option value="C&I" ${deptGroupFilter === 'C&I' ? 'selected' : ''}>📢 C&I (Comms & Influence)</option>
+              <option value="I&amp;L" ${deptGroupFilter === 'I&amp;L' ? 'selected' : ''}>💡 I&amp;L (Innovation &amp; Learning)</option>
+              <option value="C&amp;I" ${deptGroupFilter === 'C&amp;I' ? 'selected' : ''}>📢 C&amp;I (Comms &amp; Influence)</option>
               <option value="PRG EXP" ${deptGroupFilter === 'PRG EXP' ? 'selected' : ''}>🌍 PRG EXP (Program Exp)</option>
             </select>
           </div>
@@ -2520,9 +2694,9 @@ const ReportsModule = {
         <div class="tree-toolbar-actions">
           <button class="btn btn-ghost btn-sm" id="expandAllGroupsBtn" title="Expand all groups and subgroups">📂 Expand All</button>
           <button class="btn btn-ghost btn-sm" id="collapseAllGroupsBtn" title="Collapse all groups">📁 Collapse All</button>
-          <button class="btn btn-secondary btn-sm" id="defaultViewGroupsBtn" title="Reset to default: Countries open, DP & GL collapsed">🔄 Default</button>
-          <button class="btn btn-primary btn-sm flex items-center gap-xs" id="groupWiseExportExcelBtn" onclick="ExcelIOModule.exportReport('group-wise')" title="Download filtered multi-country and functional group reports in row-wise month-by-month Excel format">
-            <span>📥</span> Export Excel
+          <button class="btn btn-secondary btn-sm" id="defaultViewGroupsBtn" title="Reset to default: Countries open, DP &amp; GL collapsed">🔄 Default</button>
+          <button class="btn btn-primary btn-sm flex items-center gap-xs" id="groupWiseExportExcelBtn" onclick="ExcelIOModule.exportReport('group-wise')" title="Download filtered multi-country and functional group reports in row-wise month-by-month Excel format (${isLocal ? 'Local Currency' : 'USD'})">
+            <span>📥</span> Export Excel (${isLocal ? 'Local' : 'USD'})
           </button>
         </div>
       </div>
@@ -2533,15 +2707,15 @@ const ReportsModule = {
           <thead>
             <tr>
               <th class="sticky-col-1" style="min-width: 380px;">Organizational Group / Function / Department</th>
-              <th class="num">Salaries & Wages</th>
-              <th class="num">Other Staff & Benefits</th>
+              <th class="num">Salaries &amp; Wages</th>
+              <th class="num">Other Staff &amp; Benefits</th>
               <th class="num">EHA Consultants</th>
               <th class="num">Fixed Assets</th>
               <th class="num">Other Costs</th>
               <th class="num font-bold total-toggle-th month-group" data-toggle-months title="${isMonthsCollapsed ? 'Click to expand monthly columns (Jan–Dec)' : 'Click to collapse monthly columns (Jan–Dec)'}">
-                Total CY-${budgetYear} (USD $) <span class="months-toggle-arrow">${isMonthsCollapsed ? '&#9654;' : '&#9664;'}</span>
+                Total CY-${budgetYear} (${isLocal ? (countryFilter !== 'all' ? (GROUP_CONFIG[countryFilter]?.currency || 'Local') : 'Local') : 'USD $'}) <span class="months-toggle-arrow">${isMonthsCollapsed ? '&#9654;' : '&#9664;'}</span>
               </th>
-              ${SEED_DATA.months.map(m => `<th class="num month-group">${m}-${budgetYear}</th>`).join('')}
+              ${SEED_DATA.months.map(m => `<th class="num month-group">${m}-${budgetYear}${isLocal && countryFilter !== 'all' ? ` (${GROUP_CONFIG[countryFilter]?.currency})` : ''}</th>`).join('')}
             </tr>
           </thead>
           <tbody>
@@ -2571,16 +2745,16 @@ const ReportsModule = {
                       <span class="tree-caret ${isGrpExpanded ? 'open' : ''}">▶</span>
                       <span class="tree-badge-group ${grp.badgeClass}">${grp.flag} ${grpKey}</span>
                       <strong style="margin-left: 8px; font-size: 13.5px;">${grp.name}</strong>
-                      <span class="text-tertiary" style="margin-left: 6px; font-size: 11.5px; font-weight: 500;">(${grp.entities})</span>
+                      <span class="text-tertiary" style="margin-left: 6px; font-size: 11.5px; font-weight: 500;">(${grp.entities} — ${grp.currency})</span>
                     </div>
                   </td>
-                  <td class="num font-bold">${Utils.formatCurrency(grp.totals.salaries, 'USD')}</td>
-                  <td class="num font-bold">${Utils.formatCurrency(grp.totals.otherStaff, 'USD')}</td>
-                  <td class="num font-bold">${Utils.formatCurrency(grp.totals.eha, 'USD')}</td>
-                  <td class="num font-bold">${Utils.formatCurrency(grp.totals.fixedAssets, 'USD')}</td>
-                  <td class="num font-bold">${Utils.formatCurrency(grp.totals.otherCosts, 'USD')}</td>
-                  <td class="num font-bold" style="color: var(--accent-primary); font-size: 1.05rem;">${Utils.formatCurrency(grp.totals.totalUSD, 'USD')}</td>
-                  ${grp.totals.monthlyUSD.map(v => `<td class="num month-col font-mono font-bold">${Utils.formatCurrency(v, 'USD')}</td>`).join('')}
+                  <td class="num font-bold">${formatAmount(grp.totals.salaries, grp.totals.salariesLocal, grp.currency)}</td>
+                  <td class="num font-bold">${formatAmount(grp.totals.otherStaff, grp.totals.otherStaffLocal, grp.currency)}</td>
+                  <td class="num font-bold">${formatAmount(grp.totals.eha, grp.totals.ehaLocal, grp.currency)}</td>
+                  <td class="num font-bold">${formatAmount(grp.totals.fixedAssets, grp.totals.fixedAssetsLocal, grp.currency)}</td>
+                  <td class="num font-bold">${formatAmount(grp.totals.otherCosts, grp.totals.otherCostsLocal, grp.currency)}</td>
+                  <td class="num font-bold" style="color: var(--accent-primary); font-size: 1.05rem;">${formatAmount(grp.totals.totalUSD, grp.totals.totalLocal, grp.currency)}</td>
+                  ${(isLocal ? grp.totals.monthlyLocal : grp.totals.monthlyUSD).map(v => `<td class="num month-col font-mono font-bold">${Utils.formatCurrency(v, isLocal ? grp.currency : 'USD')}</td>`).join('')}
                 </tr>
 
                 <!-- ═══ LEVEL 2: SUBGROUP ROWS ═══ -->
@@ -2606,13 +2780,13 @@ const ReportsModule = {
                           <span class="badge badge-subtle" style="margin-left: 6px; font-size: 10.5px;">${matchingDepts.length} Depts</span>
                         </div>
                       </td>
-                      <td class="num font-medium">${Utils.formatCurrency(sub.totals.salaries, 'USD')}</td>
-                      <td class="num font-medium">${Utils.formatCurrency(sub.totals.otherStaff, 'USD')}</td>
-                      <td class="num font-medium">${Utils.formatCurrency(sub.totals.eha, 'USD')}</td>
-                      <td class="num font-medium">${Utils.formatCurrency(sub.totals.fixedAssets, 'USD')}</td>
-                      <td class="num font-medium">${Utils.formatCurrency(sub.totals.otherCosts, 'USD')}</td>
-                      <td class="num font-bold">${Utils.formatCurrency(sub.totals.totalUSD, 'USD')}</td>
-                      ${sub.totals.monthlyUSD.map(v => `<td class="num month-col font-mono">${Utils.formatCurrency(v, 'USD')}</td>`).join('')}
+                      <td class="num font-medium">${formatAmount(sub.totals.salaries, sub.totals.salariesLocal, grp.currency)}</td>
+                      <td class="num font-medium">${formatAmount(sub.totals.otherStaff, sub.totals.otherStaffLocal, grp.currency)}</td>
+                      <td class="num font-medium">${formatAmount(sub.totals.eha, sub.totals.ehaLocal, grp.currency)}</td>
+                      <td class="num font-medium">${formatAmount(sub.totals.fixedAssets, sub.totals.fixedAssetsLocal, grp.currency)}</td>
+                      <td class="num font-medium">${formatAmount(sub.totals.otherCosts, sub.totals.otherCostsLocal, grp.currency)}</td>
+                      <td class="num font-bold">${formatAmount(sub.totals.totalUSD, sub.totals.totalLocal, grp.currency)}</td>
+                      ${(isLocal ? sub.totals.monthlyLocal : sub.totals.monthlyUSD).map(v => `<td class="num month-col font-mono">${Utils.formatCurrency(v, isLocal ? grp.currency : 'USD')}</td>`).join('')}
                     </tr>
 
                     <!-- ═══ LEVEL 3: DEPARTMENT ROWS ═══ -->
@@ -2624,20 +2798,21 @@ const ReportsModule = {
                             <a href="javascript:void(0)" onclick="DashboardModule.goToDeptBudget('${d.primaryEntityId}', '${d.deptId}')" style="text-decoration: none;" title="${d.deptCode} — ${d.deptName} (Click to open Department Budget)">
                               <span class="dept-code-pill">${d.deptCode}</span> ↗
                             </a>
+                            <span class="badge badge-subtle" style="font-size: 10px; padding: 1px 4px;">${grp.currency}</span>
                             ${d.entities.length > 1 ? `<span class="badge badge-subtle" style="font-size: 10px; padding: 1px 5px;" title="Clubbed across entities: ${d.entities.join(', ')}">${d.entities.join('+')}</span>` : ''}
                           </div>
                         </td>
-                        <td class="num font-mono">${d.totals.salaries > 0 ? Utils.formatCurrency(d.totals.salaries, 'USD') : '—'}</td>
-                        <td class="num font-mono">${d.totals.otherStaff > 0 ? Utils.formatCurrency(d.totals.otherStaff, 'USD') : '—'}</td>
-                        <td class="num font-mono">${d.totals.eha > 0 ? Utils.formatCurrency(d.totals.eha, 'USD') : '—'}</td>
-                        <td class="num font-mono">${d.totals.fixedAssets > 0 ? Utils.formatCurrency(d.totals.fixedAssets, 'USD') : '—'}</td>
-                        <td class="num font-mono">${d.totals.otherCosts > 0 ? Utils.formatCurrency(d.totals.otherCosts, 'USD') : '—'}</td>
-                        <td class="num font-bold font-mono" style="${d.totals.totalUSD > 0 ? 'color: var(--accent-primary);' : 'color: var(--text-tertiary);'}">
-                          ${d.totals.totalUSD > 0 ? Utils.formatCurrency(d.totals.totalUSD, 'USD') : '—'}
+                        <td class="num font-mono">${d.totals.salariesLocal > 0 || d.totals.salaries > 0 ? formatAmount(d.totals.salaries, d.totals.salariesLocal, grp.currency) : '—'}</td>
+                        <td class="num font-mono">${d.totals.otherStaffLocal > 0 || d.totals.otherStaff > 0 ? formatAmount(d.totals.otherStaff, d.totals.otherStaffLocal, grp.currency) : '—'}</td>
+                        <td class="num font-mono">${d.totals.ehaLocal > 0 || d.totals.eha > 0 ? formatAmount(d.totals.eha, d.totals.ehaLocal, grp.currency) : '—'}</td>
+                        <td class="num font-mono">${d.totals.fixedAssetsLocal > 0 || d.totals.fixedAssets > 0 ? formatAmount(d.totals.fixedAssets, d.totals.fixedAssetsLocal, grp.currency) : '—'}</td>
+                        <td class="num font-mono">${d.totals.otherCostsLocal > 0 || d.totals.otherCosts > 0 ? formatAmount(d.totals.otherCosts, d.totals.otherCostsLocal, grp.currency) : '—'}</td>
+                        <td class="num font-bold font-mono" style="${(d.totals.totalUSD > 0 || d.totals.totalLocal > 0) ? 'color: var(--accent-primary);' : 'color: var(--text-tertiary);'}">
+                          ${(d.totals.totalUSD > 0 || d.totals.totalLocal > 0) ? formatAmount(d.totals.totalUSD, d.totals.totalLocal, grp.currency) : '—'}
                         </td>
-                        ${d.totals.monthlyUSD.map(v => `
+                        ${(isLocal ? d.totals.monthlyLocal : d.totals.monthlyUSD).map(v => `
                           <td class="num month-col font-mono" style="${v > 0 ? 'font-weight: 600;' : 'color: var(--text-tertiary);'}">
-                            ${v > 0 ? Utils.formatCurrency(v, 'USD') : '—'}
+                            ${v > 0 ? Utils.formatCurrency(v, isLocal ? grp.currency : 'USD') : '—'}
                           </td>
                         `).join('')}
                       </tr>
@@ -2651,21 +2826,49 @@ const ReportsModule = {
             <tr class="tree-row-grand-total total-row">
               <td class="sticky-col-1 font-bold" style="font-size: 14px;">
                 <div class="flex items-center gap-xs">
-                  <span>🌐</span> <span>ORGANIZATION CONSOLIDATED GRAND TOTAL</span>
+                  <span>🌐</span> <span>ORGANIZATION CONSOLIDATED TOTAL ${isLocal && countryFilter !== 'all' ? `(${GROUP_CONFIG[countryFilter]?.currency || 'Local'})` : '(USD Equivalent)'}</span>
                 </div>
               </td>
-              <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(Object.values(tree).reduce((s, g) => s + g.totals.salaries, 0), 'USD')}</td>
-              <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(Object.values(tree).reduce((s, g) => s + g.totals.otherStaff, 0), 'USD')}</td>
-              <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(Object.values(tree).reduce((s, g) => s + g.totals.eha, 0), 'USD')}</td>
-              <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(Object.values(tree).reduce((s, g) => s + g.totals.fixedAssets, 0), 'USD')}</td>
-              <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(Object.values(tree).reduce((s, g) => s + g.totals.otherCosts, 0), 'USD')}</td>
-              <td class="num font-bold" style="color: var(--accent-primary); font-size: 1.15rem;">
-                ${Utils.formatCurrency(grandTotalUSD, 'USD')}
-              </td>
               ${(() => {
-                const grandMonthly = Array(12).fill(0);
-                Object.values(tree).forEach(g => g.totals.monthlyUSD.forEach((v, i) => grandMonthly[i] += v));
-                return grandMonthly.map(v => `<td class="num month-col font-mono font-bold" style="color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(v, 'USD')}</td>`).join('');
+                if (isLocal && countryFilter !== 'all') {
+                  const curr = GROUP_CONFIG[countryFilter]?.currency || 'INR';
+                  const sal = Object.values(tree).reduce((s, g) => s + g.totals.salariesLocal, 0);
+                  const ost = Object.values(tree).reduce((s, g) => s + g.totals.otherStaffLocal, 0);
+                  const eha = Object.values(tree).reduce((s, g) => s + g.totals.ehaLocal, 0);
+                  const fa = Object.values(tree).reduce((s, g) => s + g.totals.fixedAssetsLocal, 0);
+                  const oc = Object.values(tree).reduce((s, g) => s + g.totals.otherCostsLocal, 0);
+                  const tot = Object.values(tree).reduce((s, g) => s + g.totals.totalLocal, 0);
+                  const mArr = Array(12).fill(0);
+                  Object.values(tree).forEach(g => g.totals.monthlyLocal.forEach((v, i) => mArr[i] += v));
+
+                  return `
+                    <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(sal, curr)}</td>
+                    <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(ost, curr)}</td>
+                    <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(eha, curr)}</td>
+                    <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(fa, curr)}</td>
+                    <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(oc, curr)}</td>
+                    <td class="num font-bold" style="color: var(--accent-primary); font-size: 1.15rem;">${Utils.formatCurrency(tot, curr)}</td>
+                    ${mArr.map(v => `<td class="num month-col font-mono font-bold" style="color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(v, curr)}</td>`).join('')}
+                  `;
+                } else {
+                  const sal = Object.values(tree).reduce((s, g) => s + g.totals.salaries, 0);
+                  const ost = Object.values(tree).reduce((s, g) => s + g.totals.otherStaff, 0);
+                  const eha = Object.values(tree).reduce((s, g) => s + g.totals.eha, 0);
+                  const fa = Object.values(tree).reduce((s, g) => s + g.totals.fixedAssets, 0);
+                  const oc = Object.values(tree).reduce((s, g) => s + g.totals.otherCosts, 0);
+                  const mArr = Array(12).fill(0);
+                  Object.values(tree).forEach(g => g.totals.monthlyUSD.forEach((v, i) => mArr[i] += v));
+
+                  return `
+                    <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(sal, 'USD')}</td>
+                    <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(ost, 'USD')}</td>
+                    <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(eha, 'USD')}</td>
+                    <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(fa, 'USD')}</td>
+                    <td class="num font-bold" style="font-size: 13px;">${Utils.formatCurrency(oc, 'USD')}</td>
+                    <td class="num font-bold" style="color: var(--accent-primary); font-size: 1.15rem;">${Utils.formatCurrency(grandTotalUSD, 'USD')}</td>
+                    ${mArr.map(v => `<td class="num month-col font-mono font-bold" style="color: var(--accent-primary); font-size: 13px;">${Utils.formatCurrency(v, 'USD')}</td>`).join('')}
+                  `;
+                }
               })()}
             </tr>
           </tbody>
@@ -2729,6 +2932,14 @@ const ReportsModule = {
         }
       });
     }
+
+    // Toolbar Currency Switcher
+    container.querySelectorAll('#groupCurrencyModeGroup button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.groupWiseCurrencyMode = btn.dataset.currency;
+        this.renderGroupWiseReport(container, yearId, yearObj, entities, departments);
+      });
+    });
 
     // Toolbar buttons: Expand All
     container.querySelector('#expandAllGroupsBtn')?.addEventListener('click', () => {

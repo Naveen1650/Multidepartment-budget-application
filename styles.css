@@ -3115,3 +3115,129 @@ tr.exp-breakdown-row td {
 }
 
 
+/* ════════════════════════════════════════════════════════════
+   CURRENCY SELECTION GATE STYLES
+   ════════════════════════════════════════════════════════════ */
+
+.currency-gate-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 480px;
+  padding: var(--space-xl) var(--space-md);
+}
+
+.currency-gate-card-wrapper {
+  max-width: 860px;
+  width: 100%;
+}
+
+.currency-gate-header {
+  margin-bottom: var(--space-xl);
+}
+
+.currency-gate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--space-lg);
+}
+
+.currency-gate-card {
+  background: var(--bg-card);
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.currency-gate-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent-primary);
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.12);
+}
+
+.currency-gate-card:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+}
+
+.currency-gate-card[data-currency="local"]:hover {
+  border-color: #10b981;
+  box-shadow: 0 12px 28px rgba(16, 185, 129, 0.15);
+}
+
+.currency-gate-icon {
+  font-size: 2.8rem;
+  margin-bottom: var(--space-sm);
+  line-height: 1;
+}
+
+.currency-gate-badge {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+.currency-gate-card[data-currency="local"] .currency-gate-badge {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.currency-gate-card[data-currency="usd"] .currency-gate-badge {
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+  border-color: rgba(37, 99, 235, 0.25);
+}
+
+.currency-gate-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.currency-gate-desc {
+  font-size: 13.5px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+  margin-bottom: var(--space-md);
+  flex-grow: 1;
+}
+
+.currency-gate-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--space-lg);
+}
+
+.currency-tag {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+.currency-gate-action {
+  margin-top: auto;
+}
+

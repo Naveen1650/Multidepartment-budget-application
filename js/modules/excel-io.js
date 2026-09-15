@@ -3896,15 +3896,18 @@ const ExcelIOModule = {
 
     // Helper: Add Group-Wise Hierarchical Summary Sheet (Country Groups + DP/GL)
     const addGroupWiseReportSheet = async () => {
+      const currencyMode = (typeof ReportsModule !== 'undefined' && ReportsModule.groupWiseCurrencyMode) ? ReportsModule.groupWiseCurrencyMode : 'usd';
+      const isLocal = currencyMode === 'local';
+
       const GROUP_CONFIG = {
-        'IN': { name: 'India', flag: '🇮🇳', entities: 'NHIPL + YAIF', currency: 'INR', order: 1 },
-        'INDO': { name: 'Indonesia', flag: '🇮🇩', entities: 'NH Indo', currency: 'IDR', order: 2 },
-        'BD': { name: 'Bangladesh', flag: '🇧🇩', entities: 'NHBD', currency: 'BDT', order: 3 },
-        'NP': { name: 'Nepal', flag: '🇳🇵', entities: 'NH Nepal', currency: 'NPR', order: 4 },
-        'US': { name: 'United States', flag: '🇺🇸', entities: 'Noora US (HQ)', currency: 'USD', order: 5 },
-        'DP': { name: 'Digital Product', flag: '📱', entities: 'Digital Product Shared', currency: 'USD', order: 6 },
-        'GL': { name: 'Global Shared', flag: '🌍', entities: 'Global Centralized', currency: 'USD', order: 7 },
-        'GEN': { name: 'General / Cross-Cutting', flag: '🏷️', entities: 'Cross-Entity Shared', currency: 'USD', order: 8 }
+        'IN': { name: 'India', flag: '🇮🇳', entities: 'NHIPL + YAIF', currency: 'INR', order: 1, type: 'country' },
+        'INDO': { name: 'Indonesia', flag: '🇮🇩', entities: 'NH Indo', currency: 'IDR', order: 2, type: 'country' },
+        'BD': { name: 'Bangladesh', flag: '🇧🇩', entities: 'NHBD', currency: 'BDT', order: 3, type: 'country' },
+        'NP': { name: 'Nepal', flag: '🇳🇵', entities: 'NH Nepal', currency: 'NPR', order: 4, type: 'country' },
+        'US': { name: 'United States', flag: '🇺🇸', entities: 'Noora US (HQ)', currency: 'USD', order: 5, type: 'country' },
+        'DP': { name: 'Digital Product', flag: '📱', entities: 'Digital Product Shared', currency: 'USD', order: 6, type: 'global' },
+        'GL': { name: 'Global Shared', flag: '🌍', entities: 'Global Centralized', currency: 'USD', order: 7, type: 'global' },
+        'GEN': { name: 'General / Cross-Cutting', flag: '🏷️', entities: 'Cross-Entity Shared', currency: 'USD', order: 8, type: 'global' }
       };
 
       const SUBGROUP_CONFIG = {
@@ -3978,13 +3981,13 @@ const ExcelIOModule = {
         if (!eData) {
           return {
             salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0,
-            totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0),
+            salariesLocal: 0, otherStaffLocal: 0, ehaLocal: 0, fixedAssetsLocal: 0, otherCostsLocal: 0,
+            totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0), monthlyLocal: Array(12).fill(0),
             categoryMonthly: {
-              salaries: Array(12).fill(0),
-              otherStaff: Array(12).fill(0),
-              eha: Array(12).fill(0),
-              fixedAssets: Array(12).fill(0),
-              otherCosts: Array(12).fill(0)
+              salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
+            },
+            categoryMonthlyLocal: {
+              salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
             }
           };
         }
@@ -4016,16 +4019,21 @@ const ExcelIOModule = {
         const totalUSD = totalLocal / rate;
 
         const calcMonthly = (rows) => {
-          const m = Array(12).fill(0);
+          const mLocal = Array(12).fill(0);
+          const mUSD = Array(12).fill(0);
           rows.forEach(r => {
             if (r.monthlyValues) {
               Object.entries(r.monthlyValues).forEach(([mIdx, val]) => {
                 const num = Utils.parseNumber(val);
-                if (num) m[Number(mIdx)] += (num / rate);
+                if (num) {
+                  const idx = Number(mIdx);
+                  mLocal[idx] += num;
+                  mUSD[idx] += (num / rate);
+                }
               });
             }
           });
-          return m;
+          return { mLocal, mUSD };
         };
 
         const salariesMonthly = calcMonthly(salariesRows);
@@ -4035,8 +4043,10 @@ const ExcelIOModule = {
         const otherCostsMonthly = calcMonthly(nonPayrollRows);
 
         const monthlyUSD = Array(12).fill(0);
+        const monthlyLocal = Array(12).fill(0);
         for (let i = 0; i < 12; i++) {
-          monthlyUSD[i] = salariesMonthly[i] + otherStaffMonthly[i] + ehaMonthly[i] + fixedAssetsMonthly[i] + otherCostsMonthly[i];
+          monthlyUSD[i] = salariesMonthly.mUSD[i] + otherStaffMonthly.mUSD[i] + ehaMonthly.mUSD[i] + fixedAssetsMonthly.mUSD[i] + otherCostsMonthly.mUSD[i];
+          monthlyLocal[i] = salariesMonthly.mLocal[i] + otherStaffMonthly.mLocal[i] + ehaMonthly.mLocal[i] + fixedAssetsMonthly.mLocal[i] + otherCostsMonthly.mLocal[i];
         }
 
         return {
@@ -4045,15 +4055,28 @@ const ExcelIOModule = {
           eha: ehaLocal / rate,
           fixedAssets: fixedAssetsLocal / rate,
           otherCosts: otherCostsLocal / rate,
+          salariesLocal,
+          otherStaffLocal,
+          ehaLocal,
+          fixedAssetsLocal,
+          otherCostsLocal,
           totalLocal,
           totalUSD,
           monthlyUSD,
+          monthlyLocal,
           categoryMonthly: {
-            salaries: salariesMonthly,
-            otherStaff: otherStaffMonthly,
-            eha: ehaMonthly,
-            fixedAssets: fixedAssetsMonthly,
-            otherCosts: otherCostsMonthly
+            salaries: salariesMonthly.mUSD,
+            otherStaff: otherStaffMonthly.mUSD,
+            eha: ehaMonthly.mUSD,
+            fixedAssets: fixedAssetsMonthly.mUSD,
+            otherCosts: otherCostsMonthly.mUSD
+          },
+          categoryMonthlyLocal: {
+            salaries: salariesMonthly.mLocal,
+            otherStaff: otherStaffMonthly.mLocal,
+            eha: ehaMonthly.mLocal,
+            fixedAssets: fixedAssetsMonthly.mLocal,
+            otherCosts: otherCostsMonthly.mLocal
           }
         };
       };
@@ -4066,12 +4089,12 @@ const ExcelIOModule = {
           subgroups: {},
           totals: {
             salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0),
+            salariesLocal: 0, otherStaffLocal: 0, ehaLocal: 0, fixedAssetsLocal: 0, otherCostsLocal: 0, totalLocal: 0, monthlyLocal: Array(12).fill(0),
             categoryMonthly: {
-              salaries: Array(12).fill(0),
-              otherStaff: Array(12).fill(0),
-              eha: Array(12).fill(0),
-              fixedAssets: Array(12).fill(0),
-              otherCosts: Array(12).fill(0)
+              salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
+            },
+            categoryMonthlyLocal: {
+              salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
             }
           }
         };
@@ -4098,12 +4121,12 @@ const ExcelIOModule = {
               departments: {},
               totals: {
                 salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0),
+                salariesLocal: 0, otherStaffLocal: 0, ehaLocal: 0, fixedAssetsLocal: 0, otherCostsLocal: 0, totalLocal: 0, monthlyLocal: Array(12).fill(0),
                 categoryMonthly: {
-                  salaries: Array(12).fill(0),
-                  otherStaff: Array(12).fill(0),
-                  eha: Array(12).fill(0),
-                  fixedAssets: Array(12).fill(0),
-                  otherCosts: Array(12).fill(0)
+                  salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
+                },
+                categoryMonthlyLocal: {
+                  salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
                 }
               }
             };
@@ -4118,13 +4141,14 @@ const ExcelIOModule = {
               primaryEntityId: ent.id,
               entities: [ent.shortName],
               totals: {
-                salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalLocal: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0),
+                salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalLocal: 0, totalUSD: 0,
+                monthlyUSD: Array(12).fill(0), monthlyLocal: Array(12).fill(0),
+                salariesLocal: 0, otherStaffLocal: 0, ehaLocal: 0, fixedAssetsLocal: 0, otherCostsLocal: 0,
                 categoryMonthly: {
-                  salaries: Array(12).fill(0),
-                  otherStaff: Array(12).fill(0),
-                  eha: Array(12).fill(0),
-                  fixedAssets: Array(12).fill(0),
-                  otherCosts: Array(12).fill(0)
+                  salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
+                },
+                categoryMonthlyLocal: {
+                  salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
                 }
               }
             };
@@ -4142,10 +4166,20 @@ const ExcelIOModule = {
           deptEntry.totals.fixedAssets += nums.fixedAssets;
           deptEntry.totals.otherCosts += nums.otherCosts;
           deptEntry.totals.totalUSD += nums.totalUSD;
+
+          deptEntry.totals.salariesLocal += nums.salariesLocal;
+          deptEntry.totals.otherStaffLocal += nums.otherStaffLocal;
+          deptEntry.totals.ehaLocal += nums.ehaLocal;
+          deptEntry.totals.fixedAssetsLocal += nums.fixedAssetsLocal;
+          deptEntry.totals.otherCostsLocal += nums.otherCostsLocal;
           deptEntry.totals.totalLocal += nums.totalLocal;
+
           nums.monthlyUSD.forEach((v, i) => deptEntry.totals.monthlyUSD[i] += v);
+          nums.monthlyLocal.forEach((v, i) => deptEntry.totals.monthlyLocal[i] += v);
+
           ['salaries', 'otherStaff', 'eha', 'fixedAssets', 'otherCosts'].forEach(cat => {
             nums.categoryMonthly[cat].forEach((v, i) => deptEntry.totals.categoryMonthly[cat][i] += v);
+            nums.categoryMonthlyLocal[cat].forEach((v, i) => deptEntry.totals.categoryMonthlyLocal[cat][i] += v);
           });
         }
       }
@@ -4162,12 +4196,12 @@ const ExcelIOModule = {
             departments: {},
             totals: {
               salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0),
+              salariesLocal: 0, otherStaffLocal: 0, ehaLocal: 0, fixedAssetsLocal: 0, otherCostsLocal: 0, totalLocal: 0, monthlyLocal: Array(12).fill(0),
               categoryMonthly: {
-                salaries: Array(12).fill(0),
-                otherStaff: Array(12).fill(0),
-                eha: Array(12).fill(0),
-                fixedAssets: Array(12).fill(0),
-                otherCosts: Array(12).fill(0)
+                salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
+              },
+              categoryMonthlyLocal: {
+                salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
               }
             }
           };
@@ -4182,13 +4216,14 @@ const ExcelIOModule = {
             primaryEntityId: entities[0]?.id || 'noora-us',
             entities: [],
             totals: {
-              salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0, monthlyUSD: Array(12).fill(0),
+              salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalLocal: 0, totalUSD: 0,
+              monthlyUSD: Array(12).fill(0), monthlyLocal: Array(12).fill(0),
+              salariesLocal: 0, otherStaffLocal: 0, ehaLocal: 0, fixedAssetsLocal: 0, otherCostsLocal: 0,
               categoryMonthly: {
-                salaries: Array(12).fill(0),
-                otherStaff: Array(12).fill(0),
-                eha: Array(12).fill(0),
-                fixedAssets: Array(12).fill(0),
-                otherCosts: Array(12).fill(0)
+                salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
+              },
+              categoryMonthlyLocal: {
+                salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
               }
             }
           };
@@ -4207,10 +4242,20 @@ const ExcelIOModule = {
             deptEntry.totals.fixedAssets += nums.fixedAssets;
             deptEntry.totals.otherCosts += nums.otherCosts;
             deptEntry.totals.totalUSD += nums.totalUSD;
+
+            deptEntry.totals.salariesLocal += nums.salariesLocal;
+            deptEntry.totals.otherStaffLocal += nums.otherStaffLocal;
+            deptEntry.totals.ehaLocal += nums.ehaLocal;
+            deptEntry.totals.fixedAssetsLocal += nums.fixedAssetsLocal;
+            deptEntry.totals.otherCostsLocal += nums.otherCostsLocal;
             deptEntry.totals.totalLocal += nums.totalLocal;
+
             nums.monthlyUSD.forEach((v, i) => deptEntry.totals.monthlyUSD[i] += v);
+            nums.monthlyLocal.forEach((v, i) => deptEntry.totals.monthlyLocal[i] += v);
+
             ['salaries', 'otherStaff', 'eha', 'fixedAssets', 'otherCosts'].forEach(cat => {
               nums.categoryMonthly[cat].forEach((v, i) => deptEntry.totals.categoryMonthly[cat][i] += v);
+              nums.categoryMonthlyLocal[cat].forEach((v, i) => deptEntry.totals.categoryMonthlyLocal[cat][i] += v);
             });
           }
         }
@@ -4231,6 +4276,7 @@ const ExcelIOModule = {
       else if (activeScope === 'global') filterNotes.push('Scope: Digital Product & Global Shared Groups');
       if (activeDeptGroup !== 'all') filterNotes.push(`Dept Group: ${activeDeptGroup}`);
       if (activeSearch) filterNotes.push(`Search Query: "${activeSearch}"`);
+      filterNotes.push(`Currency Mode: ${isLocal ? 'Local Currency' : 'Foreign Currency (USD)'}`);
 
       // Filter groups strictly
       let sortedGroupKeys = Object.keys(tree).sort((a, b) => (GROUP_CONFIG[a]?.order || 99) - (GROUP_CONFIG[b]?.order || 99));
@@ -4277,8 +4323,12 @@ const ExcelIOModule = {
             // Recalculate subgroup totals strictly based on matching departments
             const subTotals = {
               salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0,
-              monthlyUSD: Array(12).fill(0),
+              salariesLocal: 0, otherStaffLocal: 0, ehaLocal: 0, fixedAssetsLocal: 0, otherCostsLocal: 0, totalLocal: 0,
+              monthlyUSD: Array(12).fill(0), monthlyLocal: Array(12).fill(0),
               categoryMonthly: {
+                salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
+              },
+              categoryMonthlyLocal: {
                 salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
               }
             };
@@ -4289,9 +4339,20 @@ const ExcelIOModule = {
               subTotals.fixedAssets += d.totals.fixedAssets;
               subTotals.otherCosts += d.totals.otherCosts;
               subTotals.totalUSD += d.totals.totalUSD;
+
+              subTotals.salariesLocal += d.totals.salariesLocal;
+              subTotals.otherStaffLocal += d.totals.otherStaffLocal;
+              subTotals.ehaLocal += d.totals.ehaLocal;
+              subTotals.fixedAssetsLocal += d.totals.fixedAssetsLocal;
+              subTotals.otherCostsLocal += d.totals.otherCostsLocal;
+              subTotals.totalLocal += d.totals.totalLocal;
+
               d.totals.monthlyUSD.forEach((v, i) => subTotals.monthlyUSD[i] += v);
+              d.totals.monthlyLocal.forEach((v, i) => subTotals.monthlyLocal[i] += v);
+
               EXPENSE_CATEGORIES.forEach(cat => {
                 d.totals.categoryMonthly[cat.key].forEach((v, i) => subTotals.categoryMonthly[cat.key][i] += v);
+                d.totals.categoryMonthlyLocal[cat.key].forEach((v, i) => subTotals.categoryMonthlyLocal[cat.key][i] += v);
               });
             });
 
@@ -4308,8 +4369,12 @@ const ExcelIOModule = {
           // Recalculate group totals strictly based on matching subgroups
           const grpTotals = {
             salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0,
-            monthlyUSD: Array(12).fill(0),
+            salariesLocal: 0, otherStaffLocal: 0, ehaLocal: 0, fixedAssetsLocal: 0, otherCostsLocal: 0, totalLocal: 0,
+            monthlyUSD: Array(12).fill(0), monthlyLocal: Array(12).fill(0),
             categoryMonthly: {
+              salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
+            },
+            categoryMonthlyLocal: {
               salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
             }
           };
@@ -4320,15 +4385,27 @@ const ExcelIOModule = {
             grpTotals.fixedAssets += sub.totals.fixedAssets;
             grpTotals.otherCosts += sub.totals.otherCosts;
             grpTotals.totalUSD += sub.totals.totalUSD;
+
+            grpTotals.salariesLocal += sub.totals.salariesLocal;
+            grpTotals.otherStaffLocal += sub.totals.otherStaffLocal;
+            grpTotals.ehaLocal += sub.totals.ehaLocal;
+            grpTotals.fixedAssetsLocal += sub.totals.fixedAssetsLocal;
+            grpTotals.otherCostsLocal += sub.totals.otherCostsLocal;
+            grpTotals.totalLocal += sub.totals.totalLocal;
+
             sub.totals.monthlyUSD.forEach((v, i) => grpTotals.monthlyUSD[i] += v);
+            sub.totals.monthlyLocal.forEach((v, i) => grpTotals.monthlyLocal[i] += v);
+
             EXPENSE_CATEGORIES.forEach(cat => {
               sub.totals.categoryMonthly[cat.key].forEach((v, i) => grpTotals.categoryMonthly[cat.key][i] += v);
+              sub.totals.categoryMonthlyLocal[cat.key].forEach((v, i) => grpTotals.categoryMonthlyLocal[cat.key][i] += v);
             });
           });
 
           filteredGroups.push({
             key: grpKey,
             name: grp.name,
+            currency: grp.currency,
             entities: grp.entities,
             subgroups: matchingSubgroups,
             totals: grpTotals
@@ -4339,8 +4416,12 @@ const ExcelIOModule = {
       // Calculate strictly filtered master grand total
       const grandTotals = {
         salaries: 0, otherStaff: 0, eha: 0, fixedAssets: 0, otherCosts: 0, totalUSD: 0,
-        monthlyUSD: Array(12).fill(0),
+        salariesLocal: 0, otherStaffLocal: 0, ehaLocal: 0, fixedAssetsLocal: 0, otherCostsLocal: 0, totalLocal: 0,
+        monthlyUSD: Array(12).fill(0), monthlyLocal: Array(12).fill(0),
         categoryMonthly: {
+          salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
+        },
+        categoryMonthlyLocal: {
           salaries: Array(12).fill(0), otherStaff: Array(12).fill(0), eha: Array(12).fill(0), fixedAssets: Array(12).fill(0), otherCosts: Array(12).fill(0)
         }
       };
@@ -4351,16 +4432,29 @@ const ExcelIOModule = {
         grandTotals.fixedAssets += g.totals.fixedAssets;
         grandTotals.otherCosts += g.totals.otherCosts;
         grandTotals.totalUSD += g.totals.totalUSD;
+
+        grandTotals.salariesLocal += g.totals.salariesLocal;
+        grandTotals.otherStaffLocal += g.totals.otherStaffLocal;
+        grandTotals.ehaLocal += g.totals.ehaLocal;
+        grandTotals.fixedAssetsLocal += g.totals.fixedAssetsLocal;
+        grandTotals.otherCostsLocal += g.totals.otherCostsLocal;
+        grandTotals.totalLocal += g.totals.totalLocal;
+
         g.totals.monthlyUSD.forEach((v, i) => grandTotals.monthlyUSD[i] += v);
+        g.totals.monthlyLocal.forEach((v, i) => grandTotals.monthlyLocal[i] += v);
+
         EXPENSE_CATEGORIES.forEach(cat => {
           g.totals.categoryMonthly[cat.key].forEach((v, i) => grandTotals.categoryMonthly[cat.key][i] += v);
+          g.totals.categoryMonthlyLocal[cat.key].forEach((v, i) => grandTotals.categoryMonthlyLocal[cat.key][i] += v);
         });
       });
+
+      const currColTitle = isLocal ? (activeCountry !== 'all' ? `${GROUP_CONFIG[activeCountry]?.currency || 'Local'}` : 'Local Currency') : 'USD';
 
       // ─── Sheet 1: Group-Wise Budget (Row-Wise) ───
       const rows = [
         [`Noora Health — Multi-Country & Functional Group Budget Report (Row-Wise)`, `CY-${budgetYear}`],
-        ['Expense categories organized as individual rows with month-by-month USD ($) amounts, matching organizational reporting standards'],
+        [`Expense categories organized as individual rows with month-by-month amounts in ${isLocal ? 'Local Currency' : 'USD ($)'}, matching organizational reporting standards`],
         filterNotes.length > 0 ? [`Filters Applied: ${filterNotes.join(' | ')}`] : [`Filters: None (All Groups & Departments)`],
         [],
         [
@@ -4369,9 +4463,10 @@ const ExcelIOModule = {
           'Dept Code',
           'Department Name',
           'Expense Category',
+          'Currency',
           'Entities',
-          `Total Budget CY-${budgetYear} (USD)`,
-          ...SEED_DATA.months.map(m => `${m}-${budgetYear} (USD)`)
+          `Total Budget CY-${budgetYear} (${currColTitle})`,
+          ...SEED_DATA.months.map(m => `${m}-${budgetYear} (${currColTitle})`)
         ]
       ];
 
@@ -4383,9 +4478,10 @@ const ExcelIOModule = {
           '—',
           grp.name,
           'GROUP HEADER',
+          grp.currency,
           grp.entities,
-          grp.totals.totalUSD,
-          ...grp.totals.monthlyUSD
+          isLocal ? grp.totals.totalLocal : grp.totals.totalUSD,
+          ...(isLocal ? grp.totals.monthlyLocal : grp.totals.monthlyUSD)
         ]);
 
         grp.subgroups.forEach(sub => {
@@ -4396,9 +4492,10 @@ const ExcelIOModule = {
             '—',
             sub.label,
             'SUBGROUP HEADER',
+            grp.currency,
             grp.entities,
-            sub.totals.totalUSD,
-            ...sub.totals.monthlyUSD
+            isLocal ? sub.totals.totalLocal : sub.totals.totalUSD,
+            ...(isLocal ? sub.totals.monthlyLocal : sub.totals.monthlyUSD)
           ]);
 
           sub.departments.forEach(d => {
@@ -4410,9 +4507,10 @@ const ExcelIOModule = {
                 d.deptCode,
                 d.deptName,
                 cat.label,
+                grp.currency,
                 d.entities.join(', ') || grp.entities,
-                d.totals[cat.key],
-                ...d.totals.categoryMonthly[cat.key]
+                isLocal ? d.totals[cat.key + 'Local'] : d.totals[cat.key],
+                ...(isLocal ? d.totals.categoryMonthlyLocal[cat.key] : d.totals.categoryMonthly[cat.key])
               ]);
             });
 
@@ -4423,9 +4521,10 @@ const ExcelIOModule = {
               d.deptCode,
               d.deptName,
               `TOTAL DEPARTMENT: ${d.deptCode}`,
+              grp.currency,
               d.entities.join(', ') || grp.entities,
-              d.totals.totalUSD,
-              ...d.totals.monthlyUSD
+              isLocal ? d.totals.totalLocal : d.totals.totalUSD,
+              ...(isLocal ? d.totals.monthlyLocal : d.totals.monthlyUSD)
             ]);
           });
 
@@ -4437,9 +4536,10 @@ const ExcelIOModule = {
               '—',
               `Subtotal: ${sub.label}`,
               `${cat.label} (Subgroup Subtotal)`,
+              grp.currency,
               grp.entities,
-              sub.totals[cat.key],
-              ...sub.totals.categoryMonthly[cat.key]
+              isLocal ? sub.totals[cat.key + 'Local'] : sub.totals[cat.key],
+              ...(isLocal ? sub.totals.categoryMonthlyLocal[cat.key] : sub.totals.categoryMonthly[cat.key])
             ]);
           });
           rows.push([
@@ -4448,9 +4548,10 @@ const ExcelIOModule = {
             '—',
             `Subtotal: ${sub.label}`,
             `SUBTOTAL: ${sub.key} (${sub.label})`,
+            grp.currency,
             grp.entities,
-            sub.totals.totalUSD,
-            ...sub.totals.monthlyUSD
+            isLocal ? sub.totals.totalLocal : sub.totals.totalUSD,
+            ...(isLocal ? sub.totals.monthlyLocal : sub.totals.monthlyUSD)
           ]);
         });
 
@@ -4462,9 +4563,10 @@ const ExcelIOModule = {
             '—',
             `Group Total: ${grp.name}`,
             `${cat.label} (Group Total)`,
+            grp.currency,
             grp.entities,
-            grp.totals[cat.key],
-            ...grp.totals.categoryMonthly[cat.key]
+            isLocal ? grp.totals[cat.key + 'Local'] : grp.totals[cat.key],
+            ...(isLocal ? grp.totals.categoryMonthlyLocal[cat.key] : grp.totals.categoryMonthly[cat.key])
           ]);
         });
         rows.push([
@@ -4473,15 +4575,18 @@ const ExcelIOModule = {
           '—',
           `Group Total: ${grp.name}`,
           `TOTAL FOR GROUP: ${grp.key} (${grp.name})`,
+          grp.currency,
           grp.entities,
-          grp.totals.totalUSD,
-          ...grp.totals.monthlyUSD
+          isLocal ? grp.totals.totalLocal : grp.totals.totalUSD,
+          ...(isLocal ? grp.totals.monthlyLocal : grp.totals.monthlyUSD)
         ]);
         rows.push([]); // blank line between groups
       });
 
       // Master Grand Total (row-wise categories + grand total)
       if (filteredGroups.length > 0) {
+        const isSingleCountry = isLocal && activeCountry !== 'all';
+        const grandCurr = isSingleCountry ? (GROUP_CONFIG[activeCountry]?.currency || 'INR') : (isLocal ? 'Mixed' : 'USD');
         EXPENSE_CATEGORIES.forEach(cat => {
           rows.push([
             'ALL-GROUPS',
@@ -4489,9 +4594,10 @@ const ExcelIOModule = {
             '—',
             'Organization Grand Total',
             `${cat.label} (Grand Total)`,
+            grandCurr,
             'All Filtered Entities',
-            grandTotals[cat.key],
-            ...grandTotals.categoryMonthly[cat.key]
+            isSingleCountry ? grandTotals[cat.key + 'Local'] : grandTotals[cat.key],
+            ...(isSingleCountry ? grandTotals.categoryMonthlyLocal[cat.key] : grandTotals.categoryMonthly[cat.key])
           ]);
         });
         rows.push([
@@ -4499,13 +4605,14 @@ const ExcelIOModule = {
           '—',
           '—',
           'Organization Grand Total',
-          'ORGANIZATION CONSOLIDATED GRAND TOTAL',
+          `ORGANIZATION CONSOLIDATED TOTAL ${isSingleCountry ? `(${grandCurr})` : (isLocal ? '(Consolidated USD Equivalent)' : '(USD)')}`,
+          grandCurr,
           'All Filtered Entities',
-          grandTotals.totalUSD,
-          ...grandTotals.monthlyUSD
+          isSingleCountry ? grandTotals.totalLocal : grandTotals.totalUSD,
+          ...(isSingleCountry ? grandTotals.monthlyLocal : grandTotals.monthlyUSD)
         ]);
       } else {
-        rows.push(['No budget records match the selected filter criteria.', '', '', '', '', '', 0, ...Array(12).fill(0)]);
+        rows.push(['No budget records match the selected filter criteria.', '', '', '', '', '', '', 0, ...Array(12).fill(0)]);
       }
 
       const ws = XLSX.utils.aoa_to_sheet(rows);
@@ -4514,7 +4621,7 @@ const ExcelIOModule = {
       // ─── Sheet 2: Department Full Details (Flat Row-Wise Extract) ───
       const detailRows = [
         [`Noora Health — Department Full Details Report (Row-Wise)`, `CY-${budgetYear}`],
-        ['Filtered tabular extraction with row-wise expense categories, full codes, full descriptions, and monthly budgets in USD ($)'],
+        [`Filtered tabular extraction with row-wise expense categories, full codes, full descriptions, and monthly budgets in ${isLocal ? 'Local Currency' : 'USD ($)'}`],
         filterNotes.length > 0 ? [`Filters Applied: ${filterNotes.join(' | ')}`] : [`Filters: None (All Active)`],
         [],
         [
@@ -4524,10 +4631,11 @@ const ExcelIOModule = {
           'Dept Group Label',
           'Department Code',
           'Department Name (Full)',
+          'Currency',
           'Entities',
           'Expense Category',
-          `Total Budget CY-${budgetYear} (USD)`,
-          ...SEED_DATA.months.map(m => `${m}-${budgetYear} (USD)`)
+          `Total Budget CY-${budgetYear} (${currColTitle})`,
+          ...SEED_DATA.months.map(m => `${m}-${budgetYear} (${currColTitle})`)
         ]
       ];
 
@@ -4542,10 +4650,11 @@ const ExcelIOModule = {
                 sub.label,
                 d.deptCode,
                 d.deptName,
+                grp.currency,
                 d.entities.join(', ') || grp.entities,
                 cat.label,
-                d.totals[cat.key],
-                ...d.totals.categoryMonthly[cat.key]
+                isLocal ? d.totals[cat.key + 'Local'] : d.totals[cat.key],
+                ...(isLocal ? d.totals.categoryMonthlyLocal[cat.key] : d.totals.categoryMonthly[cat.key])
               ]);
             });
             detailRows.push([
@@ -4555,10 +4664,11 @@ const ExcelIOModule = {
               sub.label,
               d.deptCode,
               d.deptName,
+              grp.currency,
               d.entities.join(', ') || grp.entities,
               `TOTAL: ${d.deptCode}`,
-              d.totals.totalUSD,
-              ...d.totals.monthlyUSD
+              isLocal ? d.totals.totalLocal : d.totals.totalUSD,
+              ...(isLocal ? d.totals.monthlyLocal : d.totals.monthlyUSD)
             ]);
           });
         });
@@ -4567,7 +4677,6 @@ const ExcelIOModule = {
       const wsDetails = XLSX.utils.aoa_to_sheet(detailRows);
       XLSX.utils.book_append_sheet(wb, wsDetails, 'Dept Details (Row-Wise)');
     };
-
     // Route to appropriate generators based on export type
     if (type === 'group-wise') {
       // Export strictly filtered Multi-Country & Functional Group Report sheets
@@ -4696,7 +4805,10 @@ const ExcelIOModule = {
     if (type === 'group-wise') {
       const activeCountry = typeof ReportsModule !== 'undefined' ? (ReportsModule.groupWiseCountryFilter || 'all') : 'all';
       const activeDeptGroup = typeof ReportsModule !== 'undefined' ? (ReportsModule.groupWiseDeptGroupFilter || 'all') : 'all';
-      const parts = ['Noora_Health_Group_Wise_Budget'];
+      const currencyMode = typeof ReportsModule !== 'undefined' ? (ReportsModule.groupWiseCurrencyMode || 'usd') : 'usd';
+      const GROUP_CURRENCIES = { IN: 'INR', INDO: 'IDR', BD: 'BDT', NP: 'NPR', US: 'USD', DP: 'USD', GL: 'USD', GEN: 'USD' };
+      const currTag = currencyMode === 'local' ? (activeCountry !== 'all' ? `Local_${GROUP_CURRENCIES[activeCountry] || 'CURR'}` : 'Local_Currency') : 'USD';
+      const parts = ['Noora_Health_Group_Wise_Budget', currTag];
       if (activeCountry !== 'all') parts.push(activeCountry);
       if (activeDeptGroup !== 'all') parts.push(activeDeptGroup);
       parts.push(`CY${budgetYear}`);
